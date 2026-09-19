@@ -1,0 +1,15 @@
+package com.example.helpdesk.enums;
+
+public enum TicketEventType {
+    TICKET_CREATED,
+    ROUTING_PROPOSED,
+    ASSIGNMENT_CONFIRMED,
+    ASSIGNMENT_REJECTED,
+    SLA_STARTED,
+    SLA_WARNING,
+    SLA_BREACHED,
+    SLA_PAUSED,
+    SLA_RESUMED,
+    TICKET_RESOLVED,
+    TICKET_REOPENED
+}
