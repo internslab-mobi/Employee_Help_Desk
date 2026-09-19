@@ -1,0 +1,18 @@
+package com.divya.helpdesk.enums;
+
+public enum HDHistoryEventType {
+    TICKET_CREATED,
+    AGENT_ASSIGNED,
+    AGENT_REASSIGNED,
+    STATUS_CHANGED,
+    ON_HOLD,
+    RESUMED,
+    MESSAGE_ADDED,
+    ATTACHMENT_ADDED,
+    SLA_WARNING,
+    SLA_BREACHED,
+    TICKET_RESOLVED,
+    TICKET_REOPENED,
+    TICKET_WITHDRAWN,
+    FEEDBACK_SUBMITTED
+}
