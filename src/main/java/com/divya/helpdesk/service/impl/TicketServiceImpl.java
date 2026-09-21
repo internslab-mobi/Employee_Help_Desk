@@ -18,8 +18,11 @@ import com.divya.helpdesk.service.TicketService;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -45,11 +48,11 @@ public class TicketServiceImpl implements TicketService {
     private final TicketMapper ticketMapper;
 
     @Override
-    public TicketResponse createTicket(TicketCreateRequest request) {
+    public TicketResponse createTicket(TicketCreateRequest request, Long employeeId) {
 
         // get employee by their id
-        HDEmployee requester = employeeRepository.findById(request.getRequesterId())
-                .orElseThrow(() -> new ResourceNotFoundException("Requester not found with id: " + request.getRequesterId()));
+        HDEmployee requester = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Requester not found with id: " + employeeId));
 
         // get the department by id
         HDDepartment department = departmentRepository.findById(request.getDepartmentId())
@@ -101,12 +104,28 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TicketResponse> getTickets(Long requesterId, Long departmentId, Long agentId, HDTicketStatus status, HDPriorityLevel priority) {
+    public List<TicketResponse> getTickets(Long employeeId, String role, Long departmentId, Long agentId, HDTicketStatus status, HDPriorityLevel priority) {
+        HDEmployee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+
         Specification<HDTicket> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            if (requesterId != null) {
-                predicates.add(cb.equal(root.get("requester").get("id"), requesterId));
+            Predicate ownTicket = cb.equal(root.get("requester").get("id"), employeeId);
+
+            if ("ROLE_EMPLOYEE".equals(role)) {
+                predicates.add(ownTicket);
+            } else if ("ROLE_AGENT".equals(role)) {
+                Predicate assignedToMe = cb.equal(root.get("assignedAgent").get("id"), employeeId);
+                predicates.add(cb.or(ownTicket, assignedToMe));
+            } else if ("ROLE_MANAGER".equals(role)) {
+                Predicate departmentTicket = cb.equal(root.get("department").get("id"), employee.getDepartment().getId());
+                predicates.add(cb.or(ownTicket, departmentTicket));
+            } else if ("ROLE_ADMIN".equals(role)) {
+                // No authorization restriction
+            } else {
+                throw new AccessDeniedException("You are not allowed to view tickets");
             }
+
             if (departmentId != null) {
                 predicates.add(cb.equal(root.get("department").get("id"), departmentId));
             }
@@ -132,41 +151,79 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public TicketResponse getTicketById(Long id) {
-        HDTicket ticket = ticketRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
-        HDSlaInstance sla = slaInstanceRepository.findByTicketId(id).orElse(null);
+    public TicketResponse getTicketById(Long ticketId, Long employeeId) {
+        HDTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
+        HDEmployee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+
+        String role = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getAuthorities()
+                .iterator()
+                .next()
+                .getAuthority();
+
+        if (!canViewTicket(ticket, employee, role)) {
+            throw new AccessDeniedException("You are not allowed to view this ticket");
+        }
+
+        HDSlaInstance sla = slaInstanceRepository.findByTicketId(ticketId).orElse(null);
         return ticketMapper.toResponse(ticket, sla);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public TicketResponse getTicketByTicketNumber(String ticketNumber) {
+    public TicketResponse getTicketByTicketNumber(String ticketNumber, Long employeeId) {
         HDTicket ticket = ticketRepository.findByTicketNumber(ticketNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with ticket number: " + ticketNumber));
+        HDEmployee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+        String role = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getAuthorities()
+                .iterator()
+                .next()
+                .getAuthority();
+
+        if (!canViewTicket(ticket, employee, role)) {
+            throw new AccessDeniedException("You are not allowed to view this ticket");
+        }
         HDSlaInstance sla = slaInstanceRepository.findByTicketId(ticket.getId()).orElse(null);
         return ticketMapper.toResponse(ticket, sla);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public TicketDetailsResponse getTicketDetails(Long id) {
+    public TicketDetailsResponse getTicketDetails(Long id, Long employeeId) {
         HDTicket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
+        HDEmployee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+        String role = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getAuthorities()
+                .iterator()
+                .next()
+                .getAuthority();
+
+        if (!canViewTicket(ticket, employee, role)) {
+            throw new AccessDeniedException("You are not allowed to view this ticket");
+        }
         HDSlaInstance slaInstance = slaInstanceRepository.findByTicketId(id).orElse(null);
         return ticketMapper.toDetailsResponse(ticket, slaInstance);
     }
 
     @Override
-    public TicketResponse updateTicket(Long ticketId, TicketUpdateRequest request) {
+    public TicketResponse updateTicket(Long ticketId, TicketUpdateRequest request, Long employeeId) {
 
         // find ticket
         HDTicket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
 
         // verify requester owns the ticket
-        if (!ticket.getRequester().getId().equals(request.getRequesterId())) {
-            throw new BadRequestException("You are not allowed to update this ticket");
+        if (!ticket.getRequester().getId().equals(employeeId)) {
+            throw new AccessDeniedException("You are not allowed to update this ticket");
         }
 
         // don't allow editing a resolved ticket
@@ -223,6 +280,7 @@ public class TicketServiceImpl implements TicketService {
         ticket.setDepartment(department);
         ticket.setCategory(category);
         ticket.setSubCategory(subCategory);
+        ticket.setSubject(request.getSubject());
         ticket.setDescription(request.getDescription());
         ticket.setPriority(newPriority);
         ticket.setSlaPolicy(slaPolicy);
@@ -254,10 +312,15 @@ public class TicketServiceImpl implements TicketService {
         return ticketMapper.toResponse(savedTicket, slaInstance);
     }
 
+    @PreAuthorize("hasAnyRole('AGENT', 'MANAGER')")
     @Override
-    public TicketResponse startWorkingOnTicket(Long id) {
+    public TicketResponse startWorkingOnTicket(Long id, Long employeeId) {
         HDTicket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
+
+        if (ticket.getAssignedAgent() == null || !ticket.getAssignedAgent().getId().equals(employeeId)) {
+            throw new AccessDeniedException("You are not assigned to this ticket");
+        }
 
         if (ticket.getStatus() != HDTicketStatus.ASSIGNED && ticket.getStatus() != HDTicketStatus.NEW) {
             throw new BadRequestException("Ticket cannot be transitioned to IN_PROGRESS from status: " + ticket.getStatus());
@@ -269,10 +332,15 @@ public class TicketServiceImpl implements TicketService {
         return ticketMapper.toResponse(saved, sla);
     }
 
+    @PreAuthorize("hasAnyRole('AGENT', 'MANAGER')")
     @Override
-    public TicketResponse resolveTicket(Long id, TicketResolveRequest request) {
+    public TicketResponse resolveTicket(Long id, TicketResolveRequest request, Long employeeId) {
         HDTicket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
+
+        if (ticket.getAssignedAgent() == null || !ticket.getAssignedAgent().getId().equals(employeeId)) {
+            throw new AccessDeniedException("You are not assigned to this ticket");
+        }
 
         if (ticket.getStatus() == HDTicketStatus.RESOLVED) {
             throw new BadRequestException("Ticket is already " + ticket.getStatus());
@@ -289,10 +357,13 @@ public class TicketServiceImpl implements TicketService {
         return ticketMapper.toResponse(saved, sla);
     }
 
+    @PreAuthorize("hasAnyRole('MANAGER')")
     @Override
-    public void deleteTicket(Long id) {
-        if (!ticketRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Ticket not found with id: " + id);
+    public void deleteTicket(Long id, Long employeeId) {
+        HDTicket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
+        if(ticket.getDepartment() == null || !ticket.getAssignedManager().equals(employeeId)){
+            throw new AccessDeniedException("You are not allowed to delete this ticket");
         }
         ticketRepository.deleteById(id);
     }
@@ -301,5 +372,25 @@ public class TicketServiceImpl implements TicketService {
         String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String randomPart = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         return "TKT-" + datePart + "-" + randomPart;
+    }
+
+    private boolean canViewTicket(HDTicket ticket, HDEmployee employee, String role) {
+        Long employeeId = employee.getId();
+        if ("ROLE_EMPLOYEE".equals(role)) {
+            return ticket.getRequester() != null && ticket.getRequester().getId().equals(employeeId);
+        } else if ("ROLE_AGENT".equals(role)) {
+            boolean ownTicket = ticket.getRequester() != null && ticket.getRequester().getId().equals(employeeId);
+            boolean assignedToMe = ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getId().equals(employeeId);
+            return ownTicket || assignedToMe;
+        } else if ("ROLE_MANAGER".equals(role)) {
+            boolean ownTicket = ticket.getRequester() != null && ticket.getRequester().getId().equals(employeeId);
+            boolean departmentTicket = ticket.getDepartment() != null && employee.getDepartment() != null &&
+                            ticket.getDepartment().getId().equals(employee.getDepartment().getId());
+            return ownTicket || departmentTicket;
+        } else if ("ROLE_ADMIN".equals(role)) {
+            return true;
+        }
+
+        return false;
     }
 }
