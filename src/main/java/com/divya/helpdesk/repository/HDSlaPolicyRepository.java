@@ -11,5 +11,4 @@ import java.util.Optional;
 public interface HDSlaPolicyRepository extends JpaRepository<HDSlaPolicy, Long> {
     List<HDSlaPolicy> findByDepartmentId(Long departmentId);
     Optional<HDSlaPolicy> findByDepartmentIdAndSubCategoryId(Long departmentId, Long subCategoryId);
-    boolean existsByDepartmentIdAndSubCategoryId(Long departmentId, Long subCategoryId);
 }

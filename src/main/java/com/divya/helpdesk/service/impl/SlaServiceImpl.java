@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -131,5 +132,31 @@ public class SlaServiceImpl implements SlaService {
             return startDateTime.plusMinutes(warningMinutes);
         }
         return slaCalculationService.calculateWarningAt(calendar, startDateTime, resolutionMinutes);
+    }
+
+    @Override
+    @Transactional
+    public void checkSlaInstances() {
+        LocalDateTime now = LocalDateTime.now();
+        List<HDSlaInstance> slaInstances = slaInstanceRepository.findByStatus(HDSlaStatus.ACTIVE);
+        for (HDSlaInstance sla : slaInstances) {
+            // 1. Check breach first
+            if (!now.isBefore(sla.getCurrentDeadlineAt())) {
+                if (sla.getBreachSentAt() == null) {
+                    // We will send the breach email here sendBreachEmail(sla);
+                    sla.setBreachSentAt(now);
+                }
+                sla.setStatus(HDSlaStatus.BREACHED);
+                sla.setBreachedAt(now);
+                slaInstanceRepository.save(sla);
+                continue;
+            }
+            // 2. Check warning
+            if (sla.getWarningAt() != null && !now.isBefore(sla.getWarningAt()) && sla.getWarningSentAt() == null) {
+                // We will send the warning email here sendWarningEmail(sla);
+                sla.setWarningSentAt(now);
+                slaInstanceRepository.save(sla);
+            }
+        }
     }
 }
