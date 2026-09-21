@@ -11,13 +11,13 @@ import com.divya.helpdesk.enums.HDTicketStatus;
 import java.util.List;
 
 public interface TicketService {
-    TicketResponse createTicket(TicketCreateRequest request);
-    List<TicketResponse> getTickets(Long requesterId, Long departmentId, Long agentId, HDTicketStatus status, HDPriorityLevel priority);
-    TicketResponse getTicketById(Long id);
-    TicketResponse getTicketByTicketNumber(String ticketNumber);
-    TicketDetailsResponse getTicketDetails(Long id);
-    TicketResponse updateTicket(Long ticketId, TicketUpdateRequest request);
-    TicketResponse startWorkingOnTicket(Long id);
-    TicketResponse resolveTicket(Long id, TicketResolveRequest request);
-    void deleteTicket(Long id);
+    TicketResponse createTicket(TicketCreateRequest request, Long employeeId);
+    List<TicketResponse> getTickets(Long requesterId, String role,  Long departmentId, Long agentId, HDTicketStatus status, HDPriorityLevel priority);
+    TicketResponse getTicketById(Long id, Long employeeId);
+    TicketResponse getTicketByTicketNumber(String ticketNumber, Long employeeId);
+    TicketDetailsResponse getTicketDetails(Long id, Long employeeId);
+    TicketResponse updateTicket(Long ticketId, TicketUpdateRequest request, Long employeeId);
+    TicketResponse startWorkingOnTicket(Long id, Long employeeId);
+    TicketResponse resolveTicket(Long id, TicketResolveRequest request, Long employeeId);
+    void deleteTicket(Long id, Long employeeId);
 }

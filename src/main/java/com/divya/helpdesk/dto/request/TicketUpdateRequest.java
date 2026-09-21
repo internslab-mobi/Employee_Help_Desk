@@ -10,9 +10,6 @@ import lombok.Setter;
 @Setter
 public class TicketUpdateRequest {
 
-    @NotNull(message = "Requester id is required")
-    private Long requesterId;
-
     @NotNull(message = "Department id is required")
     private Long departmentId;
 

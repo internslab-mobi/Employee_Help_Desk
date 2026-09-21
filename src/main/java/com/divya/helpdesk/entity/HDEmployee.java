@@ -49,6 +49,15 @@ public class HDEmployee extends BaseEntity {
     @Column(name = "date_of_exit")
     private LocalDate dateOfExit;
 
+    @Column(name = "password", length = 255)
+    private String password;
+
+    @Column(name = "role", length = 30)
+    private String role;
+
+    @Column(name = "enabled", nullable = false)
+    private Boolean enabled = true;
+
     @Lob
     @Column(name = "profile_image", columnDefinition = "LONGBLOB")
     private byte[] profileImage;

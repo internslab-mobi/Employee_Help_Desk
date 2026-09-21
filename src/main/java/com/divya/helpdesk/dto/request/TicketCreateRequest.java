@@ -14,9 +14,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class TicketCreateRequest {
 
-    @NotNull(message = "Requester ID is required")
-    private Long requesterId;
-
     @NotNull(message = "Department ID is required")
     private Long departmentId;
 
