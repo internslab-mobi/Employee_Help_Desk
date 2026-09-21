@@ -12,6 +12,5 @@ public interface HDSubCategorySkillRepository extends JpaRepository<HDSubCategor
     List<HDSubCategorySkill> findBySubCategoryId(Long subCategoryId);
     Optional<HDSubCategorySkill> findBySubCategoryIdAndSkillId(Long subCategoryId, Long skillId);
     boolean existsBySubCategoryIdAndSkillId(Long subCategoryId, Long skillId);
-    void deleteBySubCategoryIdAndSkillId(Long subCategoryId, Long skillId);
     List<HDSubCategorySkill> findBySkillId(Long skillId);
 }

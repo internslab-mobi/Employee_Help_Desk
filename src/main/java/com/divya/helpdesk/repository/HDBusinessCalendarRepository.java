@@ -9,8 +9,6 @@ import java.util.Optional;
 
 @Repository
 public interface HDBusinessCalendarRepository extends JpaRepository<HDBusinessCalendar, Long> {
-    Optional<HDBusinessCalendar> findByCode(String code);
     Optional<HDBusinessCalendar> findByIsDefaultTrue();
     boolean existsByCode(String code);
-    List<HDBusinessCalendar> findByIsActiveTrue();
 }
