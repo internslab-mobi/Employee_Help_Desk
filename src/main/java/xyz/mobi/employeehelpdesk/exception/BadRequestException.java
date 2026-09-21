@@ -1,6 +1,6 @@
 package xyz.mobi.employeehelpdesk.exception;
 
-public class BadRequestException extends HelpdeskException {
+public class BadRequestException extends RuntimeException {
     public BadRequestException(String message) {
         super(message);
     }

@@ -1,14 +1,12 @@
 package xyz.mobi.employeehelpdesk.strategy.routing;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import xyz.mobi.employeehelpdesk.entity.RoutingCandidate;
 import xyz.mobi.employeehelpdesk.exception.BadRequestException;
+import xyz.mobi.employeehelpdesk.entity.RoutingCandidate;
 
 import java.util.Comparator;
 import java.util.List;
 
-@Slf4j
 @Component
 public class DefaultRoutingStrategy implements RoutingStrategy {
 
@@ -52,18 +50,13 @@ public class DefaultRoutingStrategy implements RoutingStrategy {
                                         candidate.getAgent().getId()
                         );
 
-        RoutingCandidate selected = candidates.stream()
+        return candidates.stream()
                 .min(comparator)
                 .orElseThrow(
                         () -> new BadRequestException(
                                 "No routing candidate available"
                         )
                 );
-
-        log.debug("Routing strategy selected agentId={} (skillMatches={}/{}, activeWorkload={})",
-                selected.getAgent().getId(), selected.getSkillMatchCount(), selected.getRequiredSkillCount(), selected.getActiveTicketCount());
-
-        return selected;
     }
 
     private double skillMatchPercentage(

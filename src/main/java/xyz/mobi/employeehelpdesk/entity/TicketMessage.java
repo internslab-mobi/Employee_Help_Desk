@@ -13,10 +13,6 @@ import lombok.Setter;
                         columnList = "ticket_id"
                 ),
                 @Index(
-                        name = "idx_ticket_message_ticket_created",
-                        columnList = "ticket_id, created_at"
-                ),
-                @Index(
                         name = "idx_ticket_message_sender",
                         columnList = "sender_id"
                 ),
