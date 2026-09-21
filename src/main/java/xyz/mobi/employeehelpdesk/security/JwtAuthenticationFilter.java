@@ -6,8 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,10 +13,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import tools.jackson.databind.ObjectMapper;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
-import xyz.mobi.employeehelpdesk.exception.ErrorResponse;
-import xyz.mobi.employeehelpdesk.service.helperservice.ErrorCodeCacheService;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -30,8 +25,6 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
-    private final ObjectMapper objectMapper;
-    private final ErrorCodeCacheService errorCodeCacheService;
 
     @Override
     protected void doFilterInternal(
@@ -39,34 +32,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
+        try {
+            String jwt = getJwtFromRequest(request);
 
-        String jwt = getJwtFromRequest(request);
-
-        if (StringUtils.hasText(jwt)) {
-            // Token was provided — it MUST be valid
-            if (!tokenProvider.validateToken(jwt)) {
-                writeUnauthorizedResponse(response, "Invalid or expired token");
-                return;
-            }
-
-            try {
+            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
                 Long employeeId = tokenProvider.getEmployeeIdFromToken(jwt);
                 UserRole role = tokenProvider.getRoleFromToken(jwt);
-                String timezone = tokenProvider.getTimezoneFromToken(jwt);
-
-                // Validate timezone if present; fallback to UTC for backward compatibility with old tokens
-                if (timezone != null && !timezone.isBlank()) {
-                    try {
-                        java.time.ZoneId.of(timezone.trim());
-                        timezone = timezone.trim();
-                    } catch (Exception ex) {
-                        log.error("Invalid timezone claim in JWT: {}", timezone);
-                        writeUnauthorizedResponse(response, "Invalid token");
-                        return;
-                    }
-                } else {
-                    timezone = "UTC";
-                }
 
                 List<SimpleGrantedAuthority> authorities = Collections.singletonList(
                         new SimpleGrantedAuthority("ROLE_" + role.name())
@@ -77,7 +48,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         null,
                         null,
                         role,
-                        timezone,
                         true,
                         authorities
                 );
@@ -90,12 +60,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                log.debug("JWT authentication successful: employeeId={}, role={}", employeeId, role);
-            } catch (Exception ex) {
-                log.warn("Failed to extract user details from JWT: {}", ex.getMessage());
-                writeUnauthorizedResponse(response, "Invalid token");
-                return;
             }
+        } catch (Exception ex) {
+            log.error("Could not set user authentication in security context: {}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);
@@ -107,26 +74,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return bearerToken.substring(7);
         }
         return null;
-    }
-
-    private void writeUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
-        String errorCode = "ERR_018";
-        if (errorCodeCacheService != null) {
-            String resolved = errorCodeCacheService.getErrorCode("JWTEXCEPTION");
-            if (!"ERR_999".equals(resolved)) {
-                errorCode = resolved;
-            }
-        }
-
-        ErrorResponse body = ErrorResponse.of(
-                errorCode,
-                HttpStatus.UNAUTHORIZED.value(),
-                message
-        );
-
-        objectMapper.writeValue(response.getOutputStream(), body);
     }
 }
