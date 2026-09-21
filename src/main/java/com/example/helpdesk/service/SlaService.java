@@ -16,4 +16,6 @@ public interface SlaService {
     void completeSla(Long ticketId);
 
     void checkAndNotifySlaBreaches();
+
+    TicketSla createSlaInstanceForReopen(Ticket ticket, Integer allocatedMinutes);
 }

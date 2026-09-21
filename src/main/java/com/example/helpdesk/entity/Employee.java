@@ -1,5 +1,6 @@
 package com.example.helpdesk.entity;
 
+import com.example.helpdesk.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -55,6 +56,13 @@ public class Employee {
 
     @Column(name = "profile_image_type", length = 100)
     private String profileImageType;
+
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private Role role;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

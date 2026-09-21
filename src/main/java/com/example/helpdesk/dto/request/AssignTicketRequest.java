@@ -10,7 +10,7 @@ import lombok.*;
 @Builder
 public class AssignTicketRequest {
 
-    @NotNull(message = "Agent ID is required")
+    @NotNull(message = "Agent employee ID is required")
     private Long agentId;
 
     @NotNull(message = "Assigned by employee ID is required")

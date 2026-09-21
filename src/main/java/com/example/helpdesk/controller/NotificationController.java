@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,6 +26,7 @@ public class NotificationController {
 
     @PostMapping("/send")
     @Operation(summary = "Send notification", description = "Send a notification to an employee about a ticket")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<Void> sendNotification(
             @Parameter(description = "Employee ID") @RequestParam Long employeeId,
             @Parameter(description = "Ticket ID") @RequestParam Long ticketId,
@@ -41,6 +43,7 @@ public class NotificationController {
 
     @PutMapping("/read/{notificationId}")
     @Operation(summary = "Mark as read", description = "Mark a notification as read")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Void> markAsRead(
             @Parameter(description = "Notification ID") @PathVariable Long notificationId) {
         notificationService.markAsRead(notificationId);
@@ -49,6 +52,7 @@ public class NotificationController {
 
     @PutMapping("/read-all/{employeeId}")
     @Operation(summary = "Mark all as read", description = "Mark all notifications for an employee as read")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Void> markAllAsReadForEmployee(
             @Parameter(description = "Employee ID") @PathVariable Long employeeId) {
         notificationService.markAllAsReadForEmployee(employeeId);

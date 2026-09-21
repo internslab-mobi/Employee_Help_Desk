@@ -125,13 +125,22 @@ public class SlaServiceImpl implements SlaService {
     @Override
     @Transactional
     public void pauseSla(Long ticketId) {
+
         TicketSla ticketSla = ticketSlaRepository.findByTicketId(ticketId);
-        if (ticketSla != null && SlaStatus.RUNNING.name().equals(ticketSla.getStatus())) {
+
+        if (ticketSla != null &&
+                (SlaStatus.RUNNING.name().equals(ticketSla.getStatus())
+                        || SlaStatus.WARNING.name().equals(ticketSla.getStatus()))) {
+
+            LocalDateTime now = LocalDateTime.now();
+
             ticketSla.setStatus(SlaStatus.PAUSED.name());
-            ticketSla.setPausedAt(LocalDateTime.now());
-            ticketSla.setUpdatedAt(LocalDateTime.now());
+            ticketSla.setPausedAt(now);
+            ticketSla.setUpdatedAt(now);
+
             ticketSlaRepository.save(ticketSla);
-            log.info("Paused SLA for ticket {}", ticketId);
+
+            log.info("SLA paused for ticket {}", ticketId);
         }
     }
 
@@ -183,29 +192,100 @@ public class SlaServiceImpl implements SlaService {
     public void checkAndNotifySlaBreaches() {
         LocalDateTime now = LocalDateTime.now();
 
-        List<TicketSla> breachedSlas = ticketSlaRepository.findByStatusAndCurrentDeadlineAtBefore(
+        // Check for breaches from both RUNNING and WARNING statuses
+        List<TicketSla> runningBreachedSlas = ticketSlaRepository.findByStatusAndCurrentDeadlineAtBefore(
                 SlaStatus.RUNNING.name(),
                 now
         );
 
-        for (TicketSla ticketSla : breachedSlas) {
-            ticketSla.setStatus(SlaStatus.BREACHED.name());
-            ticketSla.setBreachedAt(now);
-            ticketSla.setUpdatedAt(now);
-            ticketSlaRepository.save(ticketSla);
-            log.warn("SLA breach detected and marked for ticket {}", ticketSla.getTicket().getId());
+        List<TicketSla> warningBreachedSlas = ticketSlaRepository.findByStatusAndCurrentDeadlineAtBefore(
+                SlaStatus.WARNING.name(),
+                now
+        );
+
+        // Combine and process breaches
+        List<TicketSla> allBreachedSlas = new java.util.ArrayList<>();
+        allBreachedSlas.addAll(runningBreachedSlas);
+        allBreachedSlas.addAll(warningBreachedSlas);
+
+        for (TicketSla ticketSla : allBreachedSlas) {
+            // Only mark as breached if not already breached
+            if (!SlaStatus.BREACHED.name().equals(ticketSla.getStatus())) {
+                ticketSla.setStatus(SlaStatus.BREACHED.name());
+                ticketSla.setBreachedAt(now);
+                ticketSla.setUpdatedAt(now);
+                ticketSlaRepository.save(ticketSla);
+                log.warn("SLA breach detected and marked for ticket {}", ticketSla.getTicket().getId());
+            }
         }
 
+        // Check for warnings (only from RUNNING to avoid re-marking)
         List<TicketSla> warningSlas = ticketSlaRepository.findByStatusAndWarningAtBefore(
                 SlaStatus.RUNNING.name(),
                 now
         );
 
         for (TicketSla ticketSla : warningSlas) {
-            ticketSla.setStatus(SlaStatus.WARNING.name());
-            ticketSla.setUpdatedAt(now);
-            ticketSlaRepository.save(ticketSla);
-            log.info("SLA warning detected and marked for ticket {}", ticketSla.getTicket().getId());
+            if (!SlaStatus.BREACHED.name().equals(ticketSla.getStatus())) {
+                ticketSla.setStatus(SlaStatus.WARNING.name());
+                ticketSla.setUpdatedAt(now);
+                ticketSlaRepository.save(ticketSla);
+                log.info("SLA warning detected and marked for ticket {}", ticketSla.getTicket().getId());
+            }
         }
+    }
+
+    @Override
+    @Transactional
+    public TicketSla createSlaInstanceForReopen(Ticket ticket, Integer allocatedMinutes) {
+        SlaRule slaRule = slaRuleRepository.findByDepartmentIdAndSubCategoryIdAndActiveTrue(
+                ticket.getDepartment().getId(),
+                ticket.getSubCategory().getId()
+        );
+
+        if (slaRule == null) {
+            log.warn("No active SLA rule found for department {} and sub-category {}",
+                    ticket.getDepartment().getId(),
+                    ticket.getSubCategory().getId());
+            return null;
+        }
+
+        // Get the current cycle number for this ticket
+        List<TicketSla> existingSlas = ticketSlaRepository.findAll().stream()
+                .filter(sla -> sla.getTicket().getId().equals(ticket.getId()))
+                .toList();
+
+        int nextCycleNumber = existingSlas.stream()
+                .mapToInt(TicketSla::getCycleNumber)
+                .max()
+                .orElse(0) + 1;
+
+        LocalDateTime slaStart = businessTimeService.getNextWorkingTime(LocalDateTime.now());
+        LocalDateTime deadline = businessTimeService.addWorkingMinutes(slaStart, allocatedMinutes);
+
+        LocalDateTime warningTime = slaRule.getWarningMinutes() != null
+                ? businessTimeService.addWorkingMinutes(slaStart, allocatedMinutes - slaRule.getWarningMinutes())
+                : null;
+
+        TicketSla ticketSla = TicketSla.builder()
+                .ticket(ticket)
+                .slaPolicy(slaRule)
+                .cycleNumber(nextCycleNumber)
+                .allocatedMinutes(allocatedMinutes)
+                .slaStartAt(slaStart)
+                .originalDeadlineAt(deadline)
+                .currentDeadlineAt(deadline)
+                .warningAt(warningTime)
+                .status(SlaStatus.RUNNING.name())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        ticketSla = ticketSlaRepository.save(ticketSla);
+
+        log.info("Created SLA instance for reopened ticket {} with cycle {} and deadline {}",
+                ticket.getId(), nextCycleNumber, deadline);
+
+        return ticketSla;
     }
 }
