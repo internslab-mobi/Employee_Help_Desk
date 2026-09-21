@@ -9,8 +9,8 @@ import lombok.Setter;
         name = "department_managers",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_department_manager_employee",
-                        columnNames = {"employee_id"}
+                        name = "uk_department_manager",
+                        columnNames = {"department_id", "employee_id"}
                 )
         }
 )
@@ -18,12 +18,12 @@ import lombok.Setter;
 @Setter
 public class DepartmentManager extends BaseEntity {
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "employee_id",
-            nullable = false,
-            unique = true
-    )
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "department_id", nullable = false)
+    private Department department;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
     @Column(nullable = false)

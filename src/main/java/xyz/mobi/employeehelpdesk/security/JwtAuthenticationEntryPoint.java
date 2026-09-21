@@ -1,28 +1,26 @@
 package xyz.mobi.employeehelpdesk.security;
 
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
-import xyz.mobi.employeehelpdesk.exception.ErrorResponse;
-import xyz.mobi.employeehelpdesk.service.helperservice.ErrorCodeCacheService;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper;
-    private final ErrorCodeCacheService errorCodeCacheService;
 
     @Override
     public void commence(
@@ -30,25 +28,14 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
             HttpServletResponse response,
             AuthenticationException authException
     ) throws IOException, ServletException {
-        log.warn("Unauthorized access attempt on URI={}: {}", request.getRequestURI(), authException != null ? authException.getMessage() : "Unauthorized");
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-        String errorCode = "ERR_017";
-        if (authException != null && errorCodeCacheService != null) {
-            String resolved = errorCodeCacheService.getErrorCode(
-                    authException.getClass().getSimpleName().toUpperCase()
-            );
-            if (!"ERR_999".equals(resolved)) {
-                errorCode = resolved;
-            }
-        }
-
-        ErrorResponse body = ErrorResponse.of(
-                errorCode,
-                HttpStatus.UNAUTHORIZED.value(),
-                "Authentication is required to access this resource"
-        );
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        body.put("error", HttpStatus.UNAUTHORIZED.getReasonPhrase());
+        body.put("message", authException.getMessage() != null ? authException.getMessage() : "Unauthorized access");
 
         objectMapper.writeValue(response.getOutputStream(), body);
     }

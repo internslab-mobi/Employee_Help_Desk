@@ -7,13 +7,12 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import xyz.mobi.employeehelpdesk.dto.notification.NotificationResponseDTO;
-import xyz.mobi.employeehelpdesk.dto.notification.NotificationUpdateResponseDTO;
-import xyz.mobi.employeehelpdesk.dto.notification.UnreadNotificationCountResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.notification.NotificationResponse;
+import xyz.mobi.employeehelpdesk.dto.notification.UnreadNotificationCountResponse;
 import xyz.mobi.employeehelpdesk.service.NotificationService;
 
 @RestController
-@RequestMapping("/notifications")
+@RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
@@ -21,35 +20,35 @@ public class NotificationController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping
-    public ResponseEntity<Page<NotificationResponseDTO>> getNotifications(
+    public ResponseEntity<Page<NotificationResponse>> getNotifications(
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        Page<NotificationResponseDTO> response = notificationService.getNotifications(pageable);
+        Page<NotificationResponse> response = notificationService.getNotifications(pageable);
         return ResponseEntity.ok(response);
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/unread")
-    public ResponseEntity<Page<NotificationResponseDTO>> getUnreadNotifications(
+    public ResponseEntity<Page<NotificationResponse>> getUnreadNotifications(
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        Page<NotificationResponseDTO> response = notificationService.getUnreadNotifications(pageable);
+        Page<NotificationResponse> response = notificationService.getUnreadNotifications(pageable);
         return ResponseEntity.ok(response);
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/unread/count")
-    public ResponseEntity<UnreadNotificationCountResponseDTO> getUnreadCount() {
-        UnreadNotificationCountResponseDTO response = notificationService.getUnreadCount();
+    public ResponseEntity<UnreadNotificationCountResponse> getUnreadCount() {
+        UnreadNotificationCountResponse response = notificationService.getUnreadCount();
         return ResponseEntity.ok(response);
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PatchMapping("/{notificationId}/read")
-    public ResponseEntity<NotificationUpdateResponseDTO> markAsRead(
+    public ResponseEntity<NotificationResponse> markAsRead(
             @PathVariable Long notificationId
     ) {
-        NotificationUpdateResponseDTO response = notificationService.markAsRead(notificationId);
+        NotificationResponse response = notificationService.markAsRead(notificationId);
         return ResponseEntity.ok(response);
     }
 }

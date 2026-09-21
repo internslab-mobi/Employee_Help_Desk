@@ -12,9 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import xyz.mobi.employeehelpdesk.dto.message.CreateTicketMessageRequestDTO;
-import xyz.mobi.employeehelpdesk.dto.message.TicketMessageCreateResponseDTO;
-import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.message.CreateTicketMessageRequest;
+import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponse;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
 import xyz.mobi.employeehelpdesk.service.TicketMessageService;
 
@@ -22,7 +21,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/tickets")
+@RequestMapping("/api/tickets")
 @RequiredArgsConstructor
 public class TicketMessageController {
 
@@ -30,32 +29,32 @@ public class TicketMessageController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping(value = "/{ticketId}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<TicketMessageCreateResponseDTO> createMessageMultipart(
+    public ResponseEntity<TicketMessageResponse> createMessageMultipart(
             @PathVariable Long ticketId,
             @RequestParam("content") String content,
             @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments
     ) throws IOException {
-        TicketMessageCreateResponseDTO response = ticketMessageService.createMessage(ticketId, content, attachments);
+        TicketMessageResponse response = ticketMessageService.createMessage(ticketId, content, attachments);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping(value = "/{ticketId}/messages", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<TicketMessageCreateResponseDTO> createMessageJson(
+    public ResponseEntity<TicketMessageResponse> createMessageJson(
             @PathVariable Long ticketId,
-            @Valid @RequestBody CreateTicketMessageRequestDTO request
+            @Valid @RequestBody CreateTicketMessageRequest request
     ) throws IOException {
-        TicketMessageCreateResponseDTO response = ticketMessageService.createMessage(ticketId, request.content(), null);
+        TicketMessageResponse response = ticketMessageService.createMessage(ticketId, request.content(), null);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/{ticketId}/messages")
-    public ResponseEntity<Page<TicketMessageResponseDTO>> getMessages(
+    public ResponseEntity<Page<TicketMessageResponse>> getMessages(
             @PathVariable Long ticketId,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        Page<TicketMessageResponseDTO> response = ticketMessageService.getMessages(ticketId, pageable);
+        Page<TicketMessageResponse> response = ticketMessageService.getMessages(ticketId, pageable);
         return ResponseEntity.ok(response);
     }
 

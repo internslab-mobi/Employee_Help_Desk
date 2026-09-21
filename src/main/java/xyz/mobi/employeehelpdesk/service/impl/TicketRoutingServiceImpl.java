@@ -1,36 +1,47 @@
 package xyz.mobi.employeehelpdesk.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xyz.mobi.employeehelpdesk.entity.*;
 import xyz.mobi.employeehelpdesk.entity.enums.HistoryEventType;
 import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
-import xyz.mobi.employeehelpdesk.repository.*;
+import xyz.mobi.employeehelpdesk.exception.BadRequestException;
+import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
+import xyz.mobi.employeehelpdesk.entity.DepartmentAgent;
+import xyz.mobi.employeehelpdesk.repository.DepartmentAgentRepository;
+import xyz.mobi.employeehelpdesk.entity.Employee;
+import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
+import xyz.mobi.employeehelpdesk.entity.RoutingCandidate;
+import xyz.mobi.employeehelpdesk.service.helperservice.SkillMatchingService;
+import xyz.mobi.employeehelpdesk.service.helperservice.SkillMatchResult;
 import xyz.mobi.employeehelpdesk.service.NotificationService;
+import xyz.mobi.employeehelpdesk.service.SlaService;
 import xyz.mobi.employeehelpdesk.service.TicketRoutingService;
 import xyz.mobi.employeehelpdesk.service.helperservice.TicketHistoryService;
 import xyz.mobi.employeehelpdesk.strategy.routing.RoutingStrategy;
+import xyz.mobi.employeehelpdesk.entity.Ticket;
+import xyz.mobi.employeehelpdesk.entity.TicketHistory;
+import xyz.mobi.employeehelpdesk.repository.TicketHistoryRepository;
+import xyz.mobi.employeehelpdesk.repository.TicketRepository;
 
-import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TicketRoutingServiceImpl implements TicketRoutingService {
 
     private final DepartmentAgentRepository departmentAgentRepository;
     private final TicketRepository ticketRepository;
+    private final SkillMatchingService skillMatchingService;
     private final RoutingStrategy routingStrategy;
+    private final EmployeeRepository employeeRepository;
     private final TicketHistoryService ticketHistoryService;
+    private final SlaService slaService;
     private final NotificationService notificationService;
-    private final SubCategorySkillRepository subCategorySkillRepository;
-    private final AgentSkillRepository agentSkillRepository;
-    private final DepartmentManagerRepository departmentManagerRepository;
 
     @Override
     @Transactional
@@ -41,9 +52,6 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
             return;
         }
 
-        log.debug("Routing ticketId={}, ticketNumber={}, departmentId={}",
-                ticket.getId(), ticket.getTicketNumber(), ticket.getDepartment() != null ? ticket.getDepartment().getId() : null);
-
         // Find eligible agents in the ticket's department
         List<DepartmentAgent> eligibleAgents =
                 departmentAgentRepository.findEligibleAgents(
@@ -53,8 +61,6 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         // Nobody available -> leave ticket OPEN and unassigned
         // then it should route and notify to department manager
         if (eligibleAgents.isEmpty()) {
-            log.info("No eligible agents available in departmentId={} for ticketId={}; ticket left unassigned",
-                    ticket.getDepartment().getId(), ticket.getId());
             return;
         }
 
@@ -62,13 +68,9 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         List<RoutingCandidate> candidates =
                 buildCandidates(ticket, eligibleAgents);
 
-        log.debug("Built {} candidate(s) for routing ticketId={}", candidates.size(), ticket.getId());
-
         // Select the best candidate using routing strategy
         RoutingCandidate selectedCandidate =
                 routingStrategy.selectCandidate(candidates);
-
-        log.debug("Selected agentId={} for routing ticketId={}", selectedCandidate.getAgent().getId(), ticket.getId());
 
         // Assign ticket
         assignTicket(ticket, selectedCandidate.getAgent());
@@ -90,13 +92,91 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         routeTicket(ticket);
     }
 
+    @Override
+    @Transactional
+    public void reopenTicket(Long ticketId, Long employeeId) {
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Ticket not found with id: " + ticketId
+                        ));
+
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee not found with id: " + employeeId
+                        ));
+
+        // Only the requester can reopen the ticket
+        if (!ticket.getRequester().getId().equals(employee.getId())) {
+            throw new AccessDeniedException(
+                    "Only the ticket requester can reopen the ticket"
+            );
+        }
+
+        // Only RESOLVED tickets can be reopened
+        if (ticket.getStatus() != TicketStatus.RESOLVED) {
+            throw new BadRequestException(
+                    "Only resolved tickets can be reopened"
+            );
+        }
+
+        // Maximum 2 reopen attempts
+        if (ticket.getReopenCount() >= 2) {
+            throw new BadRequestException(
+                    "Ticket can only be reopened twice"
+            );
+        }
+
+        // A resolved ticket should have an agent
+        if (ticket.getAssignedAgent() == null) {
+            throw new BadRequestException(
+                    "Cannot reopen ticket because no previous agent is assigned"
+            );
+        }
+
+        int oldReopenCount = ticket.getReopenCount();
+
+        // Increment reopen count
+        ticket.setReopenCount(oldReopenCount + 1);
+
+        // Reopen ticket
+        ticket.setStatus(TicketStatus.REOPENED);
+        ticket.setReopenedAt(LocalDateTime.now());
+
+        // Clear resolution information
+        ticket.setResolvedAt(null);
+        ticket.setResolutionSummary(null);
+
+        ticketRepository.save(ticket);
+
+        // Record history
+        ticketHistoryService.record(
+                ticket,
+                HistoryEventType.REOPENED,
+                TicketStatus.RESOLVED,
+                TicketStatus.REOPENED
+        );
+
+        // Start new SLA cycle with half-previous-cycle allocation
+        slaService.startReopenSla(ticket);
+
+        String ticketNumber = ticket.getTicketNumber() != null ? ticket.getTicketNumber() : ("#" + ticket.getId());
+        if (ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getEmployee() != null) {
+            notificationService.sendNotification(
+                    ticket.getAssignedAgent().getEmployee(),
+                    ticket,
+                    NotificationType.TICKET_REOPENED,
+                    "Ticket Reopened",
+                    "Ticket " + ticketNumber + " has been reopened."
+            );
+        }
+    }
+
     private List<RoutingCandidate> buildCandidates(
             Ticket ticket,
             List<DepartmentAgent> agents) {
-
-        if (agents == null || agents.isEmpty()) {
-            return Collections.emptyList();
-        }
 
         Collection<TicketStatus> activeStatuses =
                 List.of(
@@ -106,100 +186,67 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
                         TicketStatus.REOPENED
                 );
 
-        List<Long> agentIds = agents.stream()
-                .map(DepartmentAgent::getId)
-                .toList();
-
-        // 1. Fetch required skill IDs for subcategory once
-        Set<Long> requiredSkillIds = Collections.emptySet();
-        if (ticket.getSubCategory() != null) {
-            List<SubCategorySkill> requiredSkills =
-                    subCategorySkillRepository.findBySubCategoryId(ticket.getSubCategory().getId());
-            requiredSkillIds = requiredSkills.stream()
-                    .map(scs -> scs.getSkill().getId())
-                    .collect(Collectors.toSet());
-        }
-        int requiredSkillCount = requiredSkillIds.size();
-
-        // 2. Batch fetch agent skills for all candidate agents
-        List<AgentSkill> agentSkills = agentSkillRepository.findByAgentIdIn(agentIds);
-        Map<Long, Set<Long>> agentSkillMap = agentSkills.stream()
-                .collect(Collectors.groupingBy(
-                        as -> as.getAgent().getId(),
-                        Collectors.mapping(as -> as.getSkill().getId(), Collectors.toSet())
-                ));
-
-        // 3. Batch count active tickets for all candidate agents
-        List<Object[]> countRows = ticketRepository.countActiveTicketsForAgents(agentIds, activeStatuses);
-        Map<Long, Long> activeCountMap = countRows.stream()
-                .collect(Collectors.toMap(
-                        row -> (Long) row[0],
-                        row -> (Long) row[1]
-                ));
-
-        // 4. Build routing candidates in-memory with zero per-agent DB queries
-        final Set<Long> finalRequiredSkillIds = requiredSkillIds;
         return agents.stream()
                 .map(agent -> {
-                    Set<Long> skills = agentSkillMap.getOrDefault(agent.getId(), Collections.emptySet());
-                    int matchCount = 0;
-                    if (!finalRequiredSkillIds.isEmpty()) {
-                        for (Long requiredId : finalRequiredSkillIds) {
-                            if (skills.contains(requiredId)) {
-                                matchCount++;
-                            }
-                        }
-                    }
-                    long activeTicketCount = activeCountMap.getOrDefault(agent.getId(), 0L);
+
+                    SkillMatchResult skillMatch =
+                            getSkillMatch(ticket, agent);
+
+                    long activeTicketCount =
+                            ticketRepository.countActiveTicketsForAgent(
+                                    agent.getId(),
+                                    activeStatuses
+                            );
 
                     return new RoutingCandidate(
                             agent,
-                            matchCount,
-                            requiredSkillCount,
+                            skillMatch.matchedSkillCount(),
+                            skillMatch.requiredSkillCount(),
                             activeTicketCount
                     );
                 })
                 .toList();
     }
 
+    private SkillMatchResult getSkillMatch(
+            Ticket ticket,
+            DepartmentAgent agent) {
+
+        // No subcategory -> no required skills
+        if (ticket.getSubCategory() == null) {
+            return new SkillMatchResult(0, 0);
+        }
+
+        return skillMatchingService.calculateMatch(
+                agent,
+                ticket.getSubCategory().getId()
+        );
+    }
+
     private void assignTicket(
             Ticket ticket,
             DepartmentAgent agent) {
 
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
 
         ticket.setAssignedAgent(agent);
-        ticket.setAssignedManager(resolveDepartmentManager(agent));
         agent.setLastAssignedAt(now);
 
         ticket.setAssignedAt(now);
 
         ticketRepository.save(ticket);
 
-        ticketHistoryService.record(ticket, HistoryEventType.ASSIGNED, TicketStatus.OPEN, TicketStatus.OPEN);
-
-        log.info("Ticket routed and assigned: ticketId={}, ticketNumber={}, agentId={}, managerId={}",
-                ticket.getId(), ticket.getTicketNumber(), agent.getId(),
-                ticket.getAssignedManager() != null ? ticket.getAssignedManager().getId() : null);
+        ticketHistoryService.record(ticket,HistoryEventType.ASSIGNED,TicketStatus.OPEN,TicketStatus.OPEN);
 
         String ticketNumber = ticket.getTicketNumber() != null ? ticket.getTicketNumber() : ("#" + ticket.getId());
         if (agent.getEmployee() != null) {
             notificationService.sendNotification(
-                    agent.getEmployee().getId(),
-                    ticket.getId(),
+                    agent.getEmployee(),
+                    ticket,
                     NotificationType.TICKET_ASSIGNED,
                     "Ticket Assigned",
                     "Ticket " + ticketNumber + " has been assigned to you."
             );
         }
-    }
-
-    private DepartmentManager resolveDepartmentManager(DepartmentAgent agent) {
-        if (agent == null || agent.getEmployee() == null) {
-            return null;
-        }
-
-        Employee agentEmployee = agent.getEmployee();
-        return agentEmployee.getManager();
     }
 }

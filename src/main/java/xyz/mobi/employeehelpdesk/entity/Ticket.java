@@ -6,25 +6,19 @@ import lombok.*;
 import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(
         name = "tickets",
         indexes = {
                 @Index(name = "idx_ticket_requester", columnList = "requester_id"),
-                @Index(name = "idx_ticket_requester_created", columnList = "requester_id, created_at"),
-                @Index(name = "idx_ticket_req_status_created", columnList = "requester_id, status, created_at"),
                 @Index(name = "idx_ticket_department", columnList = "department_id"),
                 @Index(name = "idx_ticket_category", columnList = "category_id"),
                 @Index(name = "idx_ticket_sub_category", columnList = "sub_category_id"),
                 @Index(name = "idx_ticket_assigned_agent", columnList = "assigned_agent_id"),
-                @Index(name = "idx_ticket_agent_created", columnList = "assigned_agent_id, created_at"),
-                @Index(name = "idx_ticket_agent_status_created", columnList = "assigned_agent_id, status, created_at"),
-                @Index(name = "idx_ticket_agent_status", columnList = "assigned_agent_id, status"),
                 @Index(name = "idx_ticket_status", columnList = "status"),
-                @Index(name = "idx_ticket_priority", columnList = "priority"),
-                @Index(name = "idx_ticket_number", columnList = "ticketNumber")
+                @Index(name = "idx_ticket_priority", columnList = "priority")
         }
 )
 @Getter
@@ -67,17 +61,16 @@ public class Ticket extends BaseEntity {
     @JoinColumn(name = "assigned_agent_id")
     private DepartmentAgent assignedAgent;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "manager_id")
-    private DepartmentManager assignedManager;
+    private LocalDateTime assignedAt;
 
-    private Instant assignedAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_manager_id")
+    private DepartmentManager assignedManager;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sla_policy_id")
     private SlaPolicy slaPolicy;
 
-    @Builder.Default
     @Column(nullable = false)
     private Integer reopenCount = 0;
 
@@ -91,23 +84,16 @@ public class Ticket extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String holdReason;
 
-    private Instant holdStartedAt;
+    private LocalDateTime holdStartedAt;
 
     @Column(columnDefinition = "TEXT")
     @Size(min = 1, max = 100)
     private String withdrawalReason;
 
-    @Column(columnDefinition = "TEXT")
-    @Size(min = 1, max = 100)
-    private String reopenReason;
+    private LocalDateTime resolvedAt;
 
-    private Instant resolvedAt;
+    private LocalDateTime reopenedAt;
 
-    private Instant reopenedAt;
-
-    private Instant withdrawnAt;
-
-    @Version
-    private Long version;
+    private LocalDateTime withdrawnAt;
 
 }

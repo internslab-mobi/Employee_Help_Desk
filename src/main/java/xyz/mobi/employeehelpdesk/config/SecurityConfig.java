@@ -31,7 +31,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -49,9 +49,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/employees/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/employees/refresh-token").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/employees/forgot-password/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(
                                 "/swagger-ui/**",
