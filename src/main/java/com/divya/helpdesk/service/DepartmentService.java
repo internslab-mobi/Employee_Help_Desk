@@ -14,10 +14,8 @@ public interface DepartmentService {
     void deleteDepartment(Long id);
     DepartmentResponse getDepartmentById(Long id);
     List<DepartmentResponse> getAllDepartments();
-
     DepartmentAgentResponse addAgent(Long departmentId, DepartmentAgentRequest request);
     List<DepartmentAgentResponse> getAgentsByDepartment(Long departmentId);
-
     DepartmentManagerResponse addManager(Long departmentId, DepartmentManagerRequest request);
     List<DepartmentManagerResponse> getManagersByDepartment(Long departmentId);
 }

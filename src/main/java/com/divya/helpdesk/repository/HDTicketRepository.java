@@ -13,18 +13,8 @@ import java.util.Optional;
 
 @Repository
 public interface HDTicketRepository extends JpaRepository<HDTicket, Long>, JpaSpecificationExecutor<HDTicket> {
-
     Optional<HDTicket> findByTicketNumber(String ticketNumber);
-
-    boolean existsByTicketNumber(String ticketNumber);
-
-    @Query("SELECT t FROM HDTicket t WHERE t.assignedAgent.id = :agentId AND t.status IN (:statuses)")
-    List<HDTicket> findByAssignedAgentIdAndStatusIn(@Param("agentId") Long agentId, @Param("statuses") List<HDTicketStatus> statuses);
 
     @Query("SELECT t FROM HDTicket t WHERE t.assignedAgent.id = :agentId AND t.status IN (com.divya.helpdesk.enums.HDTicketStatus.ASSIGNED, com.divya.helpdesk.enums.HDTicketStatus.IN_PROGRESS)")
     List<HDTicket> findActiveTicketsByAgentEmployeeId(@Param("agentId") Long agentId);
-
-    List<HDTicket> findByRequesterId(Long requesterId);
-
-    List<HDTicket> findByDepartmentId(Long departmentId);
 }
