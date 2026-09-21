@@ -11,8 +11,5 @@ import java.util.Optional;
 @Repository
 public interface HDHolidayRepository extends JpaRepository<HDHoliday, Long> {
     List<HDHoliday> findByBusinessCalendarId(Long calendarId);
-    Optional<HDHoliday> findByBusinessCalendarIdAndHolidayDate(Long calendarId, LocalDate holidayDate);
     boolean existsByBusinessCalendarIdAndHolidayDate(Long calendarId, LocalDate holidayDate);
-    List<HDHoliday> findByBusinessCalendarIdAndHolidayDateBetween(Long calendarId, LocalDate startDate, LocalDate endDate);
-    void deleteByBusinessCalendarId(Long calendarId);
 }

@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
 
 public interface SlaService {
     HDSlaInstance createSlaInstance(HDTicket ticket, HDSlaPolicy slaPolicy, LocalDateTime startTime);
-    public HDSlaInstance recalculateSlaInstance(HDSlaInstance slaInstance, HDTicket ticket, HDSlaPolicy slaPolicy, LocalDateTime startAt);
+    HDSlaInstance recalculateSlaInstance(HDSlaInstance slaInstance, HDTicket ticket, HDSlaPolicy slaPolicy, LocalDateTime startAt);
     LocalDateTime calculateDueAt(HDBusinessCalendar calendar, LocalDateTime startDateTime, int resolutionMinutes);
     LocalDateTime calculateWarningAt(HDBusinessCalendar calendar, LocalDateTime startDateTime, int resolutionMinutes);
+    void checkSlaInstances();
 }

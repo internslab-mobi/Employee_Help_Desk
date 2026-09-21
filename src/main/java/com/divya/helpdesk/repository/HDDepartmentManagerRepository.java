@@ -12,7 +12,6 @@ import java.util.Optional;
 @Repository
 public interface HDDepartmentManagerRepository extends JpaRepository<HDDepartmentManager, Long> {
     List<HDDepartmentManager> findByDepartmentId(Long departmentId);
-    Optional<HDDepartmentManager> findByDepartmentIdAndEmployeeId(Long departmentId, Long employeeId);
     boolean existsByDepartmentIdAndEmployeeId(Long departmentId, Long employeeId);
 
     @Query("SELECT dm FROM HDDepartmentManager dm WHERE dm.department.id = :departmentId ORDER BY dm.isPrimary DESC, dm.id ASC")

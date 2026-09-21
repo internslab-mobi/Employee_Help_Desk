@@ -13,5 +13,4 @@ public interface HDBusinessHoursRepository extends JpaRepository<HDBusinessHours
     List<HDBusinessHours> findByBusinessCalendarId(Long calendarId);
     Optional<HDBusinessHours> findByBusinessCalendarIdAndDayOfWeek(Long calendarId, DayOfWeek dayOfWeek);
     boolean existsByBusinessCalendarIdAndDayOfWeek(Long calendarId, DayOfWeek dayOfWeek);
-    void deleteByBusinessCalendarId(Long calendarId);
 }
