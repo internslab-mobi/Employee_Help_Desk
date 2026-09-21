@@ -358,14 +358,18 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @PreAuthorize("hasAnyRole('MANAGER')")
+    @Transactional
     @Override
-    public void deleteTicket(Long id, Long employeeId) {
-        HDTicket ticket = ticketRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + id));
-        if(ticket.getDepartment() == null || !ticket.getAssignedManager().equals(employeeId)){
+    public void deleteTicket(Long ticketId, Long employeeId) {
+        HDTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
+        HDEmployee manager = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: "+employeeId));
+        if(ticket.getDepartment() == null || manager.getDepartment() == null || !ticket.getDepartment().getId().equals(manager.getDepartment().getId())){
             throw new AccessDeniedException("You are not allowed to delete this ticket");
         }
-        ticketRepository.deleteById(id);
+        slaInstanceRepository.deleteByTicketId(ticketId);
+        ticketRepository.deleteById(ticketId);
     }
 
     private String generateTicketNumber() {

@@ -10,5 +10,5 @@ import java.util.Optional;
 @Repository
 public interface HDSlaInstanceRepository extends JpaRepository<HDSlaInstance, Long> {
     Optional<HDSlaInstance> findByTicketId(Long ticketId);
-    List<HDSlaInstance> findAllByTicketId(Long ticketId);
+    void deleteByTicketId(Long ticketId);
 }
