@@ -9,7 +9,5 @@ import java.util.Optional;
 
 @Repository
 public interface HDDepartmentRepository extends JpaRepository<HDDepartment, Long> {
-    Optional<HDDepartment> findByCode(String code);
     boolean existsByCode(String code);
-    List<HDDepartment> findByIsActiveTrue();
 }
