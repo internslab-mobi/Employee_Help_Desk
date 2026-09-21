@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class SlaController {
 
     @PostMapping("/create/{ticketId}")
     @Operation(summary = "Create SLA instance", description = "Create an SLA instance for a ticket based on department and sub-category rules")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<TicketSla> createSlaInstance(
             @Parameter(description = "Ticket ID") @PathVariable Long ticketId) {
         Ticket ticket = ticketRepository.findById(ticketId)
@@ -31,6 +33,7 @@ public class SlaController {
 
     @PutMapping("/update/{ticketId}")
     @Operation(summary = "Update SLA status", description = "Update the SLA status based on current time (RUNNING, WARNING, BREACHED)")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<Void> updateSlaStatus(
             @Parameter(description = "Ticket ID") @PathVariable Long ticketId) {
         Ticket ticket = ticketRepository.findById(ticketId)
@@ -41,6 +44,7 @@ public class SlaController {
 
     @PutMapping("/pause/{ticketId}")
     @Operation(summary = "Pause SLA", description = "Pause the SLA timer for a ticket")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<Void> pauseSla(
             @Parameter(description = "Ticket ID") @PathVariable Long ticketId) {
         slaService.pauseSla(ticketId);
@@ -49,6 +53,7 @@ public class SlaController {
 
     @PutMapping("/resume/{ticketId}")
     @Operation(summary = "Resume SLA", description = "Resume the SLA timer for a ticket with adjusted deadline")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<Void> resumeSla(
             @Parameter(description = "Ticket ID") @PathVariable Long ticketId) {
         slaService.resumeSla(ticketId);
@@ -57,6 +62,7 @@ public class SlaController {
 
     @PutMapping("/complete/{ticketId}")
     @Operation(summary = "Complete SLA", description = "Mark the SLA as completed for a ticket")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<Void> completeSla(
             @Parameter(description = "Ticket ID") @PathVariable Long ticketId) {
         slaService.completeSla(ticketId);
@@ -65,6 +71,7 @@ public class SlaController {
 
     @PostMapping("/check-breaches")
     @Operation(summary = "Check and notify SLA breaches", description = "Check all SLAs for breaches and warnings (scheduled job)")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> checkAndNotifySlaBreaches() {
         slaService.checkAndNotifySlaBreaches();
         return ResponseEntity.ok().build();

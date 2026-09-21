@@ -2,7 +2,9 @@ package com.example.helpdesk.service.impl;
 
 import com.example.helpdesk.dto.request.AssignTicketRequest;
 import com.example.helpdesk.dto.request.CreateTicketRequest;
+import com.example.helpdesk.dto.request.HoldTicketRequest;
 import com.example.helpdesk.dto.request.ReopenTicketRequest;
+import com.example.helpdesk.dto.request.ResolveTicketRequest;
 import com.example.helpdesk.dto.request.UpdateTicketCategoryRequest;
 import com.example.helpdesk.dto.request.UpdateTicketPriorityRequest;
 import com.example.helpdesk.dto.request.UpdateTicketStatusRequest;
@@ -13,6 +15,10 @@ import com.example.helpdesk.entity.DepartmentAgent;
 import com.example.helpdesk.entity.Employee;
 import com.example.helpdesk.entity.SubCategory;
 import com.example.helpdesk.entity.Ticket;
+import com.example.helpdesk.entity.TicketSla;
+import com.example.helpdesk.enums.NotificationType;
+import com.example.helpdesk.enums.SlaStatus;
+import com.example.helpdesk.enums.TicketEventType;
 import com.example.helpdesk.enums.TicketStatus;
 import com.example.helpdesk.mapper.TicketMapper;
 import com.example.helpdesk.repository.CategoryRepository;
@@ -21,6 +27,10 @@ import com.example.helpdesk.repository.DepartmentRepository;
 import com.example.helpdesk.repository.EmployeeRepository;
 import com.example.helpdesk.repository.SubCategoryRepository;
 import com.example.helpdesk.repository.TicketRepository;
+import com.example.helpdesk.repository.TicketSlaRepository;
+import com.example.helpdesk.service.NotificationService;
+import com.example.helpdesk.service.SlaService;
+import com.example.helpdesk.service.TicketHistoryService;
 import com.example.helpdesk.service.TicketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +56,11 @@ public class TicketServiceImpl implements TicketService {
     private final SubCategoryRepository subCategoryRepository;
 
     private final DepartmentAgentRepository departmentAgentRepository;
+    private final TicketSlaRepository ticketSlaRepository;
+
+    private final SlaService slaService;
+    private final TicketHistoryService ticketHistoryService;
+    private final NotificationService notificationService;
 
     private final AtomicInteger ticketSequence = new AtomicInteger(1);
 
@@ -152,11 +167,51 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public TicketResponse updateStatus(Long ticketId, UpdateTicketStatusRequest request) {
+
         Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
-        ticket.setStatus(request.getStatus());
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        String newStatus = request.getStatus();
+
+        ticket.setStatus(newStatus);
+
+        // Employee communication required -> pause SLA
+        if (TicketStatus.NEED_EMPLOYEE_COMMUNICATION.name().equals(newStatus)) {
+
+            ticket.setHoldReason("Waiting for employee communication");
+            ticket.setHoldStartedAt(LocalDateTime.now());
+
+            slaService.pauseSla(ticketId);
+
+            log.info(
+                    "Ticket moved to NEED_EMPLOYEE_COMMUNICATION. SLA paused. ticketId={}",
+                    ticketId
+            );
+        }
+
+        // Agent continues working -> resume SLA
+        else if (TicketStatus.IN_PROGRESS.name().equals(newStatus)) {
+
+            ticket.setHoldReason(null);
+            ticket.setHoldStartedAt(null);
+
+            slaService.resumeSla(ticketId);
+
+            log.info(
+                    "Ticket moved to IN_PROGRESS. SLA resumed. ticketId={}",
+                    ticketId
+            );
+        }
+
         Ticket savedTicket = ticketRepository.save(ticket);
-        log.info("Ticket status updated. ticketId={}, newStatus={}", ticketId, request.getStatus());
+
+        log.info(
+                "Ticket status updated. ticketId={}, newStatus={}",
+                ticketId,
+                newStatus
+        );
+
         return ticketMapper.toResponse(savedTicket);
     }
 
@@ -206,13 +261,29 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketResponse resolveTicket(Long ticketId, UpdateTicketStatusRequest request) {
+    public TicketResponse resolveTicket(
+            Long ticketId,
+            UpdateTicketStatusRequest request) {
+
         Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
-        ticket.setStatus(request.getStatus());
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        ticket.setStatus(TicketStatus.RESOLVED.name());
         ticket.setResolvedAt(LocalDateTime.now());
+
+        if (request.getResolutionSummary() != null
+                && !request.getResolutionSummary().isBlank()) {
+
+            ticket.setResolutionSummary(request.getResolutionSummary());
+        }
+
+        slaService.completeSla(ticketId);
+
         Ticket savedTicket = ticketRepository.save(ticket);
+
         log.info("Ticket resolved. ticketId={}", ticketId);
+
         return ticketMapper.toResponse(savedTicket);
     }
 
@@ -224,6 +295,213 @@ public class TicketServiceImpl implements TicketService {
         ticket.setReopenedAt(LocalDateTime.now());
         Ticket savedTicket = ticketRepository.save(ticket);
         log.info("Ticket reopened. ticketId={}", ticketId);
+        return ticketMapper.toResponse(savedTicket);
+    }
+
+    @Override
+    public TicketResponse holdTicket(Long ticketId, HoldTicketRequest request) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        if (ticket.getAssignedAgent() == null) {
+            throw new IllegalStateException("Ticket must have an assigned agent to be put on hold");
+        }
+
+        if (ticket.getHoldStartedAt() != null) {
+            throw new IllegalStateException("Ticket is already on hold");
+        }
+
+        ticket.setHoldReason(request.getReason());
+        ticket.setHoldStartedAt(LocalDateTime.now());
+        ticket.setStatus(TicketStatus.NEED_EMPLOYEE_COMMUNICATION.name());
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        slaService.pauseSla(ticketId);
+
+        ticketHistoryService.recordHistory(
+                ticket,
+                ticket.getAssignedAgent().getEmployee(),
+                TicketEventType.SLA_HOLD,
+                null,
+                "Ticket put on hold: " + request.getReason(),
+                null
+        );
+
+        notificationService.sendNotification(
+                ticket.getRequester(),
+                ticket,
+                NotificationType.TICKET_HOLD,
+                "Ticket On Hold",
+                "Your ticket " + ticket.getTicketNumber() + " has been put on hold. Reason: " + request.getReason()
+        );
+
+        log.info("Ticket {} put on hold by agent", ticketId);
+
+        return ticketMapper.toResponse(savedTicket);
+    }
+
+    @Override
+    public TicketResponse resumeTicket(Long ticketId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        if (ticket.getHoldStartedAt() == null) {
+            throw new IllegalStateException("Ticket is not on hold");
+        }
+
+        slaService.resumeSla(ticketId);
+
+        ticket.setHoldReason(null);
+        ticket.setHoldStartedAt(null);
+        ticket.setStatus(TicketStatus.IN_PROGRESS.name());
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        ticketHistoryService.recordHistory(
+                ticket,
+                ticket.getRequester(),
+                TicketEventType.SLA_RESUMED,
+                null,
+                "Ticket resumed by requester response",
+                null
+        );
+
+        if (ticket.getAssignedAgent() != null) {
+            notificationService.sendNotification(
+                    ticket.getAssignedAgent().getEmployee(),
+                    ticket,
+                    NotificationType.TICKET_RESUMED,
+                    "Ticket Resumed",
+                    "Ticket " + ticket.getTicketNumber() + " has been resumed after requester response"
+            );
+        }
+
+        log.info("Ticket {} resumed", ticketId);
+
+        return ticketMapper.toResponse(savedTicket);
+    }
+
+    @Override
+    public TicketResponse resolveTicketWithSummary(Long ticketId, ResolveTicketRequest request) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        if (ticket.getAssignedAgent() == null) {
+            throw new IllegalStateException("Ticket must have an assigned agent to be resolved");
+        }
+
+        if (ticket.getStatus().equals(TicketStatus.RESOLVED.name()) 
+                || ticket.getStatus().equals(TicketStatus.CLOSED.name())) {
+            throw new IllegalStateException("Ticket is already resolved or closed");
+        }
+
+        if (request.getResolutionSummary() == null || request.getResolutionSummary().trim().isEmpty()) {
+            throw new IllegalArgumentException("Resolution summary cannot be blank");
+        }
+
+        ticket.setStatus(TicketStatus.RESOLVED.name());
+        ticket.setResolutionSummary(request.getResolutionSummary().trim());
+        ticket.setResolvedAt(LocalDateTime.now());
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        // Check SLA status before completion
+        TicketSla ticketSla = ticketSlaRepository.findByTicketId(ticketId);
+        boolean slaMet = false;
+        if (ticketSla != null && !SlaStatus.BREACHED.name().equals(ticketSla.getStatus())) {
+            slaMet = true;
+        }
+
+        slaService.completeSla(ticketId);
+
+        ticketHistoryService.recordHistory(
+                ticket,
+                ticket.getAssignedAgent().getEmployee(),
+                TicketEventType.TICKET_RESOLVED,
+                null,
+                "Ticket resolved: " + request.getResolutionSummary(),
+                null
+        );
+
+        if (slaMet) {
+            ticketHistoryService.recordHistory(
+                    ticket,
+                    ticket.getAssignedAgent().getEmployee(),
+                    TicketEventType.SLA_MET,
+                    null,
+                    "SLA met - ticket resolved before deadline",
+                    null
+            );
+        }
+
+        notificationService.sendNotification(
+                ticket.getRequester(),
+                ticket,
+                NotificationType.TICKET_RESOLVED,
+                "Ticket Resolved",
+                "Your ticket " + ticket.getTicketNumber() + " has been resolved. Please provide feedback."
+        );
+
+        log.info("Ticket {} resolved with SLA met: {}", ticketId, slaMet);
+
+        return ticketMapper.toResponse(savedTicket);
+    }
+
+    @Override
+    public TicketResponse reopenTicketWithSla(Long ticketId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        if (!ticket.getStatus().equals(TicketStatus.RESOLVED.name()) 
+                && !ticket.getStatus().equals(TicketStatus.CLOSED.name())) {
+            throw new IllegalStateException("Ticket must be resolved or closed to be reopened");
+        }
+
+        if (ticket.getAssignedAgent() == null) {
+            throw new IllegalStateException("Ticket must have an assigned agent to be reopened");
+        }
+
+        // Get the original SLA to calculate half duration
+        TicketSla originalSla = ticketSlaRepository.findByTicketId(ticketId);
+        if (originalSla == null) {
+            throw new IllegalStateException("No SLA instance found for ticket");
+        }
+
+        int newAllocatedMinutes = Math.max(originalSla.getAllocatedMinutes() / 2, 30); // Minimum 30 minutes
+
+        ticket.setStatus(TicketStatus.REOPENED.name());
+        ticket.setReopenCount(ticket.getReopenCount() + 1);
+        ticket.setReopenedAt(LocalDateTime.now());
+        ticket.setResolvedAt(null);
+        ticket.setResolutionSummary(null);
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        // Create new SLA instance with half duration
+        slaService.createSlaInstanceForReopen(ticket, newAllocatedMinutes);
+
+        ticketHistoryService.recordHistory(
+                ticket,
+                ticket.getRequester(),
+                TicketEventType.TICKET_REOPENED,
+                String.valueOf(ticket.getReopenCount() - 1),
+                String.valueOf(ticket.getReopenCount()),
+                null
+        );
+
+        if (ticket.getAssignedAgent() != null) {
+            notificationService.sendNotification(
+                    ticket.getAssignedAgent().getEmployee(),
+                    ticket,
+                    NotificationType.TICKET_REOPENED,
+                    "Ticket Reopened",
+                    "Ticket " + ticket.getTicketNumber() + " has been reopened. New SLA cycle started."
+            );
+        }
+
+        log.info("Ticket {} reopened with new SLA cycle, allocated minutes: {}", ticketId, newAllocatedMinutes);
+
         return ticketMapper.toResponse(savedTicket);
     }
 }
