@@ -1,28 +1,26 @@
 package xyz.mobi.employeehelpdesk.security;
 
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
-import xyz.mobi.employeehelpdesk.exception.ErrorResponse;
-import xyz.mobi.employeehelpdesk.service.helperservice.ErrorCodeCacheService;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
     private final ObjectMapper objectMapper;
-    private final ErrorCodeCacheService errorCodeCacheService;
 
     @Override
     public void handle(
@@ -30,25 +28,14 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
             HttpServletResponse response,
             AccessDeniedException accessDeniedException
     ) throws IOException, ServletException {
-        log.warn("Access denied for URI={}: {}", request.getRequestURI(), accessDeniedException != null ? accessDeniedException.getMessage() : "Forbidden");
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-        String errorCode = "ERR_012";
-        if (accessDeniedException != null && errorCodeCacheService != null) {
-            String resolved = errorCodeCacheService.getErrorCode(
-                    accessDeniedException.getClass().getSimpleName().toUpperCase()
-            );
-            if (!"ERR_999".equals(resolved)) {
-                errorCode = resolved;
-            }
-        }
-
-        ErrorResponse body = ErrorResponse.of(
-                errorCode,
-                HttpStatus.FORBIDDEN.value(),
-                "You do not have permission to access this resource"
-        );
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("error", HttpStatus.FORBIDDEN.getReasonPhrase());
+        body.put("message", "Access is denied");
 
         objectMapper.writeValue(response.getOutputStream(), body);
     }

@@ -1,18 +1,13 @@
 spring:
   application:
     name: help-desk
-  cache:
-    type: caffeine
-    cache-names: errorCodeMappings
-    caffeine:
-      spec: maximumSize=500
   servlet:
     multipart:
       max-file-size: 25MB
       max-request-size: 30MB
 
   datasource:
-    url: jdbc:mysql://localhost:3306/help_desk?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&preserveInstants=true
+    url: jdbc:mysql://localhost:3306/help_desk
     username: ${db_uname}
     password: ${db_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -20,12 +15,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: false
+    show-sql: true
     properties:
       hibernate:
         format_sql: true
-        jdbc:
-          time_zone: UTC
   mail:
     host: smtp.gmail.com
     port: 587
@@ -55,19 +48,9 @@ helpdesk:
     work-start: "08:30"
     work-end: "17:30"
     scheduler-interval-ms: 60000
-    batch-size: ${Scheduler_Batch_Size:50}
+    batch-size: 50
 
 security:
   jwt:
-    secret: ${JWT_SECRET:this-is-my-superkey-for-employee-helpdesk}
-    expiration-ms: ${JWT_EXPIRATION_MS:900000}
-    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2700000}
-
-logging:
-  level:
-    root: INFO
-    xyz.mobi.employeehelpdesk: INFO
-    xyz.mobi.employeehelpdesk.strategy.routing: DEBUG
-    xyz.mobi.employeehelpdesk.scheduler: DEBUG
-    xyz.mobi.employeehelpdesk.security: DEBUG
-    org.springframework.security: WARN
+    secret: ${JWT_SECRET:default-super-secret-jwt-signing-key-for-development-must-be-at-least-256-bits!}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}

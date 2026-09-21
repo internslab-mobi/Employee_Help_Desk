@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import xyz.mobi.employeehelpdesk.entity.enums.AttachmentType;
+import xyz.mobi.employeehelpdesk.exception.BadRequestException;
 
 @Entity
 @Table(
@@ -60,11 +61,45 @@ public class TicketAttachment extends BaseEntity {
     private byte[] fileData;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "message_id")
+    @JoinColumn(name = "message_id", nullable = true)
     private TicketMessage message;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "attachment_type", nullable = false, length = 30)
     private AttachmentType attachmentType;
 
+    /**
+     * Validates attachment type relationships before persist/update.
+     * <p>
+     * INITIAL_ATTACHMENT: ticket required, message null, employee null
+     * TICKET_MESSAGE: ticket required, message required, employee null
+     * PROFILE_IMG: ticket null, message null, employee required
+     */
+    @PrePersist
+    @PreUpdate
+    private void validateAttachmentCombination() {
+        if (attachmentType == null) {
+            return;
+        }
+        switch (attachmentType) {
+            case INITIAL_ATTACHMENT -> {
+                if (ticket == null) {
+                    throw new BadRequestException("INITIAL_ATTACHMENT requires a ticket");
+                }
+            }
+            case TICKET_MESSAGE -> {
+                if (ticket == null || message == null) {
+                    throw new BadRequestException("TICKET_MESSAGE requires both a ticket and a message");
+                }
+            }
+            case PROFILE_IMG -> {
+                if (employee == null) {
+                    throw new BadRequestException("PROFILE_IMG requires an employee");
+                }
+                if (ticket != null) {
+                    throw new BadRequestException("PROFILE_IMG must not be associated with a ticket");
+                }
+            }
+        }
+    }
 }

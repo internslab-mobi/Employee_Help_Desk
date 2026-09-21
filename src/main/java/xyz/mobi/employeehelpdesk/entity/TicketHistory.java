@@ -3,6 +3,8 @@ package xyz.mobi.employeehelpdesk.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import xyz.mobi.employeehelpdesk.entity.enums.HistoryEventType;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 

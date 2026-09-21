@@ -1,6 +1,6 @@
 package xyz.mobi.employeehelpdesk.exception;
 
-public class ResourceNotFoundException extends HelpdeskException {
+public class ResourceNotFoundException extends RuntimeException {
     public ResourceNotFoundException(String message) {
         super(message);
     }
