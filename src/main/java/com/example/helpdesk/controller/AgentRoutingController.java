@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,6 +20,7 @@ public class AgentRoutingController {
 
     @GetMapping("/proposal/{ticketId}")
     @Operation(summary = "Get assignment proposal", description = "Get the best agent assignment proposal for a ticket based on skills, workload, and availability")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<AssignmentProposalResponse> getAssignmentProposal(
             @Parameter(description = "Ticket ID") @PathVariable Long ticketId) {
         return ResponseEntity.ok(agentRoutingService.getAssignmentProposal(ticketId));
@@ -26,6 +28,7 @@ public class AgentRoutingController {
 
     @PostMapping("/confirm")
     @Operation(summary = "Confirm assignment", description = "Confirm or reject an agent assignment for a ticket")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<Void> confirmAssignment(
             @Parameter(description = "Ticket ID") @RequestParam Long ticketId,
             @Parameter(description = "Agent ID") @RequestParam Long agentId,
