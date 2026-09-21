@@ -52,4 +52,10 @@ public class HDSlaInstance extends BaseEntity {
 
     @Column(name = "breached_at")
     private LocalDateTime breachedAt;
+
+    @Column(name = "warning_sent_at")
+    private LocalDateTime warningSentAt;
+
+    @Column(name = "breach_sent_at")
+    private LocalDateTime breachSentAt;
 }

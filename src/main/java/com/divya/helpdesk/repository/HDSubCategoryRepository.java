@@ -9,6 +9,5 @@ import java.util.List;
 @Repository
 public interface HDSubCategoryRepository extends JpaRepository<HDSubCategory, Long> {
     List<HDSubCategory> findByCategoryId(Long categoryId);
-    List<HDSubCategory> findByCategoryIdAndIsActiveTrue(Long categoryId);
     boolean existsByCategoryIdAndName(Long categoryId, String name);
 }

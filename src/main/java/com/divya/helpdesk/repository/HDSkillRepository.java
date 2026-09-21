@@ -9,7 +9,5 @@ import java.util.Optional;
 
 @Repository
 public interface HDSkillRepository extends JpaRepository<HDSkill, Long> {
-    Optional<HDSkill> findByName(String name);
     boolean existsByName(String name);
-    List<HDSkill> findByIsActiveTrue();
 }
