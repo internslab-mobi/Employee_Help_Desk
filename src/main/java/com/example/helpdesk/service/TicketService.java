@@ -2,7 +2,9 @@ package com.example.helpdesk.service;
 
 import com.example.helpdesk.dto.request.AssignTicketRequest;
 import com.example.helpdesk.dto.request.CreateTicketRequest;
+import com.example.helpdesk.dto.request.HoldTicketRequest;
 import com.example.helpdesk.dto.request.ReopenTicketRequest;
+import com.example.helpdesk.dto.request.ResolveTicketRequest;
 import com.example.helpdesk.dto.request.UpdateTicketCategoryRequest;
 import com.example.helpdesk.dto.request.UpdateTicketPriorityRequest;
 import com.example.helpdesk.dto.request.UpdateTicketStatusRequest;
@@ -25,5 +27,13 @@ public interface TicketService {
     TicketResponse resolveTicket(Long ticketId, UpdateTicketStatusRequest request);
 
     TicketResponse reopenTicket(Long ticketId, ReopenTicketRequest request);
+
+    TicketResponse holdTicket(Long ticketId, HoldTicketRequest request);
+
+    TicketResponse resumeTicket(Long ticketId);
+
+    TicketResponse resolveTicketWithSummary(Long ticketId, ResolveTicketRequest request);
+
+    TicketResponse reopenTicketWithSla(Long ticketId);
 
 }
