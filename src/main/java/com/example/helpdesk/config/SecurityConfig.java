@@ -1,5 +1,8 @@
 package com.example.helpdesk.config;
 
+import com.example.helpdesk.cache.ErrorCodeCache;
+import com.example.helpdesk.dto.response.ErrorResponse;
+import com.example.helpdesk.filter.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -11,21 +14,26 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -33,10 +41,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -47,32 +53,41 @@ public class SecurityConfig {
     private String jwtSecret;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper, JwtAuthenticationFilter jwtAuthenticationFilter, ErrorCodeCache errorCodeCache) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui-custom/**").permitAll()
                         .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/patch-ticket-custom.js").permitAll()
+                        .requestMatchers("/swagger-custom").permitAll()
+                        .requestMatchers("/webjars/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt
-                                .decoder(jwtDecoder())
-                                .jwtAuthenticationConverter(jwtAuthenticationConverter())
-                        )
-                        .authenticationEntryPoint(customAuthenticationEntryPoint(objectMapper))
-                        .accessDeniedHandler(customAccessDeniedHandler(objectMapper))
-                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint(customAuthenticationEntryPoint(objectMapper))
-                        .accessDeniedHandler(customAccessDeniedHandler(objectMapper))
+                        .authenticationEntryPoint(customAuthenticationEntryPoint(objectMapper, errorCodeCache))
+                        .accessDeniedHandler(customAccessDeniedHandler(objectMapper, errorCodeCache))
                 );
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder);
+        return authProvider;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 
     @Bean
@@ -88,32 +103,34 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationEntryPoint customAuthenticationEntryPoint(ObjectMapper objectMapper) {
+    public AuthenticationEntryPoint customAuthenticationEntryPoint(ObjectMapper objectMapper, ErrorCodeCache errorCodeCache) {
         return (request, response, authException) -> {
+            var errorCode = errorCodeCache.getErrorCode("ERR_004");
+            ErrorResponse errorResponse = ErrorResponse.builder()
+                    .errorCode(errorCode.getCode())
+                    .statusCode(errorCode.getHttpStatus())
+                    .errorMessage("Full authentication is required to access this resource")
+                    .timestamp(Instant.now())
+                    .build();
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            Map<String, Object> body = new HashMap<>();
-            body.put("timestamp", LocalDateTime.now().toString());
-            body.put("status", HttpServletResponse.SC_UNAUTHORIZED);
-            body.put("error", "Unauthorized");
-            body.put("message", "Full authentication is required to access this resource");
-            body.put("path", request.getRequestURI());
-            objectMapper.writeValue(response.getOutputStream(), body);
+            objectMapper.writeValue(response.getOutputStream(), errorResponse);
         };
     }
 
     @Bean
-    public AccessDeniedHandler customAccessDeniedHandler(ObjectMapper objectMapper) {
+    public AccessDeniedHandler customAccessDeniedHandler(ObjectMapper objectMapper, ErrorCodeCache errorCodeCache) {
         return (request, response, accessDeniedException) -> {
+            var errorCode = errorCodeCache.getErrorCode("ERR_005");
+            ErrorResponse errorResponse = ErrorResponse.builder()
+                    .errorCode(errorCode.getCode())
+                    .statusCode(errorCode.getHttpStatus())
+                    .errorMessage("You do not have permission to access this resource")
+                    .timestamp(Instant.now())
+                    .build();
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            Map<String, Object> body = new HashMap<>();
-            body.put("timestamp", LocalDateTime.now().toString());
-            body.put("status", HttpServletResponse.SC_FORBIDDEN);
-            body.put("error", "Forbidden");
-            body.put("message", "You do not have permission to access this resource");
-            body.put("path", request.getRequestURI());
-            objectMapper.writeValue(response.getOutputStream(), body);
+            objectMapper.writeValue(response.getOutputStream(), errorResponse);
         };
     }
 
@@ -131,18 +148,6 @@ public class SecurityConfig {
                 .build();
         JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(new JWKSet(jwk));
         return new NimbusJwtEncoder(jwkSource);
-    }
-
-    @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
-        grantedAuthoritiesConverter.setAuthoritiesClaimName("role");
-
-        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
-
-        return jwtAuthenticationConverter;
     }
 
     @Bean

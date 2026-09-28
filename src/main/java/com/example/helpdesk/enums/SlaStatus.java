@@ -5,5 +5,7 @@ public enum SlaStatus {
     WARNING,
     BREACHED,
     PAUSED,
-    COMPLETED
+    COMPLETED,
+    CANCELLED
 }
+
