@@ -1,7 +1,8 @@
 package com.example.helpdesk.dto.request;
 
+import com.example.helpdesk.enums.Priority;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 
 @Getter
@@ -12,6 +13,6 @@ import lombok.*;
 public class UpdateTicketPriorityRequest {
 
     @NotNull(message = "Priority is required")
-    @Size(max = 30, message = "Priority must not exceed 30 characters")
-    private String priority;
+    @Schema(description = "Ticket priority", required = true)
+    private Priority priority;
 }

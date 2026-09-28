@@ -3,7 +3,7 @@ package com.example.helpdesk.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "hd_tickets")
@@ -52,7 +52,7 @@ public class Ticket {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_manager_id")
-    private Employee assignedManager;
+    private DepartmentManager assignedManager;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sla_policy_id")
@@ -72,38 +72,38 @@ public class Ticket {
     private String holdReason;
 
     @Column(name = "hold_started_at")
-    private LocalDateTime holdStartedAt;
+    private Instant holdStartedAt;
 
     @Column(name = "withdrawal_reason", columnDefinition = "TEXT")
     private String withdrawalReason;
 
     @Column(name = "resolved_at")
-    private LocalDateTime resolvedAt;
+    private Instant resolvedAt;
 
     @Column(name = "reopened_at")
-    private LocalDateTime reopenedAt;
+    private Instant reopenedAt;
 
     @Column(name = "closed_at")
-    private LocalDateTime closedAt;
+    private Instant closedAt;
 
     @Column(name = "withdrawn_at")
-    private LocalDateTime withdrawnAt;
+    private Instant withdrawnAt;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 }

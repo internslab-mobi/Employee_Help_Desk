@@ -5,7 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -19,6 +20,6 @@ public class TicketMessageResponse {
     private String senderName;
     private String content;
     private Boolean seen;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private OffsetDateTime createdAt;
+    private List<TicketAttachmentResponse> attachments;
 }

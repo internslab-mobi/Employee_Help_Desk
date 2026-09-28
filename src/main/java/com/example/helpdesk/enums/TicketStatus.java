@@ -10,6 +10,7 @@ public enum TicketStatus {
     BREACHED,
     CLOSED,
     REOPENED,
+    WITHDRAWN,
     CANCELLED
 }
 

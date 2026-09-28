@@ -2,7 +2,8 @@ package com.example.helpdesk.dto.response;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -49,13 +50,15 @@ public class TicketResponse {
 
     private String holdReason;
 
-    private LocalDateTime holdStartedAt;
+    private OffsetDateTime holdStartedAt;
 
     private String withdrawalReason;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private LocalDateTime resolvedAt;
-    private LocalDateTime closedAt;
-    private LocalDateTime withdrawnAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime resolvedAt;
+    private OffsetDateTime closedAt;
+    private OffsetDateTime withdrawnAt;
+    private OffsetDateTime updatedAt;
+
+    private List<TicketAttachmentResponse> attachments;
 }

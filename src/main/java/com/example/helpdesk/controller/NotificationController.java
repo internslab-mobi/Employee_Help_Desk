@@ -1,10 +1,6 @@
 package com.example.helpdesk.controller;
 
-import com.example.helpdesk.entity.Employee;
-import com.example.helpdesk.entity.Ticket;
-import com.example.helpdesk.enums.NotificationType;
-import com.example.helpdesk.repository.EmployeeRepository;
-import com.example.helpdesk.repository.TicketRepository;
+import com.example.helpdesk.dto.response.NotificationResponse;
 import com.example.helpdesk.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
@@ -21,28 +19,17 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final EmployeeRepository employeeRepository;
-    private final TicketRepository ticketRepository;
 
-    @PostMapping("/send")
-    @Operation(summary = "Send notification", description = "Send a notification to an employee about a ticket")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<Void> sendNotification(
-            @Parameter(description = "Employee ID") @RequestParam Long employeeId,
-            @Parameter(description = "Ticket ID") @RequestParam Long ticketId,
-            @Parameter(description = "Notification type") @RequestParam NotificationType type,
-            @Parameter(description = "Notification title") @RequestParam String title,
-            @Parameter(description = "Notification message") @RequestParam String message) {
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
-        notificationService.sendNotification(employee, ticket, type, title, message);
-        return ResponseEntity.ok().build();
+    @GetMapping("/{employeeId}")
+    @Operation(summary = "Get notifications", description = "🔔 Access: All roles — users can view only their own notifications; ADMIN can view notifications for any employee.")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<NotificationResponse>> getNotificationsByEmployee(
+            @Parameter(description = "Employee ID") @PathVariable Long employeeId) {
+        return ResponseEntity.ok(notificationService.getNotificationsByEmployee(employeeId));
     }
 
-    @PutMapping("/read/{notificationId}")
-    @Operation(summary = "Mark as read", description = "Mark a notification as read")
+    @PatchMapping("/read/{notificationId}")
+    @Operation(summary = "Mark as read", description = "🔔 Access: All roles — users can mark only their own notifications as read; ADMIN can mark any notification.")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Void> markAsRead(
             @Parameter(description = "Notification ID") @PathVariable Long notificationId) {
@@ -50,8 +37,8 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
-    @PutMapping("/read-all/{employeeId}")
-    @Operation(summary = "Mark all as read", description = "Mark all notifications for an employee as read")
+    @PatchMapping("/read-all/{employeeId}")
+    @Operation(summary = "Mark all as read", description = "🔔 Access: All roles — users can mark only their own notifications as read; ADMIN can mark notifications for any employee.")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Void> markAllAsReadForEmployee(
             @Parameter(description = "Employee ID") @PathVariable Long employeeId) {
@@ -59,3 +46,4 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 }
+

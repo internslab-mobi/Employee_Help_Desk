@@ -9,4 +9,5 @@ public interface AgentSkillRepository
         extends JpaRepository<AgentSkill, Long> {
 
     List<AgentSkill> findByAgentId(Long agentId);
+    java.util.Optional<AgentSkill> findByAgentIdAndSkillId(Long agentId, Long skillId);
 }

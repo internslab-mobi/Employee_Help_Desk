@@ -10,4 +10,5 @@ import java.util.List;
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     List<Notification> findByRecipientIdOrderByCreatedAtDesc(Long recipientId);
     boolean existsByTicketIdAndType(Long ticketId, String type);
+    boolean existsByIdAndRecipientId(Long notificationId, Long recipientId);
 }

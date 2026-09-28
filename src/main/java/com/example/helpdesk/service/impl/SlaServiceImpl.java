@@ -14,7 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -50,21 +51,27 @@ public class SlaServiceImpl implements SlaService {
         ticket.setSlaPolicy(slaRule);
         ticketRepository.save(ticket);
 
-        LocalDateTime slaStart =
-                businessTimeService.getNextWorkingTime(LocalDateTime.now());
+        ZoneId departmentZoneId = com.example.helpdesk.util.TimezoneUtil.parseZoneId(
+                ticket.getDepartment().getTimezone()
+        );
 
-        LocalDateTime deadline =
+        Instant slaStart =
+                businessTimeService.getNextWorkingTime(Instant.now(), departmentZoneId);
+
+        Instant deadline =
                 businessTimeService.addWorkingMinutes(
                         slaStart,
-                        slaRule.getDurationMinutes()
+                        slaRule.getDurationMinutes(),
+                        departmentZoneId
                 );
 
-        LocalDateTime warningTime =
+        Instant warningTime =
                 slaRule.getWarningMinutes() != null
                         ? businessTimeService.addWorkingMinutes(
                         slaStart,
                         slaRule.getDurationMinutes()
-                        - slaRule.getWarningMinutes()
+                        - slaRule.getWarningMinutes(),
+                        departmentZoneId
                 )
                         : null;
 
@@ -78,8 +85,8 @@ public class SlaServiceImpl implements SlaService {
                 .currentDeadlineAt(deadline)
                 .warningAt(warningTime)
                 .status(SlaStatus.RUNNING.name())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build();
 
         ticketSla = ticketSlaRepository.save(ticketSla);
@@ -105,7 +112,7 @@ public class SlaServiceImpl implements SlaService {
             return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
 
         if (now.isAfter(ticketSla.getCurrentDeadlineAt())) {
             ticketSla.setStatus(SlaStatus.BREACHED.name());
@@ -132,7 +139,7 @@ public class SlaServiceImpl implements SlaService {
                 (SlaStatus.RUNNING.name().equals(ticketSla.getStatus())
                         || SlaStatus.WARNING.name().equals(ticketSla.getStatus()))) {
 
-            LocalDateTime now = LocalDateTime.now();
+            Instant now = Instant.now();
 
             ticketSla.setStatus(SlaStatus.PAUSED.name());
             ticketSla.setPausedAt(now);
@@ -149,27 +156,33 @@ public class SlaServiceImpl implements SlaService {
     public void resumeSla(Long ticketId) {
         TicketSla ticketSla = ticketSlaRepository.findByTicketId(ticketId);
         if (ticketSla != null && SlaStatus.PAUSED.name().equals(ticketSla.getStatus())) {
+            ZoneId departmentZoneId = com.example.helpdesk.util.TimezoneUtil.parseZoneId(
+                    ticketSla.getTicket().getDepartment().getTimezone()
+            );
             int pausedDuration = businessTimeService.calculateWorkingMinutes(
                     ticketSla.getPausedAt(),
-                    LocalDateTime.now()
+                    Instant.now(),
+                    departmentZoneId
             );
 
-            LocalDateTime newDeadline = businessTimeService.addWorkingMinutes(
+            Instant newDeadline = businessTimeService.addWorkingMinutes(
                     ticketSla.getCurrentDeadlineAt(),
-                    pausedDuration
+                    pausedDuration,
+                    departmentZoneId
             );
 
             ticketSla.setCurrentDeadlineAt(newDeadline);
             if (ticketSla.getWarningAt() != null) {
                 ticketSla.setWarningAt(businessTimeService.addWorkingMinutes(
                         ticketSla.getWarningAt(),
-                        pausedDuration
+                        pausedDuration,
+                        departmentZoneId
                 ));
             }
 
             ticketSla.setStatus(SlaStatus.RUNNING.name());
             ticketSla.setPausedAt(null);
-            ticketSla.setUpdatedAt(LocalDateTime.now());
+            ticketSla.setUpdatedAt(Instant.now());
             ticketSlaRepository.save(ticketSla);
             log.info("Resumed SLA for ticket {} with new deadline {}", ticketId, newDeadline);
         }
@@ -181,7 +194,7 @@ public class SlaServiceImpl implements SlaService {
         TicketSla ticketSla = ticketSlaRepository.findByTicketId(ticketId);
         if (ticketSla != null) {
             ticketSla.setStatus(SlaStatus.COMPLETED.name());
-            ticketSla.setUpdatedAt(LocalDateTime.now());
+            ticketSla.setUpdatedAt(Instant.now());
             ticketSlaRepository.save(ticketSla);
             log.info("Completed SLA for ticket {}", ticketId);
         }
@@ -190,7 +203,7 @@ public class SlaServiceImpl implements SlaService {
     @Override
     @Transactional
     public void checkAndNotifySlaBreaches() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
 
         // Check for breaches from both RUNNING and WARNING statuses
         List<TicketSla> runningBreachedSlas = ticketSlaRepository.findByStatusAndCurrentDeadlineAtBefore(
@@ -260,11 +273,15 @@ public class SlaServiceImpl implements SlaService {
                 .max()
                 .orElse(0) + 1;
 
-        LocalDateTime slaStart = businessTimeService.getNextWorkingTime(LocalDateTime.now());
-        LocalDateTime deadline = businessTimeService.addWorkingMinutes(slaStart, allocatedMinutes);
+        ZoneId departmentZoneId = com.example.helpdesk.util.TimezoneUtil.parseZoneId(
+                ticket.getDepartment().getTimezone()
+        );
 
-        LocalDateTime warningTime = slaRule.getWarningMinutes() != null
-                ? businessTimeService.addWorkingMinutes(slaStart, allocatedMinutes - slaRule.getWarningMinutes())
+        Instant slaStart = businessTimeService.getNextWorkingTime(Instant.now(), departmentZoneId);
+        Instant deadline = businessTimeService.addWorkingMinutes(slaStart, allocatedMinutes, departmentZoneId);
+
+        Instant warningTime = slaRule.getWarningMinutes() != null
+                ? businessTimeService.addWorkingMinutes(slaStart, allocatedMinutes - slaRule.getWarningMinutes(), departmentZoneId)
                 : null;
 
         TicketSla ticketSla = TicketSla.builder()
@@ -277,8 +294,8 @@ public class SlaServiceImpl implements SlaService {
                 .currentDeadlineAt(deadline)
                 .warningAt(warningTime)
                 .status(SlaStatus.RUNNING.name())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build();
 
         ticketSla = ticketSlaRepository.save(ticketSla);

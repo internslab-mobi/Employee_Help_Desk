@@ -3,7 +3,7 @@ package com.example.helpdesk.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "hd_sla_instances")
@@ -34,41 +34,41 @@ public class TicketSla {
     private Integer allocatedMinutes;
 
     @Column(name = "sla_start_at", nullable = false)
-    private LocalDateTime slaStartAt;
+    private Instant slaStartAt;
 
     @Column(name = "original_deadline_at", nullable = false)
-    private LocalDateTime originalDeadlineAt;
+    private Instant originalDeadlineAt;
 
     @Column(name = "current_deadline_at", nullable = false)
-    private LocalDateTime currentDeadlineAt;
+    private Instant currentDeadlineAt;
 
     @Column(name = "warning_at")
-    private LocalDateTime warningAt;
+    private Instant warningAt;
 
     @Column(nullable = false, length = 30)
     private String status;
 
     @Column(name = "paused_at")
-    private LocalDateTime pausedAt;
+    private Instant pausedAt;
 
     @Column(name = "breached_at")
-    private LocalDateTime breachedAt;
+    private Instant breachedAt;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 }
