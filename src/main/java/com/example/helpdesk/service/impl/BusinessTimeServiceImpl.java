@@ -1,43 +1,40 @@
 package com.example.helpdesk.service.impl;
 
+import com.example.helpdesk.config.HolidayConfig;
 import com.example.helpdesk.config.WorkingHoursConfig;
 import com.example.helpdesk.service.BusinessTimeService;
-import com.example.helpdesk.service.HolidayService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 
 @Service
 @RequiredArgsConstructor
 public class BusinessTimeServiceImpl implements BusinessTimeService {
 
-    private final HolidayService holidayService;
+    private final HolidayConfig holidayConfig;
 
     @Override
-    public LocalDateTime addWorkingMinutes(LocalDateTime from, int minutes) {
-        LocalDateTime current = from;
+    public Instant addWorkingMinutes(Instant from, int minutes, ZoneId zoneId) {
+        Instant current = from;
         int remainingMinutes = minutes;
 
         while (remainingMinutes > 0) {
-            current = getNextWorkingTime(current);
-            
-            if (!isWorkingDateTime(current)) {
-                current = getNextWorkingTime(current);
+            current = getNextWorkingTime(current, zoneId);
+
+            if (!isWorkingDateTime(current, zoneId)) {
+                current = getNextWorkingTime(current, zoneId);
                 continue;
             }
 
-            LocalDateTime endOfDay = getEndOfWorkingDay(current);
+            Instant endOfDay = getEndOfWorkingDay(current, zoneId);
             long minutesUntilEndOfDay = java.time.Duration.between(current, endOfDay).toMinutes();
 
             if (minutesUntilEndOfDay >= remainingMinutes) {
-                return current.plusMinutes(remainingMinutes);
+                return current.plusSeconds(remainingMinutes * 60L);
             } else {
                 remainingMinutes -= minutesUntilEndOfDay;
-                current = endOfDay.plusMinutes(1);
+                current = endOfDay.plusSeconds(60);
             }
         }
 
@@ -45,30 +42,31 @@ public class BusinessTimeServiceImpl implements BusinessTimeService {
     }
 
     @Override
-    public int calculateWorkingMinutes(LocalDateTime from, LocalDateTime to) {
+    public int calculateWorkingMinutes(Instant from, Instant to, ZoneId zoneId) {
         if (from.isAfter(to)) {
             return 0;
         }
 
         int totalMinutes = 0;
-        LocalDateTime current = from;
+        Instant current = from;
 
         while (current.isBefore(to)) {
-            if (isWorkingDateTime(current)) {
+            if (isWorkingDateTime(current, zoneId)) {
                 totalMinutes++;
             }
-            current = current.plusMinutes(1);
+            current = current.plusSeconds(60);
         }
 
         return totalMinutes;
     }
 
     @Override
-    public boolean isWorkingDateTime(LocalDateTime dateTime) {
+    public boolean isWorkingDateTime(Instant instant, ZoneId zoneId) {
+        LocalDateTime dateTime = LocalDateTime.ofInstant(instant, zoneId);
         LocalDate date = dateTime.toLocalDate();
         LocalTime time = dateTime.toLocalTime();
 
-        if (holidayService.isHoliday(date)) {
+        if (isHoliday(date)) {
             return false;
         }
 
@@ -81,19 +79,38 @@ public class BusinessTimeServiceImpl implements BusinessTimeService {
     }
 
     @Override
-    public LocalDateTime getNextWorkingTime(LocalDateTime dateTime) {
-        LocalDateTime current = dateTime;
+    public Instant getNextWorkingTime(Instant instant, ZoneId zoneId) {
+        Instant current = instant;
 
-        while (!isWorkingDateTime(current)) {
-            current = current.plusMinutes(1);
+        while (!isWorkingDateTime(current, zoneId)) {
+            current = current.plusSeconds(60);
         }
 
         return current;
     }
 
-    private LocalDateTime getEndOfWorkingDay(LocalDateTime dateTime) {
+    @Override
+    public boolean isWorkingDay(LocalDate date) {
+        if (isHoliday(date)) {
+            return false;
+        }
+
+        DayOfWeek dayOfWeek = date.getDayOfWeek();
+        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean isHoliday(LocalDate date) {
+        return holidayConfig.isHoliday(date);
+    }
+
+    private Instant getEndOfWorkingDay(Instant instant, ZoneId zoneId) {
+        LocalDateTime dateTime = LocalDateTime.ofInstant(instant, zoneId);
         LocalDate date = dateTime.toLocalDate();
         LocalTime endTime = WorkingHoursConfig.getWorkEndTime();
-        return LocalDateTime.of(date, endTime);
+        return LocalDateTime.of(date, endTime).atZone(zoneId).toInstant();
     }
 }
