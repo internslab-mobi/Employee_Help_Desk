@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Data
 @Builder
@@ -18,10 +18,10 @@ public class SlaResponse {
     private Long slaPolicyId;
     private Integer cycleNumber;
     private Integer allocatedMinutes;
-    private LocalDateTime slaStartAt;
-    private LocalDateTime warningAt;
-    private LocalDateTime deadlineAt;
+    private OffsetDateTime slaStartAt;
+    private OffsetDateTime warningAt;
+    private OffsetDateTime deadlineAt;
     private String status;
-    private LocalDateTime breachedAt;
+    private OffsetDateTime breachedAt;
     private Integer remainingMinutes;
 }

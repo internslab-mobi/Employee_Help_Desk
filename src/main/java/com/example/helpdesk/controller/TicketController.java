@@ -1,23 +1,21 @@
 package com.example.helpdesk.controller;
 
-import com.example.helpdesk.dto.request.AssignTicketRequest;
-import com.example.helpdesk.dto.request.CreateTicketRequest;
-import com.example.helpdesk.dto.request.HoldTicketRequest;
-import com.example.helpdesk.dto.request.ReopenTicketRequest;
-import com.example.helpdesk.dto.request.ResolveTicketRequest;
-import com.example.helpdesk.dto.request.UpdateTicketCategoryRequest;
-import com.example.helpdesk.dto.request.UpdateTicketPriorityRequest;
-import com.example.helpdesk.dto.request.UpdateTicketStatusRequest;
+import com.example.helpdesk.dto.request.*;
 import com.example.helpdesk.dto.response.TicketResponse;
 import com.example.helpdesk.service.TicketService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -26,100 +24,56 @@ public class TicketController {
 
     private final TicketService ticketService;
 
-    @PostMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    private Long getAuthenticatedEmployeeId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new com.example.helpdesk.exception.AuthorizationException("User not authenticated");
+        }
+        try {
+            return Long.parseLong(authentication.getPrincipal().toString());
+        } catch (NumberFormatException e) {
+            throw new com.example.helpdesk.exception.AuthorizationException("Invalid employee ID in authentication context");
+        }
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN', 'MANAGER', 'AGENT')")
+    @Operation(description = "🔐 Access: ADMIN, MANAGER, AGENT, EMPLOYEE — authenticated users can create tickets; agent, manager and SLA are handled automatically. Optional attachment support.")
     public ResponseEntity<TicketResponse> createTicket(
-            @Valid @RequestBody CreateTicketRequest request) {
+            @RequestParam("requesterId") @NotNull Long requesterId,
+            @RequestParam("departmentId") @NotNull Long departmentId,
+            @RequestParam("categoryId") @NotNull Long categoryId,
+            @RequestParam("subCategoryId") @NotNull Long subCategoryId,
+            @RequestParam("subject") @NotBlank String subject,
+            @RequestParam("description") @NotBlank String description,
+            @RequestParam("status") @NotBlank String status,
+            @RequestParam(value = "file", required = false) MultipartFile file) {
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ticketService.createTicket(request));
-    }
+        CreateTicketRequest request = CreateTicketRequest.builder()
+                .requesterId(requesterId)
+                .departmentId(departmentId)
+                .categoryId(categoryId)
+                .subCategoryId(subCategoryId)
+                .subject(subject)
+                .description(description)
+                .status(status)
+                .build();
 
-    @PatchMapping("/{ticketId}/status")
-    @PreAuthorize("hasAnyRole('AGENT', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TicketResponse> updateStatus(
-            @PathVariable Long ticketId,
-            @Valid @RequestBody UpdateTicketStatusRequest request) {
-
-        return ResponseEntity.ok(
-                ticketService.updateStatus(ticketId, request)
-        );
-    }
-
-    @PatchMapping("/{ticketId}/priority")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<TicketResponse> updatePriority(
-            @PathVariable Long ticketId,
-            @Valid @RequestBody UpdateTicketPriorityRequest request) {
-
-        return ResponseEntity.ok(
-                ticketService.updatePriority(ticketId, request)
-        );
-    }
-
-    @PatchMapping("/{ticketId}/category")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<TicketResponse> updateCategory(
-            @PathVariable Long ticketId,
-            @Valid @RequestBody UpdateTicketCategoryRequest request) {
-
-        return ResponseEntity.ok(
-                ticketService.updateCategory(ticketId, request)
-        );
+        Long uploadedById = getAuthenticatedEmployeeId();
+        TicketResponse response = ticketService.createTicketWithAttachment(request, uploadedById, file);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
 
-    @PatchMapping("/{ticketId}/assignment")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<TicketResponse> assignTicket(
-            @PathVariable Long ticketId,
-            @Valid @RequestBody AssignTicketRequest request) {
+    // ==================== CONSOLIDATED TICKET UPDATE ====================
 
-        return ResponseEntity.ok(
-                ticketService.assignTicket(ticketId, request)
-        );
-    }
-
-    @PatchMapping("/{ticketId}/hold")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<TicketResponse> holdTicket(
-            @PathVariable Long ticketId,
-            @Valid @RequestBody HoldTicketRequest request) {
-
-        return ResponseEntity.ok(
-                ticketService.holdTicket(ticketId, request)
-        );
-    }
-
-    @PatchMapping("/{ticketId}/resume")
+    @PatchMapping("/{ticketId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TicketResponse> resumeTicket(
-            @PathVariable Long ticketId) {
-
-        return ResponseEntity.ok(
-                ticketService.resumeTicket(ticketId)
-        );
-    }
-
-    @PatchMapping("/{ticketId}/resolve")
-    @PreAuthorize("hasAnyRole('AGENT', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TicketResponse> resolveTicket(
+    @Operation(description = "🔐 Access: ADMIN, MANAGER, AGENT, EMPLOYEE — Consolidated ticket update endpoint. Authorization checked per operation based on role and ticket ownership/assignment. Use 'operation' field to specify: STATUS, PRIORITY, CATEGORY, ASSIGN_AGENT, ASSIGN_MANAGER, HOLD, RESUME, RESOLVE, REOPEN, WITHDRAW. Each operation has specific required data in the 'data' field.")
+    public ResponseEntity<TicketResponse> updateTicket(
             @PathVariable Long ticketId,
-            @Valid @RequestBody ResolveTicketRequest request) {
-
-        return ResponseEntity.ok(
-                ticketService.resolveTicketWithSummary(ticketId, request)
-        );
+            @Valid @RequestBody UpdateDTO request) {
+        return ResponseEntity.ok(ticketService.updateTicket(ticketId, request));
     }
 
-    @PatchMapping("/{ticketId}/reopen")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<TicketResponse> reopenTicket(
-            @PathVariable Long ticketId) {
-
-        return ResponseEntity.ok(
-                ticketService.reopenTicketWithSla(ticketId)
-        );
-    }
 }
