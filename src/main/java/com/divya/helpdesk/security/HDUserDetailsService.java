@@ -11,19 +11,20 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class HDUserDetailsService implements UserDetailsService{
+public class HDUserDetailsService implements UserDetailsService {
+
     private final HDEmployeeRepository employeeRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        HDEmployee employee = employeeRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        HDEmployee employee = employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Employee not found with email: " + email));
 
         return User.builder()
                 .username(employee.getEmail())
-                .password(employee.getPassword())
+                .password(employee.getPassword() != null ? employee.getPassword() : "")
                 .disabled(!Boolean.TRUE.equals(employee.getEnabled()))
-                .authorities("ROLE_"+employee.getRole())
+                .authorities("ROLE_" + employee.getRole().name())
                 .build();
     }
 }

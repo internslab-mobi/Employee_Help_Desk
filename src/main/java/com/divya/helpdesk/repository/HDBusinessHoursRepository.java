@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface HDBusinessHoursRepository extends JpaRepository<HDBusinessHours, Long> {
-    List<HDBusinessHours> findByBusinessCalendarId(Long calendarId);
-    Optional<HDBusinessHours> findByBusinessCalendarIdAndDayOfWeek(Long calendarId, DayOfWeek dayOfWeek);
-    boolean existsByBusinessCalendarIdAndDayOfWeek(Long calendarId, DayOfWeek dayOfWeek);
+
+    Optional<HDBusinessHours> findByCalendar_IdAndDayOfWeek(Long calendarId, DayOfWeek dayOfWeek);
+
 }
