@@ -30,22 +30,4 @@ public final class TimezoneUtil {
                     + "'. Must be a valid IANA timezone identifier (e.g. Asia/Kolkata, Asia/Kuala_Lumpur, America/New_York)");
         }
     }
-
-    public static boolean isValidTimezone(String timezone) {
-        if (timezone == null || timezone.isBlank()) {
-            return false;
-        }
-        String trimmed = timezone.trim();
-        if (trimmed.startsWith("GMT+") || trimmed.startsWith("GMT-")
-                || trimmed.startsWith("UTC+") || trimmed.startsWith("UTC-")
-                || trimmed.equalsIgnoreCase("IST")) {
-            return false;
-        }
-        try {
-            ZoneId.of(trimmed);
-            return true;
-        } catch (DateTimeException e) {
-            return false;
-        }
-    }
 }

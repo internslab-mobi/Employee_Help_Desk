@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -59,7 +60,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .message(notification.getMessage())
                 .type(notification.getType())
                 .reference(mapToReferenceTicket(notification.getReferenceTicket()))
-                .createdAt(notification.getCreatedAt())
+                .createdAt(notification.getCreatedAt().atZone(ZoneId.of(notification.getRecipient().getTimezone())).toOffsetDateTime())
                 .build();
     }
 

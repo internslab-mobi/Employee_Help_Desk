@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -39,8 +40,8 @@ public class TicketResponse {
     private String resolutionSummary;
     private String withdrawalReason;
 
-    private Instant resolvedAt;
-    private Instant withdrawnAt;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private OffsetDateTime resolvedAt;
+    private OffsetDateTime  withdrawnAt;
+    private OffsetDateTime  createdAt;
+    private OffsetDateTime  updatedAt;
 }

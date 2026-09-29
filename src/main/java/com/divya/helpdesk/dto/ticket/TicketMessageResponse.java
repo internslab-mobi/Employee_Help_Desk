@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -18,5 +19,5 @@ public class TicketMessageResponse {
     private Long ticketId;
     private MessageSenderDTO sender;
     private String messageText;
-    private Instant createdAt;
+    private OffsetDateTime createdAt;
 }

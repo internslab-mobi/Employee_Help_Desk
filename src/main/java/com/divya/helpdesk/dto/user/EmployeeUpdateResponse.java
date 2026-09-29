@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -26,6 +27,6 @@ public class EmployeeUpdateResponse {
     private EmploymentStatus employmentStatus;
     private LocalDate dateOfJoining;
     private String timezone;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime  updatedAt;
 }

@@ -3,7 +3,6 @@ package com.divya.helpdesk.service.impl;
 import com.divya.helpdesk.dto.user.*;
 import com.divya.helpdesk.entity.HDEmployee;
 import com.divya.helpdesk.entity.HDDepartment;
-import com.divya.helpdesk.enums.EmployeeRole;
 import com.divya.helpdesk.exception.DuplicateResourceException;
 import com.divya.helpdesk.exception.ResourceNotFoundException;
 import com.divya.helpdesk.mapper.EmployeeMapper;
@@ -101,7 +100,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         if (request.getTimezone() != null && !request.getTimezone().isBlank()) {
             String tz = request.getTimezone().trim();
-            com.divya.helpdesk.util.TimezoneUtil.validateAndGetZoneId(tz);
+            TimezoneUtil.validateAndGetZoneId(tz);
             employee.setTimezone(tz);
         }
 
@@ -159,7 +158,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         if (request.getTimezone() != null && !request.getTimezone().isBlank()) {
             String tz = request.getTimezone().trim();
-            com.divya.helpdesk.util.TimezoneUtil.validateAndGetZoneId(tz);
+            TimezoneUtil.validateAndGetZoneId(tz);
             employee.setTimezone(tz);
         }
         HDEmployee savedEmployee = employeeRepository.save(employee);
@@ -187,7 +186,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         if (request.getTimezone() != null && !request.getTimezone().isBlank()) {
             String tz = request.getTimezone().trim();
-            com.divya.helpdesk.util.TimezoneUtil.validateAndGetZoneId(tz);
+            TimezoneUtil.validateAndGetZoneId(tz);
             employee.setTimezone(tz);
         }
 
@@ -210,7 +209,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         String tz = (request.getTimezone() != null && !request.getTimezone().isBlank())
                 ? request.getTimezone().trim()
-                : com.divya.helpdesk.util.TimezoneUtil.DEFAULT_TIMEZONE;
+                : TimezoneUtil.DEFAULT_TIMEZONE;
         TimezoneUtil.validateAndGetZoneId(tz);
 
         HDEmployee employee = new HDEmployee();
