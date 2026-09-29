@@ -7,7 +7,6 @@ import com.example.helpdesk.dto.request.ReopenTicketRequest;
 import com.example.helpdesk.dto.request.ResolveTicketRequest;
 import com.example.helpdesk.dto.request.TicketFeedbackRequest;
 import com.example.helpdesk.dto.request.TicketMessageRequest;
-import com.example.helpdesk.dto.request.UpdateDTO;
 import com.example.helpdesk.dto.request.UpdateTicketCategoryRequest;
 import com.example.helpdesk.dto.request.UpdateTicketPriorityRequest;
 import com.example.helpdesk.dto.request.UpdateTicketRequest;
@@ -38,7 +37,7 @@ public interface TicketService {
 
     TicketResponse updateCategory(Long ticketId, UpdateTicketCategoryRequest request);
 
-    TicketResponse updateTicket(Long ticketId, UpdateDTO request);
+    TicketResponse updateTicket(Long ticketId, UpdateTicketRequest request);
 
     TicketResponse assignTicket(Long ticketId, AssignTicketRequest request);
 
