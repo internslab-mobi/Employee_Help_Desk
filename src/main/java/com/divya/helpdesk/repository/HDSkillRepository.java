@@ -9,5 +9,4 @@ import java.util.Optional;
 
 @Repository
 public interface HDSkillRepository extends JpaRepository<HDSkill, Long> {
-    boolean existsByName(String name);
 }

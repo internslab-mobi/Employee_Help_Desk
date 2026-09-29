@@ -1,101 +1,69 @@
 package com.divya.helpdesk.mapper;
 
-import com.divya.helpdesk.dto.response.TicketDetailsResponse;
-import com.divya.helpdesk.dto.response.TicketResponse;
-import com.divya.helpdesk.entity.HDSlaInstance;
+import com.divya.helpdesk.dto.ticket.AgentDTO;
+import com.divya.helpdesk.dto.ticket.CategoryDTO;
+import com.divya.helpdesk.dto.ticket.SubCategoryDTO;
+import com.divya.helpdesk.dto.ticket.TicketResponse;
+import com.divya.helpdesk.entity.HDCategory;
+import com.divya.helpdesk.entity.HDEmployee;
+import com.divya.helpdesk.entity.HDSubCategory;
 import com.divya.helpdesk.entity.HDTicket;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import lombok.Builder;
 
-@Component
-@RequiredArgsConstructor
+@Builder
 public class TicketMapper {
 
-    private final EmployeeMapper employeeMapper;
-    private final DepartmentMapper departmentMapper;
-    private final CategoryMapper categoryMapper;
-    private final SubCategoryMapper subCategoryMapper;
-    private final SlaPolicyMapper slaPolicyMapper;
-
-
-    public TicketResponse toResponse(HDTicket entity, HDSlaInstance slaInstance) {
-        if (entity == null) return null;
-        TicketResponse response = new TicketResponse();
-        response.setId(entity.getId());
-        response.setTicketNumber(entity.getTicketNumber());
-        if (entity.getRequester() != null) {
-            response.setRequesterId(entity.getRequester().getId());
-            response.setRequesterName(entity.getRequester().getFullName().trim());
-        }
-        if (entity.getDepartment() != null) {
-            response.setDepartmentId(entity.getDepartment().getId());
-            response.setDepartmentName(entity.getDepartment().getName());
-        }
-        if (entity.getCategory() != null) {
-            response.setCategoryId(entity.getCategory().getId());
-            response.setCategoryName(entity.getCategory().getName());
-        }
-        if (entity.getSubCategory() != null) {
-            response.setSubCategoryId(entity.getSubCategory().getId());
-            response.setSubCategoryName(entity.getSubCategory().getName());
-        }
-        response.setSubject(entity.getSubject());
-        response.setDescription(entity.getDescription());
-        response.setStatus(entity.getStatus());
-        if (entity.getAssignedAgent() != null) {
-            response.setAssignedAgentId(entity.getAssignedAgent().getId());
-            response.setAssignedAgentName(entity.getAssignedAgent().getFullName().trim());
-        }
-        if (entity.getAssignedManager() != null) {
-            response.setAssignedManagerId(entity.getAssignedManager().getId());
-            response.setAssignedManagerName(entity.getAssignedManager().getFullName().trim());
-        }
-        response.setPriority(entity.getPriority());
-        response.setReopenCount(entity.getReopenCount());
-        response.setResolutionSummary(entity.getResolutionSummary());
-        response.setResolvedAt(entity.getResolvedAt());
-        response.setClosedAt(entity.getClosedAt());
-        response.setWithdrawnAt(entity.getWithdrawnAt());
-
-        if (slaInstance != null) {
-            response.setDueAt(slaInstance.getCurrentDeadlineAt());
+    public static TicketResponse mapToResponse(HDTicket ticket, boolean includeUpdatedAt) {
+        if (ticket == null) {
+            return null;
         }
 
-        response.setCreatedAt(entity.getCreatedAt());
-        response.setUpdatedAt(entity.getUpdatedAt());
-        return response;
+        return TicketResponse.builder()
+                .ticketId(ticket.getId())
+                .ticketNumber(ticket.getTicketNumber())
+                .requester(toEmployeeResponse(ticket.getRequester()))
+                .department(EmployeeMapper.toDepartmentResponse(ticket.getDepartment()))
+                .category(toCategoryResponse(ticket.getCategory()))
+                .subCategory(toSubCategoryResponse(ticket.getSubCategory()))
+                .description(ticket.getDescription())
+                .priority(ticket.getPriority())
+                .status(ticket.getStatus())
+                .agent(toEmployeeResponse(ticket.getAssignedAgent()))
+                .manager(toEmployeeResponse(ticket.getAssignedManager()))
+                .reopenCount(ticket.getReopenCount())
+                .resolutionSummary(ticket.getResolutionSummary())
+                .withdrawalReason(ticket.getWithdrawalReason())
+                .resolvedAt(ticket.getResolvedAt())
+                .withdrawnAt(ticket.getWithdrawnAt())
+                .createdAt(ticket.getCreatedAt())
+                .updatedAt(includeUpdatedAt ? ticket.getUpdatedAt() : null)
+                .build();
     }
 
-    public TicketDetailsResponse toDetailsResponse(HDTicket entity, HDSlaInstance slaInstance) {
-        if (entity == null) return null;
-        TicketDetailsResponse response = new TicketDetailsResponse();
-        response.setId(entity.getId());
-        response.setTicketNumber(entity.getTicketNumber());
-        response.setRequester(employeeMapper.toResponse(entity.getRequester()));
-        response.setDepartment(departmentMapper.toResponse(entity.getDepartment()));
-        response.setCategory(categoryMapper.toResponse(entity.getCategory()));
-        response.setSubCategory(subCategoryMapper.toResponse(entity.getSubCategory()));
-        response.setSubject(entity.getSubject());
-        response.setDescription(entity.getDescription());
-        response.setStatus(entity.getStatus());
-        response.setAssignedAgent(employeeMapper.toResponse(entity.getAssignedAgent()));
-        response.setAssignedManager(employeeMapper.toResponse(entity.getAssignedManager()));
-        response.setSlaPolicy(slaPolicyMapper.toResponse(entity.getSlaPolicy()));
-        if (slaInstance != null) {
-            response.setSlaInstance(slaPolicyMapper.toInstanceResponse(slaInstance));
-            response.setDueAt(slaInstance.getCurrentDeadlineAt());
-        }
-        response.setPriority(entity.getPriority());
-        response.setReopenCount(entity.getReopenCount());
-        response.setResolutionSummary(entity.getResolutionSummary());
-        response.setHoldReason(entity.getHoldReason());
-        response.setHoldStartedAt(entity.getHoldStartedAt());
-        response.setWithdrawalReason(entity.getWithdrawalReason());
-        response.setResolvedAt(entity.getResolvedAt());
-        response.setClosedAt(entity.getClosedAt());
-        response.setWithdrawnAt(entity.getWithdrawnAt());
-        response.setCreatedAt(entity.getCreatedAt());
-        response.setUpdatedAt(entity.getUpdatedAt());
-        return response;
+    public static AgentDTO toEmployeeResponse(HDEmployee employee){
+        if(employee == null) return null;
+
+        return AgentDTO.builder()
+                .id(employee.getId())
+                .name(employee.getFirstName() + " " + employee.getLastName())
+                .build();
+    }
+
+    public static CategoryDTO toCategoryResponse(HDCategory category){
+        if(category == null) return null;
+
+        return CategoryDTO.builder()
+                .id(category.getId())
+                .name(category.getName())
+                .build();
+    }
+
+    public static SubCategoryDTO toSubCategoryResponse(HDSubCategory subCategory){
+        if(subCategory == null) return null;
+
+        return SubCategoryDTO.builder()
+                .id(subCategory.getId())
+                .name(subCategory.getName())
+                .build();
     }
 }
