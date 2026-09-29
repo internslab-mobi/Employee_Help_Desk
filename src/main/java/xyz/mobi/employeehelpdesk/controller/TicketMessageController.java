@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.message.CreateTicketMessageRequest;
+import xyz.mobi.employeehelpdesk.dto.message.TicketMessageCreateResponse;
 import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponse;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
 import xyz.mobi.employeehelpdesk.service.TicketMessageService;
@@ -21,7 +22,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/tickets")
+@RequestMapping("/tickets")
 @RequiredArgsConstructor
 public class TicketMessageController {
 
@@ -29,22 +30,22 @@ public class TicketMessageController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping(value = "/{ticketId}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<TicketMessageResponse> createMessageMultipart(
+    public ResponseEntity<TicketMessageCreateResponse> createMessageMultipart(
             @PathVariable Long ticketId,
             @RequestParam("content") String content,
             @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments
     ) throws IOException {
-        TicketMessageResponse response = ticketMessageService.createMessage(ticketId, content, attachments);
+        TicketMessageCreateResponse response = ticketMessageService.createMessage(ticketId, content, attachments);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping(value = "/{ticketId}/messages", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<TicketMessageResponse> createMessageJson(
+    public ResponseEntity<TicketMessageCreateResponse> createMessageJson(
             @PathVariable Long ticketId,
             @Valid @RequestBody CreateTicketMessageRequest request
     ) throws IOException {
-        TicketMessageResponse response = ticketMessageService.createMessage(ticketId, request.content(), null);
+        TicketMessageCreateResponse response = ticketMessageService.createMessage(ticketId, request.content(), null);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

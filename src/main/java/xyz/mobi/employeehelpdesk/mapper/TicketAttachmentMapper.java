@@ -3,10 +3,10 @@ package xyz.mobi.employeehelpdesk.mapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.springframework.web.multipart.MultipartFile;
-import xyz.mobi.employeehelpdesk.entity.enums.AttachmentType;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
+import xyz.mobi.employeehelpdesk.entity.enums.AttachmentType;
 
 @Mapper(componentModel = "spring")
 public interface TicketAttachmentMapper {
@@ -14,6 +14,8 @@ public interface TicketAttachmentMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(source = "ticket", target = "ticket")
     @Mapping(source = "uploader", target = "uploadedBy")
+    @Mapping(target = "employee", ignore = true)
+    @Mapping(target = "message", ignore = true)
     @Mapping(
             source = "file.originalFilename",
             target = "originalFilename"
