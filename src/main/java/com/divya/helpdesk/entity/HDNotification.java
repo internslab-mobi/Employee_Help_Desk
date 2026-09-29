@@ -1,40 +1,38 @@
 package com.divya.helpdesk.entity;
 
-import com.divya.helpdesk.enums.HDNotificationType;
+import com.divya.helpdesk.enums.NotificationType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
-@Entity
-@Table(name = "hd_notifications")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Entity
+@Table(name = "hd_notifications")
 public class HDNotification extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "recipient_id", nullable = false)
+    @JoinColumn(
+            name = "recipient_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_notification_recipient")
+    )
     private HDEmployee recipient;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ticket_id")
-    private HDTicket ticket;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
-    private HDNotificationType type;
-
-    @Column(nullable = false, length = 255)
+    @Column(name = "title", nullable = false, length = 150)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "message", nullable = false, columnDefinition = "TEXT")
     private String message;
 
-    @Column(name = "read_at")
-    private LocalDateTime readAt;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 50)
+    private NotificationType type;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "reference_ticket_id",
+            foreignKey = @ForeignKey(name = "fk_notification_ticket")
+    )
+    private HDTicket referenceTicket;
 }
