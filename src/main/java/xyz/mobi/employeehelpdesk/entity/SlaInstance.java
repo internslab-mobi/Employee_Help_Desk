@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(
@@ -53,6 +53,7 @@ public class SlaInstance extends BaseEntity {
     @JoinColumn(name = "sla_policy_id", nullable = false)
     private SlaPolicy slaPolicy;
 
+    @Builder.Default
     @Column(nullable = false)
     private Integer cycleNumber = 0;
 
@@ -60,24 +61,24 @@ public class SlaInstance extends BaseEntity {
     private Integer allocatedMinutes;
 
     @Column(nullable = false)
-    private LocalDateTime slaStartAt;
+    private Instant slaStartAt;
 
     @Column(nullable = false)
-    private LocalDateTime originalDeadlineAt;
+    private Instant originalDeadlineAt;
 
     @Column(nullable = false)
-    private LocalDateTime currentDeadlineAt;
+    private Instant currentDeadlineAt;
 
-    private LocalDateTime warningAt;
+    private Instant warningAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private SlaStatus status;
 
-    private LocalDateTime pausedAt;
+    private Instant pausedAt;
 
     /*@Column(nullable = false)
     private Integer totalPausedMinutes = 0;*/
 
-    private LocalDateTime breachedAt;
+    private Instant breachedAt;
 }

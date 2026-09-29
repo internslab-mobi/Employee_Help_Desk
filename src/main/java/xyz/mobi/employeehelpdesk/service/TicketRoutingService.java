@@ -8,5 +8,4 @@ public interface TicketRoutingService {
 
     void retryRouting(Ticket ticket);
 
-    void reopenTicket(Long ticketId, Long employeeId);
 }

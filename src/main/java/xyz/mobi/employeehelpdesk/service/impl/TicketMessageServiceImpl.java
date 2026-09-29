@@ -10,16 +10,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponse;
+import xyz.mobi.employeehelpdesk.dto.message.TicketMessageCreateResponse;
 import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponse;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
 import xyz.mobi.employeehelpdesk.entity.TicketMessage;
-import xyz.mobi.employeehelpdesk.entity.enums.AttachmentType;
-import xyz.mobi.employeehelpdesk.entity.enums.HistoryEventType;
-import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
-import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
+import xyz.mobi.employeehelpdesk.entity.enums.*;
 import xyz.mobi.employeehelpdesk.exception.BadRequestException;
+import xyz.mobi.employeehelpdesk.exception.InvalidStateException;
 import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
 import xyz.mobi.employeehelpdesk.mapper.TicketAttachmentMapper;
 import xyz.mobi.employeehelpdesk.mapper.TicketMessageMapper;
@@ -27,7 +26,7 @@ import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
 import xyz.mobi.employeehelpdesk.repository.TicketAttachmentRepository;
 import xyz.mobi.employeehelpdesk.repository.TicketMessageRepository;
 import xyz.mobi.employeehelpdesk.repository.TicketRepository;
-import xyz.mobi.employeehelpdesk.service.CurrentUserService;
+import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.service.NotificationService;
 import xyz.mobi.employeehelpdesk.service.TicketMessageService;
 import xyz.mobi.employeehelpdesk.service.helperservice.TicketHistoryService;
@@ -52,16 +51,16 @@ public class TicketMessageServiceImpl implements TicketMessageService {
     private final NotificationService notificationService;
     private final TicketMessageMapper ticketMessageMapper;
     private final TicketAttachmentMapper ticketAttachmentMapper;
-    private final CurrentUserService currentUserService;
+    private final AuthService  authService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TicketMessageResponse createMessage(
+    public TicketMessageCreateResponse createMessage(
             Long ticketId,
             String content,
             List<MultipartFile> attachments
     ) throws IOException {
-        long currentEmployeeId = currentUserService.getCurrentEmployeeId();
+        long currentEmployeeId = authService.getCurrentEmployeeId();
 
         if (content == null || content.isBlank()) {
             throw new BadRequestException("Message content is required");
@@ -71,13 +70,14 @@ public class TicketMessageServiceImpl implements TicketMessageService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
 
         if (ticket.getStatus() == TicketStatus.RESOLVED || ticket.getStatus() == TicketStatus.WITHDRAWN) {
-            throw new BadRequestException("Messages are not allowed on resolved or withdrawn tickets");
+            throw new InvalidStateException("Messages are not allowed on resolved or withdrawn tickets");
         }
 
-        boolean isRequester = ticket.getRequester().getId().equals(currentEmployeeId);
+        boolean isRequester = ticket.getRequester() != null
+                && ticket.getRequester().getId().equals(currentEmployeeId);
         boolean isAssignedAgent = ticket.getAssignedAgent() != null
-                && (ticket.getAssignedAgent().getEmployee().getId().equals(currentEmployeeId)
-                || ticket.getAssignedAgent().getId().equals(currentEmployeeId));
+                && ticket.getAssignedAgent().getEmployee() != null
+                && ticket.getAssignedAgent().getEmployee().getId().equals(currentEmployeeId);
 
         if (!isRequester && !isAssignedAgent) {
             throw new AccessDeniedException("You are not allowed to send messages on this ticket");
@@ -139,8 +139,8 @@ public class TicketMessageServiceImpl implements TicketMessageService {
         if (isRequester) {
             if (ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getEmployee() != null) {
                 notificationService.sendNotification(
-                        ticket.getAssignedAgent().getEmployee(),
-                        ticket,
+                        ticket.getAssignedAgent().getEmployee().getId(),
+                        ticket.getId(),
                         NotificationType.NEW_MESSAGE,
                         "New Ticket Message",
                         notifMessage
@@ -148,21 +148,21 @@ public class TicketMessageServiceImpl implements TicketMessageService {
             }
         } else {
             notificationService.sendNotification(
-                    ticket.getRequester(),
-                    ticket,
+                    ticket.getRequester().getId(),
+                    ticket.getId(),
                     NotificationType.NEW_MESSAGE,
                     "New Ticket Message",
                     notifMessage
             );
         }
 
-        return ticketMessageMapper.toResponse(message, attachmentResponses);
+        return ticketMessageMapper.toCreateResponse(message, attachmentResponses);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<TicketMessageResponse> getMessages(Long ticketId, Pageable pageable) {
-        long currentEmployeeId = currentUserService.getCurrentEmployeeId();
+        long currentEmployeeId = authService.getCurrentEmployeeId();
 
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
@@ -197,7 +197,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
     @Override
     @Transactional(readOnly = true)
     public TicketAttachment getAttachmentForDownload(Long ticketId, Long attachmentId) {
-        long currentEmployeeId = currentUserService.getCurrentEmployeeId();
+        long currentEmployeeId = authService.getCurrentEmployeeId();
 
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
@@ -215,13 +215,33 @@ public class TicketMessageServiceImpl implements TicketMessageService {
     }
 
     private void validateTicketAccess(Ticket ticket, long currentEmployeeId) {
-        boolean isRequester = ticket.getRequester().getId().equals(currentEmployeeId);
-        boolean isAssignedAgent = ticket.getAssignedAgent() != null
-                && (ticket.getAssignedAgent().getEmployee().getId().equals(currentEmployeeId)
-                || ticket.getAssignedAgent().getId().equals(currentEmployeeId));
-
-        if (!isRequester && !isAssignedAgent) {
-            throw new AccessDeniedException("You are not allowed to access messages for this ticket");
+        UserRole role = authService.getCurrentUserRole();
+        if (role == UserRole.ADMIN) {
+            return;
         }
+
+        boolean isRequester = ticket.getRequester() != null
+                && ticket.getRequester().getId().equals(currentEmployeeId);
+        boolean isAssignedAgent = ticket.getAssignedAgent() != null
+                && ticket.getAssignedAgent().getEmployee() != null
+                && ticket.getAssignedAgent().getEmployee().getId().equals(currentEmployeeId);
+
+        if (isRequester || isAssignedAgent) {
+            return;
+        }
+
+        if (role == UserRole.MANAGER) {
+            Employee currentEmp = employeeRepository.findById(currentEmployeeId).orElse(null);
+            if (currentEmp != null && currentEmp.getDepartment() != null) {
+                Long deptId = currentEmp.getDepartment().getId();
+                if ((ticket.getDepartment() != null && deptId.equals(ticket.getDepartment().getId()))
+                        || (ticket.getRequester() != null && ticket.getRequester().getDepartment() != null && deptId.equals(ticket.getRequester().getDepartment().getId()))
+                        || (ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getEmployee() != null && ticket.getAssignedAgent().getEmployee().getDepartment() != null && deptId.equals(ticket.getAssignedAgent().getEmployee().getDepartment().getId()))) {
+                    return;
+                }
+            }
+        }
+
+        throw new AccessDeniedException("You are not allowed to access messages for this ticket");
     }
 }
