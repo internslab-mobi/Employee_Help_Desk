@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 
 /**
  * Metadata DTO for Ticket Attachments.
@@ -26,5 +27,5 @@ public class TicketAttachmentResponse {
     private String originalFilename;
     private String mimeType;
     private Long fileSize;
-    private Instant createdAt;
+    private OffsetDateTime createdAt;
 }

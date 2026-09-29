@@ -303,52 +303,6 @@ public class TicketServiceImpl implements TicketService {
         log.warn("Ticket {} deleted by {}", ticket.getTicketNumber(), current.getEmail());
     }
 
-    // 5. GET ALL TICKETS WITH PAGINATION (GET /api/tickets?limit=10&offset=0)
-    @Override
-    @Transactional(readOnly = true)
-    public PageResponse<TicketResponse> getAllTicketsPaginated(int limit, long offset) {
-        int safeLimit = (limit <= 0) ? 10 : Math.min(limit, 100);
-        if (offset < 0) {
-            throw new BadRequestException("Offset cannot be negative");
-        }
-
-        HDEmployee current = currentUserService.getCurrentEmployee();
-        int pageIndex = (int) (offset / safeLimit);
-        Pageable pageable = PageRequest.of(pageIndex, safeLimit, Sort.by(Sort.Direction.DESC, "createdAt"));
-
-        Specification<HDTicket> spec = (root, query, cb) -> {
-            if (current.getRole() == EmployeeRole.ADMIN) {
-                return cb.conjunction();
-            } else if (current.getRole() == EmployeeRole.MANAGER) {
-                if (current.getDepartment() != null) {
-                    return cb.equal(root.get("department").get("id"), current.getDepartment().getId());
-                }
-                return cb.conjunction();
-            } else if (current.getRole() == EmployeeRole.AGENT) {
-                Predicate assignedToMe = cb.equal(root.get("assignedAgent").get("id"), current.getId());
-                Predicate inMyDept = (current.getDepartment() != null)
-                        ? cb.equal(root.get("department").get("id"), current.getDepartment().getId())
-                        : cb.disjunction();
-                return cb.or(assignedToMe, inMyDept);
-            } else {
-                return cb.equal(root.get("requester").get("id"), current.getId());
-            }
-        };
-
-        Page<HDTicket> page = ticketRepository.findAll(spec, pageable);
-        List<TicketResponse> content = page.getContent().stream()
-                .map(t -> TicketMapper.mapToResponse(t, false))
-                .toList();
-
-        return PageResponse.<TicketResponse>builder()
-                .content(content)
-                .limit(safeLimit)
-                .offset(offset)
-                .totalElements(page.getTotalElements())
-                .hasNext(page.hasNext())
-                .build();
-    }
-
     // 6. GET MY TICKETS (EMPLOYEE)
     @Override
     @Transactional(readOnly = true)
@@ -385,27 +339,47 @@ public class TicketServiceImpl implements TicketService {
     }
 
     // 8. GET DEPARTMENT TICKETS (MANAGER)
+    // 8. GET DEPARTMENT TICKETS (MANAGER)
     @Override
     @Transactional(readOnly = true)
-    public List<TicketResponse> getDepartmentTickets(Long agentId, TicketStatus status) {
+    public PageResponse<TicketResponse> getDepartmentTickets(Long agentId, TicketStatus status, int limit, long offset) {
+        int safeLimit = (limit <= 0) ? 10 : Math.min(limit, 50);
+        if (offset < 0) {
+            throw new BadRequestException("Offset cannot be negative");
+        }
+
         HDEmployee current = currentUserService.getCurrentEmployee();
         if (current.getDepartment() == null) {
             throw new BadRequestException("Manager does not have an assigned department");
         }
-        Long departmentId = current.getDepartment().getId();
 
-        List<HDTicket> tickets;
+        Long departmentId = current.getDepartment().getId();
+        int pageIndex = (int) (offset / safeLimit);
+        Pageable pageable = PageRequest.of(pageIndex, safeLimit, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<HDTicket> page;
         if (agentId != null && status != null) {
-            tickets = ticketRepository.findByDepartment_IdAndAssignedAgent_IdAndStatusOrderByCreatedAtDesc(departmentId, agentId, status);
+            page = ticketRepository.findByDepartment_IdAndAssignedAgent_IdAndStatus(departmentId, agentId, status, pageable);
         } else if (agentId != null) {
-            tickets = ticketRepository.findByDepartment_IdAndAssignedAgent_IdOrderByCreatedAtDesc(departmentId, agentId);
+            page = ticketRepository.findByDepartment_IdAndAssignedAgent_Id(departmentId, agentId, pageable);
         } else if (status != null) {
-            tickets = ticketRepository.findByDepartment_IdAndStatusOrderByCreatedAtDesc(departmentId, status);
+            page = ticketRepository.findByDepartment_IdAndStatus(departmentId, status, pageable);
         } else {
-            tickets = ticketRepository.findByDepartment_IdOrderByCreatedAtDesc(departmentId);
+            page = ticketRepository.findByDepartment_Id(departmentId, pageable);
         }
 
-        return tickets.stream().map(t -> TicketMapper.mapToResponse(t, false)).toList();
+        List<TicketResponse> content = page.getContent()
+                .stream()
+                .map(t -> TicketMapper.mapToResponse(t, false))
+                .toList();
+
+        return PageResponse.<TicketResponse>builder()
+                .content(content)
+                .limit(safeLimit)
+                .offset(offset)
+                .totalElements(page.getTotalElements())
+                .hasNext(page.hasNext())
+                .build();
     }
 
     // 9. WITHDRAW TICKET

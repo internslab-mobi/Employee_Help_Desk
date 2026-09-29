@@ -24,11 +24,7 @@ public interface TicketService {
     List<TicketResponse> getAssignedTickets(TicketStatus status);
 
     // Manager - department tickets
-    List<TicketResponse> getDepartmentTickets(Long agentId, TicketStatus status);
-
-    // Single GET ALL endpoint with pagination metadata
-    PageResponse<TicketResponse> getAllTicketsPaginated(int limit, long offset);
-
+    PageResponse<TicketResponse> getDepartmentTickets(Long agentId, TicketStatus status, int limit, long offset);
 
     // Single flexible PATCH endpoint
     TicketResponse patchTicket(Long ticketId, TicketPatchRequest request);
