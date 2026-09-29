@@ -2,6 +2,7 @@ package xyz.mobi.employeehelpdesk.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponse;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDto;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.TicketFeedback;
@@ -16,6 +17,14 @@ public interface TicketFeedbackMapper {
     @Mapping(source = "rating", target = "rating")
     @Mapping(source = "comment", target = "comment")
     @Mapping(source = "createdAt", target = "createdAt")
+    TicketFeedbackCreateResponse toCreateResponse(TicketFeedback feedback);
+
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "ticket.id", target = "ticketId")
+    @Mapping(source = "submittedBy.id", target = "submittedById")
+    @Mapping(target = "submittedByName", expression = "java(mapEmployeeName(feedback.getSubmittedBy()))")
+    @Mapping(source = "rating", target = "rating")
+    @Mapping(source = "comment", target = "comment")
     TicketFeedbackResponseDto toResponse(TicketFeedback feedback);
 
     default String mapEmployeeName(Employee employee) {

@@ -2,8 +2,8 @@ package xyz.mobi.employeehelpdesk.service.helperservice;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import xyz.mobi.employeehelpdesk.entity.DepartmentAgent;
 import xyz.mobi.employeehelpdesk.entity.AgentSkill;
+import xyz.mobi.employeehelpdesk.entity.DepartmentAgent;
 import xyz.mobi.employeehelpdesk.entity.SubCategorySkill;
 import xyz.mobi.employeehelpdesk.repository.AgentSkillRepository;
 import xyz.mobi.employeehelpdesk.repository.SubCategorySkillRepository;

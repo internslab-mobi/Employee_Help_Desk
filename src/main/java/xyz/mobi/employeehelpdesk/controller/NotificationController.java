@@ -8,11 +8,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import xyz.mobi.employeehelpdesk.dto.notification.NotificationResponse;
+import xyz.mobi.employeehelpdesk.dto.notification.NotificationUpdateResponse;
 import xyz.mobi.employeehelpdesk.dto.notification.UnreadNotificationCountResponse;
 import xyz.mobi.employeehelpdesk.service.NotificationService;
 
 @RestController
-@RequestMapping("/api/notifications")
+@RequestMapping("/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
@@ -45,10 +46,10 @@ public class NotificationController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PatchMapping("/{notificationId}/read")
-    public ResponseEntity<NotificationResponse> markAsRead(
+    public ResponseEntity<NotificationUpdateResponse> markAsRead(
             @PathVariable Long notificationId
     ) {
-        NotificationResponse response = notificationService.markAsRead(notificationId);
+        NotificationUpdateResponse response = notificationService.markAsRead(notificationId);
         return ResponseEntity.ok(response);
     }
 }

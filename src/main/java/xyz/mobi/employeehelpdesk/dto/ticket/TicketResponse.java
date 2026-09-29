@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Builder
@@ -15,17 +15,10 @@ public class TicketResponse {
     private Long id;
     private String ticketNumber;
 
-    private Long requesterId;
-    private String requesterName;
-
-    private Long departmentId;
-    private String departmentName;
-
-    private Long categoryId;
-    private String categoryName;
-
-    private Long subCategoryId;
-    private String subCategoryName;
+    private IdNameResponse requester;
+    private IdNameResponse department;
+    private IdNameResponse category;
+    private IdNameResponse subCategory;
 
     private String subject;
     private String description;
@@ -33,19 +26,14 @@ public class TicketResponse {
     private String priority;
     private String status;
 
-    private Long assignedAgentId;
-    private String assignedAgentName;
-
-    private Long assignedManagerId;
-    private String assignedManagerName;
+    private IdNameResponse assignedAgent;
+    private Long managerId;
 
     private Integer reopenCount;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private LocalDateTime resolvedAt;
-    private LocalDateTime reopenedAt;
-    private LocalDateTime assignedAt;
+    private Instant resolvedAt;
+    private Instant reopenedAt;
+    private Instant assignedAt;
 
     private SlaStatus slaStatus;
 }

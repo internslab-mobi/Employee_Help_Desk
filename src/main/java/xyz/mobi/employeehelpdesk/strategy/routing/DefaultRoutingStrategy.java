@@ -1,8 +1,8 @@
 package xyz.mobi.employeehelpdesk.strategy.routing;
 
 import org.springframework.stereotype.Component;
-import xyz.mobi.employeehelpdesk.exception.BadRequestException;
 import xyz.mobi.employeehelpdesk.entity.RoutingCandidate;
+import xyz.mobi.employeehelpdesk.exception.BadRequestException;
 
 import java.util.Comparator;
 import java.util.List;
