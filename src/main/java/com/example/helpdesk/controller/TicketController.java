@@ -72,7 +72,7 @@ public class TicketController {
     @Operation(description = "🔐 Access: ADMIN, MANAGER, AGENT, EMPLOYEE — Consolidated ticket update endpoint. Authorization checked per operation based on role and ticket ownership/assignment. Use 'operation' field to specify: STATUS, PRIORITY, CATEGORY, ASSIGN_AGENT, ASSIGN_MANAGER, HOLD, RESUME, RESOLVE, REOPEN, WITHDRAW. Each operation has specific required data in the 'data' field.")
     public ResponseEntity<TicketResponse> updateTicket(
             @PathVariable Long ticketId,
-            @Valid @RequestBody UpdateDTO request) {
+            @Valid @RequestBody UpdateTicketRequest request) {
         return ResponseEntity.ok(ticketService.updateTicket(ticketId, request));
     }
 

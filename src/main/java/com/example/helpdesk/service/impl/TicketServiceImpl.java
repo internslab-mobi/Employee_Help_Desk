@@ -8,7 +8,6 @@ import com.example.helpdesk.dto.request.ReopenTicketRequest;
 import com.example.helpdesk.dto.request.ResolveTicketRequest;
 import com.example.helpdesk.dto.request.TicketFeedbackRequest;
 import com.example.helpdesk.dto.request.TicketMessageRequest;
-import com.example.helpdesk.dto.request.UpdateDTO;
 import com.example.helpdesk.dto.request.UpdateTicketCategoryRequest;
 import com.example.helpdesk.dto.request.UpdateTicketPriorityRequest;
 import com.example.helpdesk.dto.request.UpdateTicketRequest;
@@ -639,7 +638,7 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketResponse updateTicket(Long ticketId, UpdateDTO request) {
+    public TicketResponse updateTicket(Long ticketId, UpdateTicketRequest request) {
         log.info("PATCH request received - ticketId={}, operation={}", ticketId, request.getOperation());
         log.info("Request data: {}", request.getData());
 
