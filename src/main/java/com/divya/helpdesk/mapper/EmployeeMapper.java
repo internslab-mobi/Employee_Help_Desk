@@ -1,64 +1,60 @@
 package com.divya.helpdesk.mapper;
 
-import com.divya.helpdesk.dto.request.EmployeeCreateRequest;
-import com.divya.helpdesk.dto.request.EmployeeUpdateRequest;
-import com.divya.helpdesk.dto.response.EmployeeResponse;
+import com.divya.helpdesk.dto.user.DepartmentResponse;
+import com.divya.helpdesk.dto.user.EmployeeResponse;
+import com.divya.helpdesk.dto.user.EmployeeUpdateResponse;
+import com.divya.helpdesk.entity.HDDepartment;
 import com.divya.helpdesk.entity.HDEmployee;
-import org.springframework.stereotype.Component;
+import lombok.Builder;
 
-@Component
+@Builder
 public class EmployeeMapper {
 
-    public EmployeeResponse toResponse(HDEmployee entity) {
-        if (entity == null) return null;
-        EmployeeResponse response = new EmployeeResponse();
-        response.setId(entity.getId());
-        response.setEmployeeCode(entity.getEmployeeCode());
-        response.setFirstName(entity.getFirstName());
-        response.setLastName(entity.getLastName());
-        response.setFullName(entity.getFullName().trim());
-        response.setEmail(entity.getEmail());
-        response.setPhone(entity.getPhone());
-        response.setDesignation(entity.getDesignation());
-        if (entity.getDepartment() != null) {
-            response.setDepartmentId(entity.getDepartment().getId());
-            response.setDepartmentName(entity.getDepartment().getName());
-        }
-        response.setEmploymentStatus(entity.getEmploymentStatus());
-        response.setDateOfJoining(entity.getDateOfJoining());
-        response.setDateOfExit(entity.getDateOfExit());
-        response.setHasProfileImage(entity.getProfileImage() != null && entity.getProfileImage().length > 0);
-        response.setCreatedAt(entity.getCreatedAt());
-        response.setUpdatedAt(entity.getUpdatedAt());
-        return response;
+    public static EmployeeResponse mapToResponse(HDEmployee employee) {
+
+        return EmployeeResponse.builder()
+                .id(employee.getId())
+                .employeeCode(employee.getEmployeeCode())
+                .email(employee.getEmail())
+                .firstName(employee.getFirstName())
+                .lastName(employee.getLastName())
+                .phone(employee.getPhone())
+                .designation(employee.getDesignation())
+                .department(toDepartmentResponse(employee.getDepartment()))
+                .role(employee.getRole())
+                .employmentStatus(employee.getEmploymentStatus())
+                .dateOfJoining(employee.getDateOfJoining())
+                .timezone(employee.getTimezone())
+                .build();
     }
 
-    public HDEmployee toEntity(EmployeeCreateRequest request) {
-        if (request == null) return null;
-        HDEmployee entity = new HDEmployee();
-        entity.setEmployeeCode(request.getEmployeeCode());
-        entity.setFirstName(request.getFirstName());
-        entity.setLastName(request.getLastName());
-        entity.setEmail(request.getEmail());
-        entity.setPhone(request.getPhone());
-        entity.setDesignation(request.getDesignation());
-        entity.setEmploymentStatus(request.getEmploymentStatus());
-        entity.setDateOfJoining(request.getDateOfJoining());
-        entity.setDateOfExit(request.getDateOfExit());
-        return entity;
+    public static EmployeeUpdateResponse mapToUpdateResponse(HDEmployee employee){
+        return EmployeeUpdateResponse.builder()
+                .id(employee.getId())
+                .employeeCode(employee.getEmployeeCode())
+                .email(employee.getEmail())
+                .firstName(employee.getFirstName())
+                .lastName(employee.getLastName())
+                .phone(employee.getPhone())
+                .designation(employee.getDesignation())
+                .department(toDepartmentResponse(employee.getDepartment()))
+                .role(employee.getRole())
+                .employmentStatus(employee.getEmploymentStatus())
+                .dateOfJoining(employee.getDateOfJoining())
+                .timezone(employee.getTimezone())
+                .createdAt(employee.getCreatedAt())
+                .updatedAt(employee.getUpdatedAt())
+                .build();
     }
 
-    public void updateEntity(HDEmployee entity, EmployeeUpdateRequest request) {
-        if (entity == null || request == null) return;
-        entity.setFirstName(request.getFirstName());
-        entity.setLastName(request.getLastName());
-        entity.setEmail(request.getEmail());
-        entity.setPhone(request.getPhone());
-        entity.setDesignation(request.getDesignation());
-        if (request.getEmploymentStatus() != null) {
-            entity.setEmploymentStatus(request.getEmploymentStatus());
+    public static DepartmentResponse toDepartmentResponse(HDDepartment department) {
+        if (department == null) {
+            return null;
         }
-        entity.setDateOfJoining(request.getDateOfJoining());
-        entity.setDateOfExit(request.getDateOfExit());
+
+        return DepartmentResponse.builder()
+                .id(department.getId())
+                .name(department.getName())
+                .build();
     }
 }

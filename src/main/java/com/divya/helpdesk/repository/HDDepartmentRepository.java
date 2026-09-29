@@ -9,5 +9,4 @@ import java.util.Optional;
 
 @Repository
 public interface HDDepartmentRepository extends JpaRepository<HDDepartment, Long> {
-    boolean existsByCode(String code);
 }

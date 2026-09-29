@@ -1,26 +1,32 @@
 package com.divya.helpdesk.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity
-@Table(name = "hd_sub_category_skills",
-        uniqueConstraints = {@UniqueConstraint(name = "uk_subcat_skill", columnNames = {"sub_category_id", "skill_id"})}
-)
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Entity
+@Table(
+        name = "hd_sub_category_skills",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_sub_category_skill",
+                        columnNames = {"sub_category_id", "skill_id"}
+                )
+        }
+)
 public class HDSubCategorySkill extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "sub_category_id", nullable = false)
+    @JoinColumn(name = "sub_category_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_sub_category_skill_sub_category")
+    )
     private HDSubCategory subCategory;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "skill_id", nullable = false)
+    @JoinColumn(name = "skill_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_sub_category_skill_skill")
+    )
     private HDSkill skill;
 }
