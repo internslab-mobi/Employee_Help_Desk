@@ -4,11 +4,13 @@ import com.divya.helpdesk.dto.ticket.TicketAttachmentResponse;
 import com.divya.helpdesk.entity.HDEmployee;
 import com.divya.helpdesk.entity.HDTicket;
 import com.divya.helpdesk.entity.HDTicketAttachment;
+import com.divya.helpdesk.entity.HDTicketMessage;
 import com.divya.helpdesk.enums.EmployeeRole;
 import com.divya.helpdesk.exception.AccessDeniedException;
 import com.divya.helpdesk.exception.ResourceNotFoundException;
 import com.divya.helpdesk.exception.ValidationException;
 import com.divya.helpdesk.repository.HDTicketAttachmentRepository;
+import com.divya.helpdesk.repository.HDTicketMessageRepository;
 import com.divya.helpdesk.repository.HDTicketRepository;
 import com.divya.helpdesk.security.CurrentUserService;
 import com.divya.helpdesk.service.AttachmentService;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -31,10 +34,11 @@ public class AttachmentServiceImpl implements AttachmentService {
 
     private final HDTicketAttachmentRepository attachmentRepository;
     private final HDTicketRepository ticketRepository;
+    private static HDTicketMessageRepository messageRepository;
     private final CurrentUserService currentUserService;
 
     @Override
-    public TicketAttachmentResponse uploadAttachment(Long ticketId, MultipartFile file) {
+    public TicketAttachmentResponse uploadAttachment(Long ticketId, Long messageId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ValidationException("Attachment file cannot be empty");
         }
@@ -45,6 +49,8 @@ public class AttachmentServiceImpl implements AttachmentService {
 
         HDTicket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
+        HDTicketMessage message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + messageId));
 
         HDEmployee current = currentUserService.getCurrentEmployee();
         validateAccess(ticket, current);
@@ -52,6 +58,7 @@ public class AttachmentServiceImpl implements AttachmentService {
         try {
             HDTicketAttachment attachment = new HDTicketAttachment();
             attachment.setTicket(ticket);
+            attachment.setMessage(message);
             attachment.setUploadedBy(current);
             attachment.setOriginalFilename(file.getOriginalFilename() != null ? file.getOriginalFilename() : "attachment");
             attachment.setMimeType(file.getContentType() != null ? file.getContentType() : "application/octet-stream");
@@ -83,25 +90,6 @@ public class AttachmentServiceImpl implements AttachmentService {
                 .toList();
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public HDTicketAttachment getAttachment(Long ticketId, Long attachmentId) {
-        HDTicket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
-
-        HDEmployee current = currentUserService.getCurrentEmployee();
-        validateAccess(ticket, current);
-
-        return attachmentRepository.findByIdAndTicket_Id(attachmentId, ticketId)
-                .orElseThrow(() -> new ResourceNotFoundException("Attachment not found with id: " + attachmentId + " for ticket: " + ticketId));
-    }
-
-    @Override
-    public void deleteAttachment(Long ticketId, Long attachmentId) {
-        HDTicketAttachment attachment = getAttachment(ticketId, attachmentId);
-        attachmentRepository.delete(attachment);
-        log.info("Deleted attachment {} from ticket {}", attachmentId, ticketId);
-    }
 
     private void validateAccess(HDTicket ticket, HDEmployee current) {
         if (current.getRole() == EmployeeRole.ADMIN) {
@@ -135,7 +123,7 @@ public class AttachmentServiceImpl implements AttachmentService {
                 .originalFilename(attachment.getOriginalFilename())
                 .mimeType(attachment.getMimeType())
                 .fileSize(size)
-                .createdAt(attachment.getCreatedAt())
+                .createdAt(attachment.getCreatedAt().atZone(ZoneId.of(attachment.getUploadedBy().getTimezone())).toOffsetDateTime())
                 .build();
     }
 }

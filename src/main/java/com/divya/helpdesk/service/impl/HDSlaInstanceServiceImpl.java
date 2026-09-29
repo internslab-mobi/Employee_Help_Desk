@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -64,7 +65,7 @@ public class HDSlaInstanceServiceImpl implements HDSlaInstanceService {
         instance.setCycleNumber(ticket.getReopenCount() != null ? ticket.getReopenCount() + 1 : 1);
 
         log.info("SLA instance initialized for ticket {} with deadline {} and warning threshold {}",
-                ticket.getTicketNumber(), deadline, warningAt);
+                ticket.getTicketNumber(), deadline, warningAt.atZone(ZoneId.of(ticket.getRequester().getTimezone())).toOffsetDateTime());
 
         return slaInstanceRepository.save(instance);
     }
@@ -105,7 +106,7 @@ public class HDSlaInstanceServiceImpl implements HDSlaInstanceService {
         instance.setCycleNumber(cycleNumber);
 
         log.info("SLA instance reopened (cycle {}) for ticket {} with deadline {}",
-                cycleNumber, ticket.getTicketNumber(), newDeadline);
+                cycleNumber, ticket.getTicketNumber(), newDeadline.atZone(ZoneId.of(ticket.getRequester().getTimezone())).toOffsetDateTime());
 
         return slaInstanceRepository.save(instance);
     }
@@ -120,29 +121,20 @@ public class HDSlaInstanceServiceImpl implements HDSlaInstanceService {
             if (ticket == null) {
                 continue;
             }
-
             // 1. Check Warning Threshold
-            if (instance.getWarningAt() != null
-                    && !now.isBefore(instance.getWarningAt())
-                    && instance.getWarningSentAt() == null) {
-
+            if (instance.getWarningAt() != null && !now.isBefore(instance.getWarningAt()) && instance.getWarningSentAt() == null) {
                 instance.setWarningSentAt(now);
                 slaInstanceRepository.save(instance);
 
-                ticketHistoryService.log(
-                        ticket,
+                ticketHistoryService.log(ticket, null, TicketEventType.SLA_WARNING,
                         null,
-                        TicketEventType.SLA_WARNING,
-                        null,
-                        "SLA warning threshold reached at " + now
-                );
+                        "SLA warning threshold reached at " + now);
 
                 emailService.sendSlaWarningEmail(ticket);
                 if (ticket.getAssignedAgent() != null) {
-                    notificationService.createNotification(
-                            ticket.getAssignedAgent(),
+                    notificationService.createNotification(ticket.getAssignedAgent(),
                             "SLA Warning: " + ticket.getTicketNumber(),
-                            "Ticket " + ticket.getTicketNumber() + " has reached the 75% SLA warning threshold.",
+                            " Ticket " + ticket.getTicketNumber() + " has reached the 75% SLA warning threshold.",
                             NotificationType.SLA_WARNING,
                             ticket
                     );
