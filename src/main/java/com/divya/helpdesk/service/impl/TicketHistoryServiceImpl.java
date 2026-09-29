@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -59,7 +60,7 @@ public class TicketHistoryServiceImpl implements TicketHistoryService {
                 .eventType(history.getEventType())
                 .oldValue(history.getOldValue())
                 .newValue(history.getNewValue())
-                .createdAt(history.getCreatedAt())
+                .createdAt(history.getCreatedAt().atZone(ZoneId.of(history.getActor().getTimezone())).toOffsetDateTime())
                 .build();
     }
 }

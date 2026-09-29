@@ -10,6 +10,8 @@ import com.divya.helpdesk.entity.HDSubCategory;
 import com.divya.helpdesk.entity.HDTicket;
 import lombok.Builder;
 
+import java.time.ZoneId;
+
 @Builder
 public class TicketMapper {
 
@@ -33,10 +35,10 @@ public class TicketMapper {
                 .reopenCount(ticket.getReopenCount())
                 .resolutionSummary(ticket.getResolutionSummary())
                 .withdrawalReason(ticket.getWithdrawalReason())
-                .resolvedAt(ticket.getResolvedAt())
-                .withdrawnAt(ticket.getWithdrawnAt())
-                .createdAt(ticket.getCreatedAt())
-                .updatedAt(includeUpdatedAt ? ticket.getUpdatedAt() : null)
+                .resolvedAt(ticket.getResolvedAt().atZone(ZoneId.of(ticket.getRequester().getTimezone())).toOffsetDateTime())
+                .withdrawnAt(ticket.getWithdrawnAt().atZone(ZoneId.of(ticket.getRequester().getTimezone())).toOffsetDateTime())
+                .createdAt(ticket.getCreatedAt().atZone(ZoneId.of(ticket.getRequester().getTimezone())).toOffsetDateTime())
+                .updatedAt(includeUpdatedAt ? ticket.getUpdatedAt().atZone(ZoneId.of(ticket.getRequester().getTimezone())).toOffsetDateTime() : null)
                 .build();
     }
 

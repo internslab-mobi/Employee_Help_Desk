@@ -1,9 +1,9 @@
 package com.divya.helpdesk.repository;
 
-import com.divya.helpdesk.entity.HDSlaPolicy;
 import com.divya.helpdesk.entity.HDTicket;
 import com.divya.helpdesk.enums.TicketStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -35,22 +35,6 @@ public interface HDTicketRepository extends JpaRepository<HDTicket, Long>, JpaSp
     // Manager - assigned to manager filtered by status
     List<HDTicket> findByAssignedManager_IdAndStatusOrderByCreatedAtDesc(Long managerId, TicketStatus status);
 
-    // Manager - all tickets in their department
-    List<HDTicket> findByDepartment_IdOrderByCreatedAtDesc(Long departmentId);
-
-    // Manager - department tickets filtered by status
-    List<HDTicket> findByDepartment_IdAndStatusOrderByCreatedAtDesc(Long departmentId, TicketStatus status);
-
-    // Manager - department tickets filtered by agent
-    List<HDTicket> findByDepartment_IdAndAssignedAgent_IdOrderByCreatedAtDesc(Long departmentId, Long agentId);
-
-    // Manager - department + agent + status
-    List<HDTicket> findByDepartment_IdAndAssignedAgent_IdAndStatusOrderByCreatedAtDesc(
-            Long departmentId,
-            Long agentId,
-            TicketStatus status
-    );
-
     // Used when calculating agent workload
     List<HDTicket> findByAssignedAgent_IdAndStatusIn(Long agentId, List<TicketStatus> statuses);
 
@@ -64,4 +48,12 @@ public interface HDTicketRepository extends JpaRepository<HDTicket, Long>, JpaSp
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM HDTicket t ORDER BY t.id DESC")
     List<HDTicket> findLastTicketForUpdate(Pageable pageable);
+
+    Page<HDTicket> findByDepartment_IdAndAssignedAgent_IdAndStatus(Long departmentId, Long agentId, TicketStatus status, Pageable pageable);
+
+    Page<HDTicket> findByDepartment_IdAndAssignedAgent_Id(Long departmentId, Long agentId, Pageable pageable);
+
+    Page<HDTicket> findByDepartment_IdAndStatus(Long departmentId, TicketStatus status, Pageable pageable);
+
+    Page<HDTicket> findByDepartment_Id(Long departmentId, Pageable pageable);
 }

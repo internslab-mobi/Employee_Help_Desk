@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -21,5 +22,5 @@ public class TicketHistoryResponse {
     private TicketEventType eventType;
     private String oldValue;
     private String newValue;
-    private Instant createdAt;
+    private OffsetDateTime createdAt;
 }
