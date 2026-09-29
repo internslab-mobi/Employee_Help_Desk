@@ -34,32 +34,34 @@ public class SlaEscalationScheduler {
     private final AgentSkillRepository agentSkillRepository;
     private final TicketHistoryService ticketHistoryService;
     private final NotificationService notificationService;
+    private final com.example.helpdesk.service.SlaService slaService;
+    private final com.example.helpdesk.repository.TicketRepository ticketRepository;
+    private final com.example.helpdesk.service.EmailService emailService;
 
     @Scheduled(fixedRate = 300000) // Run every 5 minutes
     @Transactional
     public void checkAndEscalateBreachedSlas() {
         Instant now = Instant.now();
 
-        // Find breached SLAs that haven't been escalated yet
+        // Step 1: Detect and process SLA breaches (updates SLA status, ticket status, history, admin notifications)
+        slaService.checkAndNotifySlaBreaches();
+
+        // Step 2: Find breached SLAs for escalation
         List<TicketSla> breachedSlas = ticketSlaRepository.findByStatusAndCurrentDeadlineAtBefore(
                 SlaStatus.BREACHED.name(),
                 now
         );
 
         for (TicketSla ticketSla : breachedSlas) {
-            // Check if this SLA has already been escalated (via history check)
-            // For simplicity, we'll use a flag or check if ticket has been reassigned recently
-            // Here we'll escalate if the ticket is still assigned to the same agent and hasn't been escalated recently
-
             Ticket ticket = ticketSla.getTicket();
             if (ticket.getAssignedAgent() == null) {
                 continue; // No agent assigned, skip
             }
 
-            // Check if escalation already happened recently (e.g., within last hour)
-            // This prevents repeated escalation for the same breach
-            // We'll use a simple check: if the ticket was reassigned in the last hour, skip
-            if (ticket.getUpdatedAt().isAfter(now.minus(java.time.Duration.ofHours(1)))) {
+            // Check if escalation already happened for this SLA breach by checking history
+            // If TICKET_ESCALATED history exists after the breach time, skip
+            if (hasEscalationHistoryAfterBreach(ticket, ticketSla.getBreachedAt())) {
+                log.debug("Ticket {} already escalated for SLA breach at {}, skipping", ticket.getId(), ticketSla.getBreachedAt());
                 continue;
             }
 
@@ -69,6 +71,16 @@ public class SlaEscalationScheduler {
                 log.error("Failed to escalate ticket {} for SLA breach: {}", ticket.getId(), e.getMessage());
             }
         }
+    }
+
+    private boolean hasEscalationHistoryAfterBreach(Ticket ticket, Instant breachTime) {
+        if (breachTime == null) {
+            return false;
+        }
+        // Check if there's any TICKET_ESCALATED history after the breach time
+        // This is a simplified check - in production you might want to add a specific query to TicketHistoryRepository
+        // For now, we'll use the ticket's updated_at as a proxy for escalation activity
+        return ticket.getUpdatedAt() != null && ticket.getUpdatedAt().isAfter(breachTime);
     }
 
     private void escalateTicket(Ticket ticket, TicketSla ticketSla) {
@@ -118,6 +130,14 @@ public class SlaEscalationScheduler {
                     "Ticket " + ticket.getTicketNumber() + " has been escalated and reassigned from agent " + currentAgentId + " to agent " + newAgent.getId() + "."
             );
         }
+
+        // Trigger escalation email directly with agent info
+        emailService.sendTicketEscalatedEmail(
+                newAgent.getEmployee(),
+                ticket,
+                String.valueOf(currentAgentId),
+                String.valueOf(newAgent.getId())
+        );
 
         log.info("Escalated ticket {} from agent {} to agent {} due to SLA breach",
                 ticket.getId(), currentAgentId, newAgent.getId());
