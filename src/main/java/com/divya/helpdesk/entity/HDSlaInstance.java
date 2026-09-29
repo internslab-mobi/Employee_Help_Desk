@@ -1,61 +1,70 @@
 package com.divya.helpdesk.entity;
 
-import com.divya.helpdesk.enums.HDSlaStatus;
+import com.divya.helpdesk.enums.SlaInstanceStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-@Entity
-@Table(name = "hd_sla_instances")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Entity
+@Table(
+        name = "hd_sla_instances",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_sla_instance_ticket",
+                        columnNames = "ticket_id"
+                )
+        }
+)
 public class HDSlaInstance extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "ticket_id", nullable = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "ticket_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_sla_instance_ticket")
+    )
     private HDTicket ticket;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "sla_policy_id", nullable = false)
+    @JoinColumn(
+            name = "sla_policy_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_sla_instance_policy")
+    )
     private HDSlaPolicy slaPolicy;
 
-    @Column(name = "cycle_number", nullable = false)
-    private Integer cycleNumber = 1;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
+    private SlaInstanceStatus status;
 
     @Column(name = "allocated_minutes", nullable = false)
     private Integer allocatedMinutes;
 
-    @Column(name = "sla_start_at", nullable = false)
-    private LocalDateTime slaStartAt;
+    @Column(name = "started_at", nullable = false)
+    private Instant startedAt;
 
     @Column(name = "original_deadline_at", nullable = false)
-    private LocalDateTime originalDeadlineAt;
+    private Instant originalDeadlineAt;
 
     @Column(name = "current_deadline_at", nullable = false)
-    private LocalDateTime currentDeadlineAt;
+    private Instant currentDeadlineAt;
 
     @Column(name = "warning_at")
-    private LocalDateTime warningAt;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private HDSlaStatus status = HDSlaStatus.ACTIVE;
-
-    @Column(name = "paused_at")
-    private LocalDateTime pausedAt;
-
-    @Column(name = "breached_at")
-    private LocalDateTime breachedAt;
+    private Instant warningAt;
 
     @Column(name = "warning_sent_at")
-    private LocalDateTime warningSentAt;
+    private Instant warningSentAt;
+
+    @Column(name = "breached_at")
+    private Instant breachedAt;
 
     @Column(name = "breach_sent_at")
-    private LocalDateTime breachSentAt;
+    private Instant breachSentAt;
+
+    @Column(name = "cycle_number", nullable = false)
+    private Integer cycleNumber;
 }

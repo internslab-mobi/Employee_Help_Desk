@@ -1,47 +1,29 @@
 package com.divya.helpdesk.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@Entity
-@Table(name = "hd_business_calendars")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Entity
+@Table(name = "hd_business_calendars")
 public class HDBusinessCalendar extends BaseEntity {
 
-    @Column(nullable = false, unique = true, length = 50)
-    private String code;
-
-    @Column(nullable = false, length = 100)
+    @Column(name = "name", nullable = false, unique = true, length = 100)
     private String name;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
-    @Column(name = "timezone", nullable = false, length = 50)
-    private String timezone = "UTC";
-
     @Column(name = "is_default", nullable = false)
-    private Boolean isDefault = false;
+    private Boolean isDefault;
+
+    @Column(name = "code", nullable = false, unique = true, length = 50)
+    private String code;
 
     @Column(name = "is_active", nullable = false)
-    private Boolean isActive = true;
+    private Boolean active;
 
-    @OneToMany(mappedBy = "businessCalendar", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<HDBusinessHours> businessHours = new ArrayList<>();
-
-    @OneToMany(mappedBy = "businessCalendar", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<HDHoliday> holidays = new ArrayList<>();
-
-    public Long getCalendarId() {
-        return getId();
-    }
+    @Column(name = "timezone", nullable = false, length = 50)
+    private String timezone;
 }
