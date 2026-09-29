@@ -7,6 +7,8 @@ import com.divya.helpdesk.entity.HDDepartment;
 import com.divya.helpdesk.entity.HDEmployee;
 import lombok.Builder;
 
+import java.time.ZoneId;
+
 @Builder
 public class EmployeeMapper {
 
@@ -25,6 +27,7 @@ public class EmployeeMapper {
                 .employmentStatus(employee.getEmploymentStatus())
                 .dateOfJoining(employee.getDateOfJoining())
                 .timezone(employee.getTimezone())
+                .createdAt(employee.getCreatedAt().atZone(ZoneId.of(employee.getTimezone())).toOffsetDateTime())
                 .build();
     }
 
@@ -42,8 +45,8 @@ public class EmployeeMapper {
                 .employmentStatus(employee.getEmploymentStatus())
                 .dateOfJoining(employee.getDateOfJoining())
                 .timezone(employee.getTimezone())
-                .createdAt(employee.getCreatedAt())
-                .updatedAt(employee.getUpdatedAt())
+                .createdAt(employee.getCreatedAt().atZone(ZoneId.of(employee.getTimezone())).toOffsetDateTime())
+                .updatedAt(employee.getUpdatedAt().atZone(ZoneId.of(employee.getTimezone())).toOffsetDateTime())
                 .build();
     }
 

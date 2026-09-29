@@ -8,11 +8,7 @@ import java.util.List;
 
 public interface AttachmentService {
 
-    TicketAttachmentResponse uploadAttachment(Long ticketId, MultipartFile file);
+    TicketAttachmentResponse uploadAttachment(Long ticketId, Long messageId, MultipartFile file);
 
     List<TicketAttachmentResponse> getAttachments(Long ticketId);
-
-    HDTicketAttachment getAttachment(Long ticketId, Long attachmentId);
-
-    void deleteAttachment(Long ticketId, Long attachmentId);
 }
