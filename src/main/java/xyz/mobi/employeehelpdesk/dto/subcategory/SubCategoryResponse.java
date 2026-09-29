@@ -3,8 +3,6 @@ package xyz.mobi.employeehelpdesk.dto.subcategory;
 import lombok.Builder;
 import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 
-import java.time.LocalDateTime;
-
 @Builder
 public record SubCategoryResponse(
         Long id,
@@ -17,8 +15,6 @@ public record SubCategoryResponse(
         Priority priority,
         Boolean isActive,
         Long createdById,
-        String createdByName,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        String createdByName
 ) {
 }

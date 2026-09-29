@@ -1,19 +1,27 @@
 package xyz.mobi.employeehelpdesk.service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 
 public interface WorkingCalendarService {
 
-    LocalDateTime addWorkingMinutes(
-            LocalDateTime start,
-            long workingMinutes
+    Instant addWorkingMinutes(
+            Instant start,
+            long workingMinutes,
+            Long departmentId,
+            ZoneId departmentZone
     );
 
-    public LocalDateTime moveToWorkingTime(
-            LocalDateTime dateTime);
+    Instant moveToWorkingTime(
+            Instant instant,
+            Long departmentId,
+            ZoneId departmentZone
+    );
 
     long calculateWorkingMinutes(
-            LocalDateTime start,
-            LocalDateTime end
+            Instant start,
+            Instant end,
+            Long departmentId,
+            ZoneId departmentZone
     );
-}
+}
