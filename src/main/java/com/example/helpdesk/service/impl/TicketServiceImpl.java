@@ -15,7 +15,15 @@ import com.example.helpdesk.dto.request.UpdateTicketStatusRequest;
 import com.example.helpdesk.dto.request.WithdrawTicketRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.helpdesk.dto.response.AssignmentProposalResponse;
+import com.example.helpdesk.dto.response.AssignedAgentResponse;
+import com.example.helpdesk.dto.response.AssignedManagerResponse;
+import com.example.helpdesk.dto.response.AssignmentResponse;
+import com.example.helpdesk.dto.response.CategoryResponse;
+import com.example.helpdesk.dto.response.DepartmentResponse;
+import com.example.helpdesk.dto.response.SlaResponse;
+import com.example.helpdesk.dto.response.SubCategoryResponse;
 import com.example.helpdesk.dto.response.TicketAttachmentResponse;
+import com.example.helpdesk.dto.response.TicketDetailsResponse;
 import com.example.helpdesk.dto.response.TicketFeedbackResponse;
 import com.example.helpdesk.dto.response.TicketMessageResponse;
 import com.example.helpdesk.dto.response.TicketResponse;
@@ -477,9 +485,7 @@ public class TicketServiceImpl implements TicketService {
                 savedTicket.getTicketNumber()
         );
 
-        TicketResponse response = ticketMapper.toResponse(savedTicket);
-        response.setAttachments(getTicketAttachmentsForResponse(savedTicket.getId()));
-        return convertTicketResponseTimezonesWithoutUpdatedAt(response, savedTicket);
+        return buildNestedTicketResponse(savedTicket, false);
     }
 
 
@@ -550,7 +556,7 @@ public class TicketServiceImpl implements TicketService {
                 newStatus
         );
 
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -588,7 +594,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         log.info("Ticket priority updated. ticketId={}, newPriority={}", ticketId, request.getPriority());
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -634,7 +640,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         log.info("Ticket category updated. ticketId={}, newCategoryId={}", ticketId, request.getCategoryId());
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -770,7 +776,7 @@ public class TicketServiceImpl implements TicketService {
             );
             
             Ticket savedTicket = ticketRepository.save(ticket);
-            return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+            return buildNestedTicketResponse(savedTicket, true);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid data for ASSIGN_MANAGER operation: " + e.getMessage());
         }
@@ -838,7 +844,7 @@ public class TicketServiceImpl implements TicketService {
         );
 
         log.info("Ticket assigned. ticketId={}, agentId={}", ticketId, request.getAgentId());
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -865,7 +871,7 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket resolved. ticketId={}", ticketId);
 
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -876,7 +882,7 @@ public class TicketServiceImpl implements TicketService {
         ticket.setReopenedAt(Instant.now());
         Ticket savedTicket = ticketRepository.save(ticket);
         log.info("Ticket reopened. ticketId={}", ticketId);
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -940,7 +946,7 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} put on hold by agent - final status={}", ticketId, savedTicket.getStatus());
 
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -994,7 +1000,7 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} resumed", ticketId);
 
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -1064,7 +1070,7 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} resolved with SLA met: {}", ticketId, slaMet);
 
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -1093,11 +1099,11 @@ public class TicketServiceImpl implements TicketService {
 
         int newAllocatedMinutes = Math.max(originalSla.getAllocatedMinutes() / 2, 30); // Minimum 30 minutes
 
-        ticket.setStatus(TicketStatus.REOPENED.name());
         ticket.setReopenCount(ticket.getReopenCount() + 1);
         ticket.setReopenedAt(Instant.now());
         ticket.setResolvedAt(null);
         ticket.setResolutionSummary(null);
+        ticket.setStatus(TicketStatus.IN_PROGRESS.name());
 
         Ticket savedTicket = ticketRepository.save(ticket);
 
@@ -1135,7 +1141,7 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} reopened with new SLA cycle, allocated minutes: {}", ticketId, newAllocatedMinutes);
 
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     @Override
@@ -1220,7 +1226,7 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} withdrawn by employee {}", ticketId, employeeId);
 
-        return convertTicketResponseTimezones(ticketMapper.toResponse(savedTicket), savedTicket);
+        return buildNestedTicketResponse(savedTicket, true);
     }
 
     // ==================== INTERNAL ROUTING HELPER ====================
@@ -2027,6 +2033,166 @@ public class TicketServiceImpl implements TicketService {
                 .comment(feedback.getComment())
                 .createdAt(TimezoneUtil.toOffsetDateTime(feedback.getCreatedAt(), timezone))
                 .build();
+    }
+
+    private TicketResponse buildNestedTicketResponse(Ticket ticket, boolean includeUpdatedAt) {
+        String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
+
+        // Build ticket details
+        TicketDetailsResponse ticketDetails = TicketDetailsResponse.builder()
+                .id(ticket.getId())
+                .ticketNumber(ticket.getTicketNumber())
+                .subject(ticket.getSubject())
+                .description(ticket.getDescription())
+                .priority(ticket.getPriority())
+                .status(ticket.getStatus())
+                .reopenCount(ticket.getReopenCount())
+                .resolutionSummary(ticket.getResolutionSummary())
+                .holdReason(ticket.getHoldReason())
+                .withdrawalReason(ticket.getWithdrawalReason())
+                .build();
+
+        // Build employee (requester)
+        EmployeeResponse employee = null;
+        if (ticket.getRequester() != null) {
+            EmployeeResponse.DepartmentResponse deptResp = null;
+            if (ticket.getRequester().getDepartment() != null) {
+                deptResp = EmployeeResponse.DepartmentResponse.builder()
+                        .id(ticket.getRequester().getDepartment().getId())
+                        .code(ticket.getRequester().getDepartment().getCode())
+                        .name(ticket.getRequester().getDepartment().getName())
+                        .description(ticket.getRequester().getDepartment().getDescription())
+                        .active(ticket.getRequester().getDepartment().getActive())
+                        .build();
+            }
+            employee = EmployeeResponse.builder()
+                    .id(ticket.getRequester().getId())
+                    .employeeCode(ticket.getRequester().getEmployeeCode())
+                    .firstName(ticket.getRequester().getFirstName())
+                    .lastName(ticket.getRequester().getLastName())
+                    .email(ticket.getRequester().getEmail())
+                    .phone(ticket.getRequester().getPhone())
+                    .designation(ticket.getRequester().getDesignation())
+                    .department(deptResp)
+                    .employmentStatus(ticket.getRequester().getEmploymentStatus())
+                    .dateOfJoining(ticket.getRequester().getDateOfJoining())
+                    .dateOfExit(ticket.getRequester().getDateOfExit())
+                    .role(ticket.getRequester().getRole())
+                    .createdAt(TimezoneUtil.toOffsetDateTime(ticket.getRequester().getCreatedAt(), timezone))
+                    .build();
+        }
+
+        // Build department
+        DepartmentResponse department = null;
+        if (ticket.getDepartment() != null) {
+            department = DepartmentResponse.builder()
+                    .id(ticket.getDepartment().getId())
+                    .code(ticket.getDepartment().getCode())
+                    .name(ticket.getDepartment().getName())
+                    .build();
+        }
+
+        // Build category with nested subcategory
+        CategoryResponse category = null;
+        if (ticket.getCategory() != null) {
+            SubCategoryResponse subCategory = null;
+            if (ticket.getSubCategory() != null) {
+                subCategory = SubCategoryResponse.builder()
+                        .id(ticket.getSubCategory().getId())
+                        .name(ticket.getSubCategory().getName())
+                        .build();
+            }
+            category = CategoryResponse.builder()
+                    .id(ticket.getCategory().getId())
+                    .name(ticket.getCategory().getName())
+                    .subCategory(subCategory)
+                    .build();
+        }
+
+        // Build assignment with nested agent and manager
+        AssignmentResponse assignment = AssignmentResponse.builder()
+                .assignedAgent(buildAssignedAgentResponse(ticket.getAssignedAgent()))
+                .assignedManager(buildAssignedManagerResponse(ticket.getAssignedManager()))
+                .build();
+
+        // Build SLA response
+        SlaResponse sla = buildSlaResponse(ticket.getId());
+
+        // Build attachments
+        List<TicketAttachmentResponse> attachments = getTicketAttachmentsForResponse(ticket.getId());
+
+        // Build final response
+        TicketResponse response = TicketResponse.builder()
+                .ticket(ticketDetails)
+                .employee(employee)
+                .department(department)
+                .category(category)
+                .assignment(assignment)
+                .sla(sla)
+                .attachments(attachments)
+                .build();
+
+        // Add updatedAt if required
+        if (includeUpdatedAt && ticket.getUpdatedAt() != null) {
+            response.setUpdatedAt(TimezoneUtil.toOffsetDateTime(ticket.getUpdatedAt(), timezone));
+        }
+
+        return response;
+    }
+
+    private AssignedAgentResponse buildAssignedAgentResponse(DepartmentAgent departmentAgent) {
+        if (departmentAgent == null || departmentAgent.getEmployee() == null) {
+            return null;
+        }
+        return AssignedAgentResponse.builder()
+                .id(departmentAgent.getId())
+                .employeeCode(departmentAgent.getEmployee().getEmployeeCode())
+                .name(departmentAgent.getEmployee().getFirstName() + " " + departmentAgent.getEmployee().getLastName())
+                .build();
+    }
+
+    private AssignedManagerResponse buildAssignedManagerResponse(DepartmentManager departmentManager) {
+        if (departmentManager == null || departmentManager.getEmployee() == null) {
+            return null;
+        }
+        return AssignedManagerResponse.builder()
+                .id(departmentManager.getId())
+                .employeeCode(departmentManager.getEmployee().getEmployeeCode())
+                .name(departmentManager.getEmployee().getFirstName() + " " + departmentManager.getEmployee().getLastName())
+                .build();
+    }
+
+    private SlaResponse buildSlaResponse(Long ticketId) {
+        Optional<TicketSla> slaInstance = ticketSlaRepository.findByTicketId(ticketId);
+        if (slaInstance.isEmpty()) {
+            return null;
+        }
+        TicketSla sla = slaInstance.get();
+        String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
+        return SlaResponse.builder()
+                .ticketId(sla.getTicket().getId())
+                .ticketNumber(sla.getTicket().getTicketNumber())
+                .slaPolicyId(sla.getSlaPolicy().getId())
+                .cycleNumber(sla.getCycleNumber())
+                .allocatedMinutes(sla.getAllocatedMinutes())
+                .slaStartAt(TimezoneUtil.toOffsetDateTime(sla.getSlaStartAt(), timezone))
+                .warningAt(sla.getWarningAt() != null ? TimezoneUtil.toOffsetDateTime(sla.getWarningAt(), timezone) : null)
+                .deadlineAt(TimezoneUtil.toOffsetDateTime(sla.getCurrentDeadlineAt(), timezone))
+                .status(sla.getStatus())
+                .breachedAt(sla.getBreachedAt() != null ? TimezoneUtil.toOffsetDateTime(sla.getBreachedAt(), timezone) : null)
+                .remainingMinutes(calculateRemainingMinutes(sla))
+                .build();
+    }
+
+    private Integer calculateRemainingMinutes(TicketSla sla) {
+        if (sla.getStatus().equals(SlaStatus.BREACHED.name()) || sla.getStatus().equals(SlaStatus.COMPLETED.name())) {
+            return 0;
+        }
+        if (sla.getCurrentDeadlineAt() == null) {
+            return null;
+        }
+        long remainingMillis = sla.getCurrentDeadlineAt().toEpochMilli() - Instant.now().toEpochMilli();
+        return remainingMillis > 0 ? (int) (remainingMillis / 60000) : 0;
     }
 
     @lombok.Data
