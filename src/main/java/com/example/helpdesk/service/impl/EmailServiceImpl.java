@@ -304,4 +304,109 @@ public class EmailServiceImpl implements EmailService {
         sb.append("Regards,\nEmployee Help Desk");
         return sb.toString();
     }
+
+    @Override
+    @Async("emailTaskExecutor")
+    public void sendSlaWarningEmail(Employee recipient, Ticket ticket) {
+        if (!emailEnabled) {
+            log.debug("Email sending disabled");
+            return;
+        }
+
+        if (!isValidRecipient(recipient.getEmail())) {
+            log.warn("Invalid recipient email for SLA warning email: {}", recipient.getEmail());
+            return;
+        }
+
+        sendEmailWithRetry(recipient.getEmail(),
+                "SLA Warning: " + ticket.getTicketNumber(),
+                buildSlaWarningEmailBody(ticket),
+                "SLA warning");
+    }
+
+    @Override
+    @Async("emailTaskExecutor")
+    public void sendSlaBreachedEmail(Employee recipient, Ticket ticket) {
+        if (!emailEnabled) {
+            log.debug("Email sending disabled");
+            return;
+        }
+
+        if (!isValidRecipient(recipient.getEmail())) {
+            log.warn("Invalid recipient email for SLA breach email: {}", recipient.getEmail());
+            return;
+        }
+
+        sendEmailWithRetry(recipient.getEmail(),
+                "SLA Breached: " + ticket.getTicketNumber(),
+                buildSlaBreachedEmailBody(ticket),
+                "SLA breach");
+    }
+
+    @Override
+    @Async("emailTaskExecutor")
+    public void sendTicketEscalatedEmail(Employee recipient, Ticket ticket, String previousAgent, String newAgent) {
+        if (!emailEnabled) {
+            log.debug("Email sending disabled");
+            return;
+        }
+
+        if (!isValidRecipient(recipient.getEmail())) {
+            log.warn("Invalid recipient email for ticket escalation email: {}", recipient.getEmail());
+            return;
+        }
+
+        sendEmailWithRetry(recipient.getEmail(),
+                "Ticket Escalated: " + ticket.getTicketNumber(),
+                buildTicketEscalatedEmailBody(ticket, previousAgent, newAgent),
+                "ticket escalation");
+    }
+
+    private String buildSlaWarningEmailBody(Ticket ticket) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dear ").append(ticket.getAssignedAgent() != null ?
+                ticket.getAssignedAgent().getEmployee().getFirstName() : "Team Member").append(",\n\n");
+        sb.append("Your ticket is approaching its SLA deadline.\n\n");
+        sb.append("Ticket Number: ").append(ticket.getTicketNumber()).append("\n");
+        sb.append("Subject: ").append(ticket.getSubject()).append("\n");
+        sb.append("Status: ").append(ticket.getStatus()).append("\n");
+        sb.append("Priority: ").append(ticket.getPriority()).append("\n\n");
+        sb.append("Please ensure this ticket is resolved before the SLA deadline to avoid escalation.\n\n");
+        sb.append("Thank you,\nHelp Desk Team");
+        return sb.toString();
+    }
+
+    private String buildSlaBreachedEmailBody(Ticket ticket) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dear ").append(ticket.getAssignedAgent() != null ?
+                ticket.getAssignedAgent().getEmployee().getFirstName() : "Team Member").append(",\n\n");
+        sb.append("Your ticket has breached its SLA deadline.\n\n");
+        sb.append("Ticket Number: ").append(ticket.getTicketNumber()).append("\n");
+        sb.append("Subject: ").append(ticket.getSubject()).append("\n");
+        sb.append("Status: ").append(ticket.getStatus()).append("\n");
+        sb.append("Priority: ").append(ticket.getPriority()).append("\n\n");
+        sb.append("This ticket has been marked as BREACHED and may be escalated to another agent.\n\n");
+        sb.append("Thank you,\nHelp Desk Team");
+        return sb.toString();
+    }
+
+    private String buildTicketEscalatedEmailBody(Ticket ticket, String previousAgent, String newAgent) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dear ").append(ticket.getAssignedAgent() != null ?
+                ticket.getAssignedAgent().getEmployee().getFirstName() : "Team Member").append(",\n\n");
+        sb.append("A ticket has been escalated due to SLA breach.\n\n");
+        sb.append("Ticket Number: ").append(ticket.getTicketNumber()).append("\n");
+        sb.append("Subject: ").append(ticket.getSubject()).append("\n");
+        sb.append("Status: ").append(ticket.getStatus()).append("\n");
+        sb.append("Priority: ").append(ticket.getPriority()).append("\n");
+        if (previousAgent != null) {
+            sb.append("Previous Agent: ").append(previousAgent).append("\n");
+        }
+        if (newAgent != null) {
+            sb.append("New Agent: ").append(newAgent).append("\n");
+        }
+        sb.append("\nPlease work on this escalated ticket according to the SLA.\n\n");
+        sb.append("Thank you,\nHelp Desk Team");
+        return sb.toString();
+    }
 }

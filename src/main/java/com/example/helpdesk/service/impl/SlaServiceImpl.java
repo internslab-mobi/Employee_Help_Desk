@@ -27,6 +27,9 @@ public class SlaServiceImpl implements SlaService {
     private final SlaRuleRepository slaRuleRepository;
     private final BusinessTimeService businessTimeService;
     private final TicketRepository ticketRepository;
+    private final com.example.helpdesk.service.TicketHistoryService ticketHistoryService;
+    private final com.example.helpdesk.service.NotificationService notificationService;
+    private final com.example.helpdesk.repository.EmployeeRepository employeeRepository;
 
     @Override
     @Transactional
@@ -118,6 +121,8 @@ public class SlaServiceImpl implements SlaService {
             ticketSla.setStatus(SlaStatus.BREACHED.name());
             ticketSla.setBreachedAt(now);
             log.warn("SLA breached for ticket {}", ticket.getId());
+            ticket.setStatus(com.example.helpdesk.enums.TicketStatus.BREACHED.name());
+            ticketRepository.save(ticket);
         } else if (ticketSla.getWarningAt() != null && now.isAfter(ticketSla.getWarningAt())) {
             ticketSla.setStatus(SlaStatus.WARNING.name());
             log.info("SLA warning for ticket {}", ticket.getId());
@@ -228,6 +233,34 @@ public class SlaServiceImpl implements SlaService {
                 ticketSla.setBreachedAt(now);
                 ticketSla.setUpdatedAt(now);
                 ticketSlaRepository.save(ticketSla);
+                
+                // Synchronize ticket status to BREACHED
+                Ticket ticket = ticketSla.getTicket();
+                ticket.setStatus(com.example.helpdesk.enums.TicketStatus.BREACHED.name());
+                ticketRepository.save(ticket);
+                
+                // Record SLA_BREACHED history
+                ticketHistoryService.recordHistory(
+                        ticket,
+                        ticket.getAssignedAgent() != null ? ticket.getAssignedAgent().getEmployee() : null,
+                        com.example.helpdesk.enums.TicketEventType.SLA_BREACHED,
+                        null,
+                        "SLA deadline breached at " + now,
+                        null
+                );
+                
+                // Send admin notification for SLA breach
+                List<com.example.helpdesk.entity.Employee> admins = employeeRepository.findByRole("ADMIN");
+                for (com.example.helpdesk.entity.Employee admin : admins) {
+                    notificationService.sendNotification(
+                            admin,
+                            ticket,
+                            com.example.helpdesk.enums.NotificationType.SLA_BREACH,
+                            "SLA Breach Alert - Ticket " + ticket.getTicketNumber(),
+                            "Ticket " + ticket.getTicketNumber() + " has breached its SLA and requires administrative attention/escalation."
+                    );
+                }
+                
                 log.warn("SLA breach detected and marked for ticket {}", ticketSla.getTicket().getId());
             }
         }
@@ -243,6 +276,29 @@ public class SlaServiceImpl implements SlaService {
                 ticketSla.setStatus(SlaStatus.WARNING.name());
                 ticketSla.setUpdatedAt(now);
                 ticketSlaRepository.save(ticketSla);
+                
+                // Record SLA_WARNING history
+                Ticket ticket = ticketSla.getTicket();
+                ticketHistoryService.recordHistory(
+                        ticket,
+                        ticket.getAssignedAgent() != null ? ticket.getAssignedAgent().getEmployee() : null,
+                        com.example.helpdesk.enums.TicketEventType.SLA_WARNING,
+                        null,
+                        "SLA warning threshold reached at " + now,
+                        null
+                );
+                
+                // Send SLA_WARNING notification to assigned agent
+                if (ticket.getAssignedAgent() != null) {
+                    notificationService.sendNotification(
+                            ticket.getAssignedAgent().getEmployee(),
+                            ticket,
+                            com.example.helpdesk.enums.NotificationType.SLA_WARNING,
+                            "SLA Warning - Ticket " + ticket.getTicketNumber(),
+                            "Ticket " + ticket.getTicketNumber() + " is approaching its SLA deadline."
+                    );
+                }
+                
                 log.info("SLA warning detected and marked for ticket {}", ticketSla.getTicket().getId());
             }
         }

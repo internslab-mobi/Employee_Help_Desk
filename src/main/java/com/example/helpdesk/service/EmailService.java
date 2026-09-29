@@ -16,4 +16,10 @@ public interface EmailService {
     void sendTicketWithdrawnEmail(Employee requester, Ticket ticket, String withdrawalReason);
 
     void sendAccountCreatedEmail(Employee employee, String temporaryPassword, String otp, int otpExpirationMinutes);
+
+    void sendSlaWarningEmail(Employee recipient, Ticket ticket);
+
+    void sendSlaBreachedEmail(Employee recipient, Ticket ticket);
+
+    void sendTicketEscalatedEmail(Employee recipient, Ticket ticket, String previousAgent, String newAgent);
 }

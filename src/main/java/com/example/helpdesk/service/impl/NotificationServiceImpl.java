@@ -92,6 +92,17 @@ public class NotificationServiceImpl implements NotificationService {
                 case TICKET_WITHDRAWN:
                     emailService.sendTicketWithdrawnEmail(ticket.getRequester(), ticket, ticket.getWithdrawalReason());
                     break;
+                case SLA_WARNING:
+                    emailService.sendSlaWarningEmail(recipient, ticket);
+                    break;
+                case SLA_BREACH:
+                    emailService.sendSlaBreachedEmail(recipient, ticket);
+                    break;
+                case TICKET_ESCALATED:
+                    // For escalation, we need to extract agent info from message or metadata
+                    // For now, send with null agent info - the email body will handle it
+                    emailService.sendTicketEscalatedEmail(recipient, ticket, null, null);
+                    break;
                 default:
                     // No email for other notification types
                     break;

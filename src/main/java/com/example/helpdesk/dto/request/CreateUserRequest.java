@@ -21,6 +21,10 @@ public class CreateUserRequest {
     @NotNull(message = "Type is required")
     private Role type;
 
+    @NotBlank(message = "Employee code is required")
+    @Size(max = 50, message = "Employee code must not exceed 50 characters")
+    private String employeeCode;
+
     @NotBlank(message = "First name is required")
     @Size(max = 100, message = "First name must not exceed 100 characters")
     private String firstName;
