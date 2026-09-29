@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -21,5 +22,5 @@ public class NotificationResponse {
     private String message;
     private NotificationType type;
     private ReferenceTicketDTO reference;
-    private Instant createdAt;
+    private OffsetDateTime createdAt;
 }

@@ -62,17 +62,6 @@ public class TicketController {
         return ResponseEntity.noContent().build();
     }
 
-    // Single GET ALL endpoint with offset pagination (Default limit = 10, offset = 0)
-    @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<PageResponse<TicketResponse>> getAllTickets(
-            @RequestParam(defaultValue = "10") int limit,
-            @RequestParam(defaultValue = "0") long offset){
-
-        return ResponseEntity.ok(ticketService.getAllTicketsPaginated(limit, offset));
-    }
-
-
     // View own tickets (Employee)
     @GetMapping("/me")
     public ResponseEntity<List<TicketResponse>> getMyTickets(@RequestParam(required = false) TicketStatus status){
@@ -91,11 +80,13 @@ public class TicketController {
     // View department tickets (Manager / Admin)
     @GetMapping("/department")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<List<TicketResponse>> getDepartmentTickets(
+    public ResponseEntity<PageResponse<TicketResponse>> getDepartmentTickets(
             @RequestParam(required = false) Long agentId,
-            @RequestParam(required = false) TicketStatus status){
+            @RequestParam(required = false) TicketStatus status,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(defaultValue = "0") long offset){
 
-        return ResponseEntity.ok(ticketService.getDepartmentTickets(agentId, status));
+        return ResponseEntity.ok(ticketService.getDepartmentTickets(agentId, status, limit, offset));
     }
 
     // Withdraw ticket (Employee)
@@ -171,9 +162,9 @@ public class TicketController {
     // ATTACHMENT ENDPOINTS (BLOB Storage)
 
     // Upload attachment (BLOB)
-    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<TicketAttachmentResponse> uploadAttachment(@PathVariable Long id, @RequestParam("file") MultipartFile file){
-        TicketAttachmentResponse response = attachmentService.uploadAttachment(id, file);
+    @PostMapping(value = "/{ticketId}/meaasge/{messageId}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<TicketAttachmentResponse> uploadAttachment(@PathVariable Long ticketId, @PathVariable Long messageId, @RequestParam("file") MultipartFile file){
+        TicketAttachmentResponse response = attachmentService.uploadAttachment(ticketId, messageId, file);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -185,17 +176,4 @@ public class TicketController {
         return ResponseEntity.ok(attachmentService.getAttachments(id));
     }
 
-    // Download attachment binary data
-    @GetMapping("/{id}/attachments/{attachmentId}/download")
-    public ResponseEntity<Resource> downloadAttachment(@PathVariable Long id, @PathVariable Long attachmentId){
-        HDTicketAttachment attachment = attachmentService.getAttachment(id, attachmentId);
-
-        ByteArrayResource resource = new ByteArrayResource(attachment.getFileData());
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(attachment.getMimeType()))
-                .contentLength(attachment.getFileData().length)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + attachment.getOriginalFilename() + "\"")
-                .body(resource);
-    }
 }

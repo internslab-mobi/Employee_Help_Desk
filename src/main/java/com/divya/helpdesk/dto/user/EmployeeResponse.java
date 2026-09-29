@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -29,4 +30,5 @@ public class EmployeeResponse {
     private EmploymentStatus employmentStatus;
     private LocalDate dateOfJoining;
     private String timezone;
+    private OffsetDateTime createdAt;
 }

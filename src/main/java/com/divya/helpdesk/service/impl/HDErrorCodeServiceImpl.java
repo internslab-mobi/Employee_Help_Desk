@@ -25,7 +25,6 @@ public class HDErrorCodeServiceImpl implements HDErrorCodeService {
     private final Map<String, String> errorCodeToMessageMap = new ConcurrentHashMap<>();
 
     @Override
-    @Cacheable(value = "errorCodes")
     public Map<String, String> loadAllErrorCodes() {
         try {
             var dbCodes = errorCodeRepository.findAll();
