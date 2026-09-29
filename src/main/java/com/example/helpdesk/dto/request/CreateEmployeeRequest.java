@@ -18,6 +18,10 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class CreateEmployeeRequest {
 
+    @NotBlank(message = "Employee code is required")
+    @Size(max = 50, message = "Employee code must not exceed 50 characters")
+    private String employeeCode;
+
     @NotBlank(message = "First name is required")
     @Size(max = 100, message = "First name must not exceed 100 characters")
     private String firstName;
