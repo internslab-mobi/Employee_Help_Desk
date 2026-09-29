@@ -7,78 +7,72 @@ import xyz.mobi.employeehelpdesk.entity.Holiday;
 import xyz.mobi.employeehelpdesk.repository.HolidayRepository;
 import xyz.mobi.employeehelpdesk.service.WorkingCalendarService;
 
-import java.time.DayOfWeek;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class WorkingCalendarServiceImpl
-        implements WorkingCalendarService {
+public class WorkingCalendarServiceImpl implements WorkingCalendarService {
 
-    @Value("${helpdesk.sla.work-start}")
-    private LocalTime workStart;
+    @Value("${helpdesk.sla.work-start:08:30}")
+    private LocalTime workStart = LocalTime.of(8, 30);
 
-    @Value("${helpdesk.sla.work-end}")
-    private LocalTime workEnd;
+    @Value("${helpdesk.sla.work-end:17:30}")
+    private LocalTime workEnd = LocalTime.of(17, 30);
 
     private final HolidayRepository holidayRepository;
 
     @Override
-    public LocalDateTime moveToWorkingTime(
-            LocalDateTime dateTime) {
+    public Instant moveToWorkingTime(
+            Instant instant,
+            Long departmentId,
+            ZoneId departmentZone
+    ) {
+        if (instant == null) {
+            return null;
+        }
+        if (departmentZone == null) {
+            throw new IllegalArgumentException("Department ZoneId must not be null");
+        }
 
-        LocalDate startDate = dateTime.toLocalDate();
+        ZonedDateTime zdt = instant.atZone(departmentZone);
+        LocalDate startDate = zdt.toLocalDate();
 
-        Set<LocalDate> holidays =
-                holidayRepository
-                        .findByHolidayDateBetween(
-                                startDate,
-                                startDate.plusDays(30)
-                        )
-                        .stream()
-                        .map(Holiday::getHolidayDate)
-                        .collect(Collectors.toSet());
+        Set<LocalDate> holidays = fetchHolidays(departmentId, startDate, startDate.plusDays(30));
 
-        return moveToWorkingTime(
-                dateTime,
-                holidays
-        );
+        ZonedDateTime workingZdt = moveToWorkingTimeInternal(zdt, holidays, departmentZone);
+        return workingZdt.toInstant();
     }
 
     @Override
-    public LocalDateTime addWorkingMinutes(
-            LocalDateTime start,
-            long workingMinutes) {
-
-        if (workingMinutes <= 0) {
-            return moveToWorkingTime(start);
+    public Instant addWorkingMinutes(
+            Instant start,
+            long workingMinutes,
+            Long departmentId,
+            ZoneId departmentZone
+    ) {
+        if (start == null) {
+            return null;
+        }
+        if (departmentZone == null) {
+            throw new IllegalArgumentException("Department ZoneId must not be null");
         }
 
-        LocalDateTime current = start;
+        if (workingMinutes <= 0) {
+            return moveToWorkingTime(start, departmentId, departmentZone);
+        }
+
+        ZonedDateTime current = start.atZone(departmentZone);
+        LocalDate startDate = current.toLocalDate();
+
+        Set<LocalDate> holidays = fetchHolidays(departmentId, startDate, startDate.plusYears(1));
 
         long remainingMinutes = workingMinutes;
 
-        Set<LocalDate> holidays =
-                holidayRepository
-                        .findByHolidayDateBetween(
-                                start.toLocalDate(),
-                                start.toLocalDate().plusYears(1)
-                        )
-                        .stream()
-                        .map(Holiday::getHolidayDate)
-                        .collect(Collectors.toSet());
-
         while (remainingMinutes > 0) {
-
-            current = moveToWorkingTime(
-                    current,
-                    holidays
-            );
+            current = moveToWorkingTimeInternal(current, holidays, departmentZone);
 
             long availableMinutesToday =
                     Duration.between(
@@ -86,123 +80,115 @@ public class WorkingCalendarServiceImpl
                             workEnd
                     ).toMinutes();
 
-            long minutesToAdd =
-                    Math.min(
-                            remainingMinutes,
-                            availableMinutesToday
-                    );
+            long minutesToAdd = Math.min(remainingMinutes, availableMinutesToday);
 
             current = current.plusMinutes(minutesToAdd);
-
             remainingMinutes -= minutesToAdd;
 
             if (remainingMinutes > 0) {
-                current = nextDayAtWorkStart(current);
+                current = nextDayAtWorkStart(current, departmentZone);
             }
         }
 
-        return current;
+        return current.toInstant();
     }
 
     @Override
     public long calculateWorkingMinutes(
-            LocalDateTime start,
-            LocalDateTime end) {
-
+            Instant start,
+            Instant end,
+            Long departmentId,
+            ZoneId departmentZone
+    ) {
         if (start == null || end == null || !end.isAfter(start)) {
             return 0;
         }
+        if (departmentZone == null) {
+            throw new IllegalArgumentException("Department ZoneId must not be null");
+        }
 
-        LocalDate startDate = start.toLocalDate();
-        LocalDate endDate = end.toLocalDate();
+        ZonedDateTime startZdt = start.atZone(departmentZone);
+        ZonedDateTime endZdt = end.atZone(departmentZone);
 
-        Set<LocalDate> holidays =
-                holidayRepository
-                        .findByHolidayDateBetween(
-                                startDate,
-                                endDate.plusDays(30)
-                        )
-                        .stream()
-                        .map(Holiday::getHolidayDate)
-                        .collect(Collectors.toSet());
+        LocalDate startDate = startZdt.toLocalDate();
+        LocalDate endDate = endZdt.toLocalDate();
 
-        LocalDateTime current = moveToWorkingTime(start, holidays);
-        if (!end.isAfter(current)) {
+        Set<LocalDate> holidays = fetchHolidays(departmentId, startDate, endDate.plusDays(30));
+
+        ZonedDateTime current = moveToWorkingTimeInternal(startZdt, holidays, departmentZone);
+        if (!endZdt.isAfter(current)) {
             return 0;
         }
 
         long totalWorkingMinutes = 0;
 
-        while (current.isBefore(end)) {
-            current = moveToWorkingTime(current, holidays);
-            if (!current.isBefore(end)) {
+        while (current.isBefore(endZdt)) {
+            current = moveToWorkingTimeInternal(current, holidays, departmentZone);
+            if (!current.isBefore(endZdt)) {
                 break;
             }
 
             LocalDate currentDate = current.toLocalDate();
-            LocalDateTime endOfWorkToday = LocalDateTime.of(currentDate, workEnd);
+            ZonedDateTime endOfWorkToday = currentDate.atTime(workEnd).atZone(departmentZone);
 
-            LocalDateTime effectiveEnd = end.isBefore(endOfWorkToday) ? end : endOfWorkToday;
+            ZonedDateTime effectiveEnd = endZdt.isBefore(endOfWorkToday) ? endZdt : endOfWorkToday;
 
             if (effectiveEnd.isAfter(current)) {
                 totalWorkingMinutes += Duration.between(current, effectiveEnd).toMinutes();
             }
 
-            current = nextDayAtWorkStart(current);
+            current = nextDayAtWorkStart(current, departmentZone);
         }
 
         return totalWorkingMinutes;
     }
 
-    private boolean isWorkingDay(
-            LocalDateTime dateTime) {
+    private Set<LocalDate> fetchHolidays(Long departmentId, LocalDate from, LocalDate to) {
+        if (departmentId == null || holidayRepository == null) {
+            return Collections.emptySet();
+        }
+        return holidayRepository
+                .findByDepartmentIdAndHolidayDateBetween(departmentId, from, to)
+                .stream()
+                .map(Holiday::getHolidayDate)
+                .collect(Collectors.toSet());
+    }
 
+    private boolean isWorkingDay(ZonedDateTime dateTime) {
         DayOfWeek day = dateTime.getDayOfWeek();
-
-        return day != DayOfWeek.SATURDAY
-                && day != DayOfWeek.SUNDAY;
+        return day != DayOfWeek.SATURDAY && day != DayOfWeek.SUNDAY;
     }
 
-    private LocalDateTime nextDayAtWorkStart(
-            LocalDateTime dateTime) {
-
-        return dateTime
-                .plusDays(1)
-                .with(workStart);
+    private ZonedDateTime nextDayAtWorkStart(ZonedDateTime dateTime, ZoneId zone) {
+        LocalDate nextDate = dateTime.toLocalDate().plusDays(1);
+        return nextDate.atTime(workStart).atZone(zone);
     }
 
-    private LocalDateTime moveToWorkingTime(
-            LocalDateTime dateTime,
-            Set<LocalDate> holidays) {
-
-        LocalDateTime current = dateTime;
+    private ZonedDateTime moveToWorkingTimeInternal(
+            ZonedDateTime dateTime,
+            Set<LocalDate> holidays,
+            ZoneId zone
+    ) {
+        ZonedDateTime current = dateTime;
 
         while (true) {
-
             LocalDate date = current.toLocalDate();
             LocalTime time = current.toLocalTime();
 
-            // Weekend or holiday
-            if (!isWorkingDay(current)
-                    || holidays.contains(date)) {
-
-                current = nextDayAtWorkStart(current);
+            // Weekend or holiday in department local calendar
+            if (!isWorkingDay(current) || holidays.contains(date)) {
+                current = nextDayAtWorkStart(current, zone);
                 continue;
             }
 
             // Before working hours
             if (time.isBefore(workStart)) {
-
-                return LocalDateTime.of(
-                        date,
-                        workStart
-                );
+                return current.toLocalDate().atTime(workStart).atZone(zone);
             }
 
             // After working hours
             if (!time.isBefore(workEnd)) {
-
-                current = nextDayAtWorkStart(current);
+                current = nextDayAtWorkStart(current, zone);
                 continue;
             }
 

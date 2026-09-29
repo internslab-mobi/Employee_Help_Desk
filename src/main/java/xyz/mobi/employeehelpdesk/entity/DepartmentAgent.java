@@ -1,18 +1,16 @@
 package xyz.mobi.employeehelpdesk.entity;
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(
         name = "department_agents",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_department_agent",
-                        columnNames = {"department_id", "employee_id"}
+                        name = "uk_department_agent_employee",
+                        columnNames = {"employee_id"}
                 )
         }
 )
@@ -20,23 +18,16 @@ import java.time.LocalDateTime;
 @Setter
 public class DepartmentAgent extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "department_id", nullable = false)
-    private Department department;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "employee_id", nullable = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "employee_id",
+            nullable = false,
+            unique = true
+    )
     private Employee employee;
 
-//    @Enumerated(EnumType.STRING)
-//    @Column(nullable = false, length = 30)
-//    private DepartmentAgentStatus status;
-
     @Column(name = "last_assigned_at")
-    private LocalDateTime lastAssignedAt;
-
-    /*@Column(nullable = false)
-    private Boolean availableForAssignment = true;*/
+    private Instant lastAssignedAt;
 
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(

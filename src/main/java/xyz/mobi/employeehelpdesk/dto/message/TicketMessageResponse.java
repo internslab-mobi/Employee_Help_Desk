@@ -1,6 +1,5 @@
 package xyz.mobi.employeehelpdesk.dto.message;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 public record TicketMessageResponse(
@@ -10,7 +9,6 @@ public record TicketMessageResponse(
         String senderName,
         String content,
         Boolean seen,
-        LocalDateTime createdAt,
         List<TicketAttachmentResponse> attachments
 ) {
 }

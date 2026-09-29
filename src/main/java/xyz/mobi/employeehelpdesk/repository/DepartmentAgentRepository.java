@@ -10,22 +10,17 @@ import java.util.List;
 public interface DepartmentAgentRepository
         extends JpaRepository<DepartmentAgent, Long> {
 
-    List<DepartmentAgent> findByDepartmentId(Long departmentId);
 
-    List<DepartmentAgent> findByEmployeeId(Long employeeId);
-
-    java.util.Optional<DepartmentAgent> findByDepartmentIdAndEmployeeId(Long departmentId, Long employeeId);
-
-    boolean existsByEmployeeIdAndDepartmentId(Long employeeId, Long departmentId);
-
-    /*Find all agents belonging to a particular department whose employee is currently ACTIVE*/
+    /* Find all agents belonging to a particular department whose employee is currently ACTIVE and role is AGENT */
     @Query("""
         SELECT da
         FROM DepartmentAgent da
-        JOIN da.employee e
-        WHERE da.department.id = :departmentId
-          AND e.employmentStatus = 'ACTIVE'
-        """)
+        JOIN FETCH da.employee e
+        LEFT JOIN FETCH e.department
+        WHERE e.department.id = :departmentId
+          AND e.employmentStatus = xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus.ACTIVE
+          AND e.role = xyz.mobi.employeehelpdesk.entity.enums.UserRole.AGENT
+    """)
     List<DepartmentAgent> findEligibleAgents(
             @Param("departmentId") Long departmentId
     );

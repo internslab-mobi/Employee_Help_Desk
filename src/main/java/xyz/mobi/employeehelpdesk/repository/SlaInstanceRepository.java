@@ -4,10 +4,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
+import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -15,22 +15,9 @@ import java.util.Optional;
 public interface SlaInstanceRepository
         extends JpaRepository<SlaInstance, Long> {
 
-    List<SlaInstance> findByTicketIdOrderByCycleNumberAsc(
-            Long ticketId
-    );
-
-    Optional<SlaInstance> findByTicketIdAndCycleNumber(
-            Long ticketId,
-            Integer cycleNumber
-    );
-
-    List<SlaInstance> findByStatus(SlaStatus status);
-
     Optional<SlaInstance> findTopByTicketIdOrderByCycleNumberDesc(
             Long ticketId
     );
-
-    List<SlaInstance> findByTicketIdIn(List<Long> ticketIds);
 
     @Query("""
     SELECT s
@@ -75,7 +62,7 @@ public interface SlaInstanceRepository
     """)
     List<SlaInstance> findSlasDueForBreach(
             @Param("statuses") Collection<SlaStatus> statuses,
-            @Param("now") LocalDateTime now,
+            @Param("now") Instant now,
             @Param("lastProcessedId") Long lastProcessedId,
             @Param("batchSize") int batchSize
     );
@@ -94,7 +81,7 @@ public interface SlaInstanceRepository
     """)
     List<SlaInstance> findBreachCandidatesAfter(
             @Param("statuses") Collection<SlaStatus> statuses,
-            @Param("now") LocalDateTime now,
+            @Param("now") Instant now,
             @Param("lastProcessedId") Long lastProcessedId,
             org.springframework.data.domain.Pageable pageable
     );
@@ -115,7 +102,7 @@ public interface SlaInstanceRepository
     """)
     List<SlaInstance> findWarningCandidatesAfter(
             @Param("status") SlaStatus status,
-            @Param("now") LocalDateTime now,
+            @Param("now") Instant now,
             @Param("lastProcessedId") Long lastProcessedId,
             org.springframework.data.domain.Pageable pageable
     );
@@ -134,7 +121,7 @@ public interface SlaInstanceRepository
             @Param("id") Long id,
             @Param("newStatus") SlaStatus newStatus,
             @Param("expectedStatus") SlaStatus expectedStatus,
-            @Param("now") LocalDateTime now
+            @Param("now") Instant now
     );
 
     @Modifying(clearAutomatically = true)
@@ -150,8 +137,7 @@ public interface SlaInstanceRepository
             @Param("id") Long id,
             @Param("newStatus") SlaStatus newStatus,
             @Param("expectedStatuses") Collection<SlaStatus> expectedStatuses,
-            @Param("now") LocalDateTime now
+            @Param("now") Instant now
     );
 
-    boolean existsBySlaPolicyId(Long slaPolicyId);
 }
