@@ -2,50 +2,53 @@ package com.divya.helpdesk.service;
 
 import com.divya.helpdesk.dto.ticket.*;
 import com.divya.helpdesk.enums.TicketStatus;
-import com.divya.helpdesk.dto.common.PageResponse;
+import com.divya.helpdesk.dto.PageResponse;
 
 import java.util.List;
 
 public interface TicketService {
 
     // Raise ticket
-    TicketResponse createTicket(CreateTicketRequest request);
+    CreateTicketResponseDTO createTicket(CreateTicketRequestDTO request);
 
     // Employee / Manager / Admin - edit ticket
-    TicketResponse updateTicket(Long ticketId, UpdateTicketRequest request);
+    CreateTicketResponseDTO updateTicket(Long ticketId, UpdateTicketRequestDTO request);
 
     // Employee - own tickets
-    List<TicketResponse> getMyTickets(TicketStatus status);
+    List<CreateTicketResponseDTO> getMyTickets(TicketStatus status);
 
     // Employee - withdraw own ticket
-    void withdrawTicket(Long ticketId, WithdrawTicketRequest request);
+    void withdrawTicket(Long ticketId, WithdrawTicketRequestDTO request);
 
     // Agent / Manager - assigned tickets
-    List<TicketResponse> getAssignedTickets(TicketStatus status);
+    List<CreateTicketResponseDTO> getAssignedTickets(TicketStatus status);
 
     // Manager - department tickets
-    PageResponse<TicketResponse> getDepartmentTickets(Long agentId, TicketStatus status, int limit, long offset);
+    PageResponse<CreateTicketResponseDTO> getDepartmentTickets(Long agentId, TicketStatus status, int limit, long offset);
 
     // Single flexible PATCH endpoint
-    TicketResponse patchTicket(Long ticketId, TicketPatchRequest request);
+    CreateTicketResponseDTO patchTicket(Long ticketId, TicketPatchRequestDTO request);
+
+    // Agent - start working on assigned ticket (SLA starts from workStartedAt)
+    CreateTicketResponseDTO startWorking(Long ticketId);
 
     // Agent / Manager / Admin - resolve ticket
-    TicketResponse resolveTicket(Long ticketId, ResolveTicketRequest request);
+    CreateTicketResponseDTO resolveTicket(Long ticketId, ResolveTicketRequestDTO request);
 
     // Agent - waiting for employee (SLA does not pause)
-    TicketResponse waitingForEmployee(Long ticketId, WaitingForEmployeeRequest request);
+    CreateTicketResponseDTO waitingForEmployee(Long ticketId, WaitingForEmployeeRequestDTO request);
 
     // Agent - resume after employee response
-    TicketResponse resumeTicket(Long ticketId);
+    CreateTicketResponseDTO resumeTicket(Long ticketId);
 
     // Employee - reopen resolved ticket (50% SLA allocation)
-    TicketResponse reopenTicket(Long ticketId, ReopenTicketRequest request);
+    CreateTicketResponseDTO reopenTicket(Long ticketId, ReopenTicketRequestDTO request);
 
     // Employee - send feedback
-    void submitFeedback(Long ticketId, FeedbackRequest request);
+    void submitFeedback(Long ticketId, FeedbackRequestDTO request);
 
     // Employee / Agent / Manager - send message
-    void sendMessage(Long ticketId, SendMessageRequest request);
+    TicketMessageResponseDTO sendMessage(Long ticketId, SendMessageRequestDTO request);
 
     // Manager / Admin - delete ticket
     void deleteTicket(Long ticketId);

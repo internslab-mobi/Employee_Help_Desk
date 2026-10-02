@@ -1,7 +1,7 @@
 package com.divya.helpdesk.controller;
 
-import com.divya.helpdesk.dto.notification.NotificationResponse;
-import com.divya.helpdesk.security.CurrentUserService;
+import com.divya.helpdesk.dto.notification.NotificationResponseDTO;
+import com.divya.helpdesk.service.CurrentUserService;
 import com.divya.helpdesk.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +20,7 @@ public class NotificationController {
     private final CurrentUserService currentUserService;
 
     @GetMapping("/me")
-    public ResponseEntity<List<NotificationResponse>> getMyNotifications() {
+    public ResponseEntity<List<NotificationResponseDTO>> getMyNotifications() {
         Long employeeId = currentUserService.getEmployeeId();
         return ResponseEntity.ok(notificationService.getMyNotifications(employeeId));
     }

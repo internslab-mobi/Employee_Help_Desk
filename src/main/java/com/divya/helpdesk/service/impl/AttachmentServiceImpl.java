@@ -1,23 +1,22 @@
 package com.divya.helpdesk.service.impl;
 
-import com.divya.helpdesk.dto.ticket.TicketAttachmentResponse;
-import com.divya.helpdesk.entity.HDEmployee;
-import com.divya.helpdesk.entity.HDTicket;
-import com.divya.helpdesk.entity.HDTicketAttachment;
-import com.divya.helpdesk.entity.HDTicketMessage;
+import com.divya.helpdesk.dto.ticket.TicketAttachmentResponseDTO;
+import com.divya.helpdesk.entity.*;
 import com.divya.helpdesk.enums.EmployeeRole;
 import com.divya.helpdesk.exception.AccessDeniedException;
+import com.divya.helpdesk.exception.MaxUploadSizeException;
 import com.divya.helpdesk.exception.ResourceNotFoundException;
 import com.divya.helpdesk.exception.ValidationException;
 import com.divya.helpdesk.repository.HDTicketAttachmentRepository;
 import com.divya.helpdesk.repository.HDTicketMessageRepository;
 import com.divya.helpdesk.repository.HDTicketRepository;
-import com.divya.helpdesk.security.CurrentUserService;
 import com.divya.helpdesk.service.AttachmentService;
+import com.divya.helpdesk.service.CurrentUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -38,21 +37,21 @@ public class AttachmentServiceImpl implements AttachmentService {
     private final CurrentUserService currentUserService;
 
     @Override
-    public TicketAttachmentResponse uploadAttachment(Long ticketId, Long messageId, MultipartFile file) {
+    public TicketAttachmentResponseDTO uploadAttachment(Long ticketId, Long messageId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ValidationException("Attachment file cannot be empty");
         }
 
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new ValidationException("Attachment file size exceeds the 10MB limit");
+            throw new MaxUploadSizeException("Attached file size exceeds the 10MB limit (Provided: "+(file.getSize()/(1024.0 * 1024.0))+" MB)");
         }
 
-        HDTicket ticket = ticketRepository.findById(ticketId)
+        HDTicketEntity ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
-        HDTicketMessage message = messageRepository.findById(messageId)
+        HDTicketMessageEntity message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + messageId));
 
-        HDEmployee current = currentUserService.getCurrentEmployee();
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
         validateAccess(ticket, current);
 
         try {
@@ -77,21 +76,21 @@ public class AttachmentServiceImpl implements AttachmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TicketAttachmentResponse> getAttachments(Long ticketId) {
-        HDTicket ticket = ticketRepository.findById(ticketId)
+    public List<TicketAttachmentResponseDTO> getAttachments(Long ticketId) {
+        HDTicketEntity ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
 
-        HDEmployee current = currentUserService.getCurrentEmployee();
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
         validateAccess(ticket, current);
 
-        return attachmentRepository.findByTicket_IdOrderByCreatedAtDesc(ticketId)
+        return attachmentRepository.findByTicketIdOrderByCreatedAtDesc(ticketId)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
 
-    private void validateAccess(HDTicket ticket, HDEmployee current) {
+    private void validateAccess(HDTicketEntity ticket, HDEmployeeEntity current) {
         if (current.getRole() == EmployeeRole.ADMIN) {
             return;
         }
@@ -109,7 +108,7 @@ public class AttachmentServiceImpl implements AttachmentService {
         }
     }
 
-    private TicketAttachmentResponse mapToResponse(HDTicketAttachment attachment) {
+    private TicketAttachmentResponseDTO mapToResponse(HDTicketAttachment attachment) {
         if (attachment == null) {
             return null;
         }
@@ -117,7 +116,7 @@ public class AttachmentServiceImpl implements AttachmentService {
         long size = attachment.getFileSize() != null ? attachment.getFileSize() :
                 (attachment.getFileData() != null ? attachment.getFileData().length : 0L);
 
-        return TicketAttachmentResponse.builder()
+        return TicketAttachmentResponseDTO.builder()
                 .id(attachment.getId())
                 .ticketId(attachment.getTicket() != null ? attachment.getTicket().getId() : null)
                 .originalFilename(attachment.getOriginalFilename())

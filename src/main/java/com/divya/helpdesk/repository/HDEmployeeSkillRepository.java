@@ -1,14 +1,13 @@
 package com.divya.helpdesk.repository;
 
-import com.divya.helpdesk.entity.HDEmployeeSkill;
+import com.divya.helpdesk.entity.HDEmployeeSkillEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public interface HDEmployeeSkillRepository extends JpaRepository<HDEmployeeSkill, Long> {
+public interface HDEmployeeSkillRepository extends JpaRepository<HDEmployeeSkillEntity, Long> {
 
-    List<HDEmployeeSkill> findByEmployee_Id(Long employeeId);
-
+    List<HDEmployeeSkillEntity> findByEmployeeId(Long employeeId);
 }

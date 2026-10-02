@@ -1,63 +1,25 @@
 package com.divya.helpdesk.mapper;
 
-import com.divya.helpdesk.dto.user.DepartmentResponse;
-import com.divya.helpdesk.dto.user.EmployeeResponse;
-import com.divya.helpdesk.dto.user.EmployeeUpdateResponse;
-import com.divya.helpdesk.entity.HDDepartment;
-import com.divya.helpdesk.entity.HDEmployee;
-import lombok.Builder;
+import com.divya.helpdesk.dto.user.CreateEmployeeResponseDTO;
+import com.divya.helpdesk.dto.user.DepartmentDTO;
+import com.divya.helpdesk.dto.user.UpdateEmployeeResponseDTO;
+import com.divya.helpdesk.entity.HDDepartmentEntity;
+import com.divya.helpdesk.entity.HDEmployeeEntity;
+import org.mapstruct.Builder;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-import java.time.ZoneId;
+@Mapper(componentModel = "spring")
+public interface EmployeeMapper {
 
-@Builder
-public class EmployeeMapper {
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "department", source = "department")
+    CreateEmployeeResponseDTO mapToResponse(HDEmployeeEntity employee);
 
-    public static EmployeeResponse mapToResponse(HDEmployee employee) {
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "department", source = "department")
+    UpdateEmployeeResponseDTO mapToUpdateResponse(HDEmployeeEntity employee);
 
-        return EmployeeResponse.builder()
-                .id(employee.getId())
-                .employeeCode(employee.getEmployeeCode())
-                .email(employee.getEmail())
-                .firstName(employee.getFirstName())
-                .lastName(employee.getLastName())
-                .phone(employee.getPhone())
-                .designation(employee.getDesignation())
-                .department(toDepartmentResponse(employee.getDepartment()))
-                .role(employee.getRole())
-                .employmentStatus(employee.getEmploymentStatus())
-                .dateOfJoining(employee.getDateOfJoining())
-                .timezone(employee.getTimezone())
-                .createdAt(employee.getCreatedAt().atZone(ZoneId.of(employee.getTimezone())).toOffsetDateTime())
-                .build();
-    }
-
-    public static EmployeeUpdateResponse mapToUpdateResponse(HDEmployee employee){
-        return EmployeeUpdateResponse.builder()
-                .id(employee.getId())
-                .employeeCode(employee.getEmployeeCode())
-                .email(employee.getEmail())
-                .firstName(employee.getFirstName())
-                .lastName(employee.getLastName())
-                .phone(employee.getPhone())
-                .designation(employee.getDesignation())
-                .department(toDepartmentResponse(employee.getDepartment()))
-                .role(employee.getRole())
-                .employmentStatus(employee.getEmploymentStatus())
-                .dateOfJoining(employee.getDateOfJoining())
-                .timezone(employee.getTimezone())
-                .createdAt(employee.getCreatedAt().atZone(ZoneId.of(employee.getTimezone())).toOffsetDateTime())
-                .updatedAt(employee.getUpdatedAt().atZone(ZoneId.of(employee.getTimezone())).toOffsetDateTime())
-                .build();
-    }
-
-    public static DepartmentResponse toDepartmentResponse(HDDepartment department) {
-        if (department == null) {
-            return null;
-        }
-
-        return DepartmentResponse.builder()
-                .id(department.getId())
-                .name(department.getName())
-                .build();
-    }
+    DepartmentDTO toDepartmentResponse(HDDepartmentEntity department);
 }

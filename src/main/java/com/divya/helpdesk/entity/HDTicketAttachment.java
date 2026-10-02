@@ -16,7 +16,7 @@ public class HDTicketAttachment extends BaseEntity {
             nullable = false,
             foreignKey = @ForeignKey(name = "fk_attachment_ticket")
     )
-    private HDTicket ticket;
+    private HDTicketEntity ticket;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
@@ -24,7 +24,7 @@ public class HDTicketAttachment extends BaseEntity {
             nullable = false,
             foreignKey = @ForeignKey(name = "fk_attachment_uploaded_by")
     )
-    private HDEmployee uploadedBy;
+    private HDEmployeeEntity uploadedBy;
 
     @Column(name = "original_filename", nullable = false, length = 255)
     private String originalFilename;
@@ -44,5 +44,5 @@ public class HDTicketAttachment extends BaseEntity {
             name = "message_id",
             foreignKey = @ForeignKey(name = "fk_attachment_message")
     )
-    private HDTicketMessage message;
+    private HDTicketMessageEntity message;
 }
