@@ -1,9 +1,6 @@
 package com.divya.helpdesk.service.impl;
 
-import com.divya.helpdesk.entity.HDEmployee;
-import com.divya.helpdesk.entity.HDTicket;
-import com.divya.helpdesk.entity.HDTicketFeedback;
-import com.divya.helpdesk.entity.HDTicketMessage;
+import com.divya.helpdesk.entity.*;
 import com.divya.helpdesk.enums.TicketStatus;
 import com.divya.helpdesk.service.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -25,10 +22,13 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username:${MAIL_USERNAME:noreply@helpdesk.com}}")
     private String fromEmail;
 
+    @Value("${otp.expiration-minutes:2}")
+    private long otpExpirationMinutes;
+
     @Override
     public void sendOtpEmail(String toEmail, String otp) {
         String subject = "Help Desk - Password Reset OTP";
-        String body = String.format("Hello,\n\nYour OTP for password reset is: %s\n\nThis OTP will expire in 5 minutes.\n\nRegards,\nEmployee Help Desk Team", otp);
+        String body = String.format("Hello,\n\nYour OTP for password reset is: %s\n\nThis OTP will expire in %d minutes.\n\nRegards,\nEmployee Help Desk Team", otp, otpExpirationMinutes);
         sendEmailAsync(toEmail, subject, body);
     }
 
@@ -42,7 +42,8 @@ public class EmailServiceImpl implements EmailService {
                         + "Name: %s\n"
                         + "Email: %s\n"
                         + "Temporary Password: %s\n\n"
-                        + "Please use these credentials to activate your account and complete the account setup.\n"
+                        + "Please use these credentials to log in.\n"
+                        + "You will be required to change your password immediately after your first login.\n"
                         + "For security reasons, do not share this temporary password with anyone.\n\n"
                         + "Regards,\nEmployee Help Desk Team",
                 employeeName != null ? employeeName : "Employee",
@@ -53,17 +54,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendAccountActivatedEmail(String toEmail, String employeeName) {
-        String subject = "Help Desk - Account Activated";
-        String body = String.format(
-                "Hello %s,\n\nYour Employee Help Desk account has been successfully activated. You can now log in.\n\nRegards,\nEmployee Help Desk Team",
-                employeeName != null ? employeeName : "User"
-        );
-        sendEmailAsync(toEmail, subject, body);
-    }
-
-    @Override
-    public void sendTicketCreatedEmail(HDTicket ticket) {
+    public void sendTicketCreatedEmail(HDTicketEntity ticket) {
         if (ticket == null || ticket.getRequester() == null || ticket.getRequester().getEmail() == null) {
             return;
         }
@@ -87,7 +78,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendTicketAssignedEmail(HDTicket ticket, HDEmployee agent) {
+    public void sendTicketAssignedEmail(HDTicketEntity ticket, HDEmployeeEntity agent) {
         if (ticket == null || agent == null || agent.getEmail() == null) {
             return;
         }
@@ -115,7 +106,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendTicketStatusChangedEmail(HDTicket ticket, TicketStatus oldStatus, TicketStatus newStatus) {
+    public void sendTicketStatusChangedEmail(HDTicketEntity ticket, TicketStatus oldStatus, TicketStatus newStatus) {
         if (ticket == null || ticket.getRequester() == null || ticket.getRequester().getEmail() == null) {
             return;
         }
@@ -134,7 +125,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendSlaWarningEmail(HDTicket ticket) {
+    public void sendSlaWarningEmail(HDTicketEntity ticket) {
         if (ticket == null || ticket.getAssignedAgent() == null || ticket.getAssignedAgent().getEmail() == null) {
             return;
         }
@@ -153,7 +144,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendSlaBreachedEmail(HDTicket ticket) {
+    public void sendSlaBreachedEmail(HDTicketEntity ticket) {
         if (ticket == null) {
             return;
         }
@@ -175,7 +166,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendTicketEscalatedEmail(HDTicket ticket, HDEmployee manager) {
+    public void sendTicketEscalatedEmail(HDTicketEntity ticket, HDEmployeeEntity manager) {
         if (ticket == null || manager == null || manager.getEmail() == null) {
             return;
         }
@@ -197,7 +188,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendFeedbackSubmittedEmail(HDTicket ticket, HDTicketFeedback feedback) {
+    public void sendFeedbackSubmittedEmail(HDTicketEntity ticket, HDTicketFeedbackEntity feedback) {
         if (ticket == null || ticket.getAssignedAgent() == null || ticket.getAssignedAgent().getEmail() == null) {
             return;
         }
@@ -215,7 +206,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendNewMessageNotificationEmail(HDTicket ticket, HDTicketMessage message, HDEmployee recipient) {
+    public void sendNewMessageNotificationEmail(HDTicketEntity ticket, HDTicketMessageEntity message, HDEmployeeEntity recipient) {
         if (ticket == null || recipient == null || recipient.getEmail() == null) {
             return;
         }
