@@ -1,17 +1,17 @@
 package com.divya.helpdesk.service.impl;
 
 import com.divya.helpdesk.dto.auth.*;
-import com.divya.helpdesk.entity.HDEmployee;
-import com.divya.helpdesk.entity.HDRefreshToken;
+import com.divya.helpdesk.entity.HDEmployeeEntity;
+import com.divya.helpdesk.entity.HDRefreshTokenEntity;
 import com.divya.helpdesk.exception.AccessDeniedException;
-import com.divya.helpdesk.exception.AccountNotActivatedException;
 import com.divya.helpdesk.exception.BadRequestException;
+import com.divya.helpdesk.exception.InvalidOtpException;
 import com.divya.helpdesk.exception.ResourceNotFoundException;
 import com.divya.helpdesk.repository.HDEmployeeRepository;
 import com.divya.helpdesk.repository.HDRefreshTokenRepository;
-import com.divya.helpdesk.security.JWTService;
 import com.divya.helpdesk.service.AuthService;
 import com.divya.helpdesk.service.EmailService;
+import com.divya.helpdesk.service.JWTService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -28,6 +28,7 @@ import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @RequiredArgsConstructor
@@ -44,14 +45,44 @@ public class AuthServiceImpl implements AuthService {
     @Value("${jwt.refresh-token-expiration:604800000}")
     private long refreshTokenExpirationMs;
 
+    @Value("${otp.expiration-minutes:2}")
+    private long otpExpirationMinutes;
+
+    @Value("${otp.max-attempts:3}")
+    private int otpMaxAttempts;
+
     private final SecureRandom secureRandom = new SecureRandom();
 
-    /*
-     * Temporary in-memory storage.
-     */
-    private final Map<String, String> otpStore = new ConcurrentHashMap<>();
+    private static class OtpState {
+        private final String otp;
+        private final Instant expiresAt;
+        private final AtomicInteger failedAttempts;
+
+        public OtpState(String otp, Instant expiresAt) {
+            this.otp = otp;
+            this.expiresAt = expiresAt;
+            this.failedAttempts = new AtomicInteger(0);
+        }
+
+        public String getOtp() {
+            return otp;
+        }
+
+        public boolean isExpired() {
+            return Instant.now().isAfter(expiresAt);
+        }
+
+        public int incrementFailedAttempts() {
+            return failedAttempts.incrementAndGet();
+        }
+
+        public int getFailedAttempts() {
+            return failedAttempts.get();
+        }
+    }
+
+    private final Map<String, OtpState> otpStore = new ConcurrentHashMap<>();
     private final Map<String, String> resetTokenStore = new ConcurrentHashMap<>();
-    private final Map<String, ActivationToken> activationTokenStore = new ConcurrentHashMap<>();
 
     private String generateSecureRandomToken() {
         byte[] randomBytes = new byte[64];
@@ -62,18 +93,14 @@ public class AuthServiceImpl implements AuthService {
     // LOGIN
     @Transactional
     @Override
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponseDTO login(LoginRequestDTO request) {
         if (request == null || request.getEmail() == null || request.getPassword() == null) {
             throw new BadRequestException("Email and password are required");
         }
 
         String email = request.getEmail().trim().toLowerCase();
-        HDEmployee employee = employeeRepository.findByEmail(email)
+        HDEmployeeEntity employee = employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
-
-        if (!Boolean.TRUE.equals(employee.getActivated())) {
-            throw new AccountNotActivatedException("Account is not activated. Please activate your account first.");
-        }
 
         if (!Boolean.TRUE.equals(employee.getEnabled())) {
             throw new AccessDeniedException("Account is disabled");
@@ -93,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Generate and save traditional opaque database-backed refresh token (refreshCount = 0)
         String rawRefreshToken = generateSecureRandomToken();
-        HDRefreshToken refreshToken = new HDRefreshToken();
+        HDRefreshTokenEntity refreshToken = new HDRefreshTokenEntity();
         refreshToken.setEmployee(employee);
         refreshToken.setToken(rawRefreshToken);
         refreshToken.setRefreshCount(0);
@@ -101,10 +128,11 @@ public class AuthServiceImpl implements AuthService {
         refreshToken.setRevoked(false);
         refreshTokenRepository.save(refreshToken);
 
-        return LoginResponse.builder()
+        boolean mustChangePassword = !Boolean.TRUE.equals(employee.getActivated());
+
+        return LoginResponseDTO.builder()
                 .accessToken(accessToken)
                 .refreshToken(rawRefreshToken)
-                .tokenType("Bearer")
                 .employeeId(employee.getId())
                 .employeeCode(employee.getEmployeeCode())
                 .email(employee.getEmail())
@@ -113,59 +141,20 @@ public class AuthServiceImpl implements AuthService {
                 .departmentId(employee.getDepartment() != null ? employee.getDepartment().getId() : null)
                 .departmentName(employee.getDepartment() != null ? employee.getDepartment().getName() : null)
                 .timezone(employee.getTimezone())
-                .build();
-    }
-
-    // ACTIVATE ACCOUNT
-
-    // ACTIVATE ACCOUNT
-    @Override
-    public AccountActivationResponse activateAccount(AccountActivationRequest request) {
-        if (request == null || request.getEmail() == null || request.getTemporaryPassword() == null) {
-            throw new BadRequestException("Email and temporary password are required");
-        }
-
-        String email = request.getEmail().trim().toLowerCase();
-        HDEmployee employee = employeeRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + request.getEmail()));
-
-        if (Boolean.TRUE.equals(employee.getActivated())) {
-            throw new BadRequestException("Account is already activated");
-        }
-        if (!Boolean.TRUE.equals(employee.getEnabled())) {
-            throw new AccessDeniedException("Account is disabled");
-        }
-
-        // Verify temporary password
-        if (!passwordEncoder.matches(request.getTemporaryPassword(), employee.getPassword())) {
-            throw new BadRequestException("Invalid temporary password");
-        }
-
-        // Activate account
-        employee.setActivated(true);
-        employeeRepository.save(employee);
-
-        // Generate short-lived token (15 minutes for user convenience)
-        String token = UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plus(15, ChronoUnit.MINUTES);
-        activationTokenStore.put(email, new ActivationToken(token, expiresAt));
-        resetTokenStore.put(email, token);
-
-        return AccountActivationResponse.builder()
-                .message("Account activated. Please change your temporary password.")
-                .activationToken(token)
+                .mustChangePassword(mustChangePassword)
+                .activated(employee.getActivated())
                 .build();
     }
 
     // FORGOT PASSWORD - SEND OTP
     @Override
-    public String forgotPassword(ForgotPasswordRequest request) {
+    public String forgotPassword(ForgotPasswordRequestDTO request) {
         if (request == null || request.getEmail() == null || request.getEmail().isBlank()) {
             throw new BadRequestException("Email is required");
         }
 
         String email = request.getEmail().trim().toLowerCase();
-        HDEmployee employee = employeeRepository.findByEmail(email)
+        HDEmployeeEntity employee = employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + request.getEmail()));
 
         /*
@@ -182,10 +171,11 @@ public class AuthServiceImpl implements AuthService {
             throw new AccessDeniedException("Account is not activated");
         }
         /*
-         * Generate six-digit OTP.
+         * Generate six-digit OTP with expiration window.
          */
         String otp = String.valueOf((int) (Math.random() * 900000) + 100000);
-        otpStore.put(email, otp);
+        Instant expiresAt = Instant.now().plus(otpExpirationMinutes, ChronoUnit.MINUTES);
+        otpStore.put(email, new OtpState(otp, expiresAt));
 
         emailService.sendOtpEmail(employee.getEmail(), otp);
         return "OTP sent successfully";
@@ -193,59 +183,66 @@ public class AuthServiceImpl implements AuthService {
 
     // VERIFY OTP
     @Override
-    public VerifyOtpResponse verifyOtp(VerifyOtpRequest request) {
+    public VerifyOtpResponseDTO verifyOtp(VerifyOtpRequestDTO request) {
         if (request == null || request.getEmail() == null || request.getOtp() == null) {
             throw new BadRequestException("Email and OTP are required");
         }
 
         String email = request.getEmail().trim().toLowerCase();
-        String storedOtp = otpStore.get(email);
+        OtpState otpState = otpStore.get(email);
 
-        if (storedOtp == null) {
-            throw new BadRequestException("OTP not found or expired");
-        }
-
-        if (!storedOtp.equals(request.getOtp().trim())) {
-            throw new BadRequestException("Invalid OTP");
+        if (otpState == null) {
+            throw new InvalidOtpException("OTP not found or expired");
         }
 
         /*
-         * OTP is correct.
-         * Generate a temporary reset token.
+         * Check expiration before accepting the OTP or counting failed attempts.
          */
-        String resetToken = UUID.randomUUID().toString();
-        resetTokenStore.put(email, resetToken);
-        /*
-         * OTP can no longer be reused.
-         */
-        otpStore.remove(email);
+        if (otpState.isExpired()) {
+            otpStore.remove(email);
+            throw new InvalidOtpException("OTP has expired. Please restart the forgot-password process.");
+        }
 
-        return VerifyOtpResponse.builder()
-                .email(request.getEmail())
-                .resetToken(resetToken)
-                .message("OTP verified successfully")
-                .build();
+        if (otpState.getOtp().equals(request.getOtp().trim())) {
+            /*
+              * OTP is correct.
+              * Generate a temporary reset token.
+              */
+            String resetToken = UUID.randomUUID().toString();
+            resetTokenStore.put(email, resetToken);
+            /*
+              * OTP can no longer be reused.
+              */
+            otpStore.remove(email);
+
+            return VerifyOtpResponseDTO.builder()
+                    .email(request.getEmail())
+                    .resetToken(resetToken)
+                    .message("OTP verified successfully")
+                    .build();
+        }
+
+        int attempts = otpState.incrementFailedAttempts();
+        if (attempts >= otpMaxAttempts) {
+            otpStore.remove(email);
+            throw new InvalidOtpException("Maximum OTP retry exceeded. Please restart the forgot-password process.");
+        } else {
+            throw new InvalidOtpException("Invalid OTP. Please retry.");
+        }
     }
 
     // RESET PASSWORD
     @Override
-    public String resetPassword(ResetPasswordRequest request) {
+    public String resetPassword(ResetPasswordRequestDTO request) {
         if (request == null || request.getEmail() == null || request.getResetToken() == null) {
             throw new BadRequestException("Email and reset token are required");
         }
         String email = request.getEmail().trim().toLowerCase();
 
         /*
-         * Check whether OTP verification or Account Activation generated a valid reset token.
+         * Check whether OTP verification generated a valid reset token.
          */
         String storedToken = resetTokenStore.get(email);
-        if (storedToken == null) {
-            ActivationToken activationToken = activationTokenStore.get(email);
-            if (activationToken != null && !activationToken.getExpiresAt().isBefore(Instant.now())) {
-                storedToken = activationToken.getToken();
-            }
-        }
-
         if (storedToken == null) {
             throw new BadRequestException("Reset token not found or expired");
         }
@@ -258,28 +255,28 @@ public class AuthServiceImpl implements AuthService {
         if (request.getNewPassword() == null || !request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new BadRequestException("New password and confirm password do not match");
         }
-        HDEmployee employee = employeeRepository.findByEmail(email)
+        HDEmployeeEntity employee = employeeRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + request.getEmail()));
         /*
-         * Update password.
+         * Update password and set activated to true.
          */
         employee.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        employee.setActivated(true);
         employeeRepository.save(employee);
         /*
          * Reset token becomes invalid after successful password reset.
          */
         resetTokenStore.remove(email);
-        activationTokenStore.remove(email);
         return "Password reset successfully";
     }
 
     // CHANGE PASSWORD
     @Override
-    public String changePassword(String email, ChangePasswordRequest request) {
+    public String changePassword(String email, ChangePasswordRequestDTO request) {
         if (email == null || request == null) {
             throw new BadRequestException("Request and email are required");
         }
-        HDEmployee employee = employeeRepository.findByEmail(email.trim().toLowerCase())
+        HDEmployeeEntity employee = employeeRepository.findByEmail(email.trim().toLowerCase())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + email));
         /*
          * Verify current password.
@@ -294,17 +291,18 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("New password and confirm password do not match");
         }
         /*
-         * Update password.
+         * Update password and set activated to true.
          */
         employee.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        employee.setActivated(true);
         employeeRepository.save(employee);
         return "Password changed successfully";
     }
 
-    // REFRESH TOKEN (Traditional Database-Backed Refresh Token with Rotation)
+    // REFRESH TOKEN
     @Transactional
     @Override
-    public LoginResponse refreshToken(RefreshTokenRequest request) {
+    public LoginResponseDTO refreshToken(RefreshTokenRequestDTO request) {
         if (request == null || request.getToken() == null || request.getToken().isBlank()) {
             throw new BadRequestException("Token must not be empty");
         }
@@ -315,7 +313,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Database lookup with pessimistic write lock to prevent race conditions on concurrent refresh
-        HDRefreshToken tokenRecord = refreshTokenRepository.findByTokenForUpdate(rawToken)
+        HDRefreshTokenEntity tokenRecord = refreshTokenRepository.findByTokenForUpdate(rawToken)
                 .orElseThrow(() -> new AccessDeniedException("Invalid refresh token"));
 
         if (Boolean.TRUE.equals(tokenRecord.getRevoked())) {
@@ -332,7 +330,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AccessDeniedException("Maximum token refresh limit exceeded. Please log in again.");
         }
 
-        HDEmployee employee = tokenRecord.getEmployee();
+        HDEmployeeEntity employee = tokenRecord.getEmployee();
         if (employee == null) {
             throw new AccessDeniedException("Employee not found for refresh token");
         }
@@ -359,7 +357,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Generate and save new opaque refresh token with incremented refreshCount
         String newRawRefreshToken = generateSecureRandomToken();
-        HDRefreshToken newRefreshToken = new HDRefreshToken();
+        HDRefreshTokenEntity newRefreshToken = new HDRefreshTokenEntity();
         newRefreshToken.setEmployee(employee);
         newRefreshToken.setToken(newRawRefreshToken);
         newRefreshToken.setRefreshCount(currentCount + 1);
@@ -367,10 +365,11 @@ public class AuthServiceImpl implements AuthService {
         newRefreshToken.setRevoked(false);
         refreshTokenRepository.save(newRefreshToken);
 
-        return LoginResponse.builder()
+        boolean mustChangePassword = !Boolean.TRUE.equals(employee.getActivated());
+
+        return LoginResponseDTO.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRawRefreshToken)
-                .tokenType("Bearer")
                 .employeeId(employee.getId())
                 .employeeCode(employee.getEmployeeCode())
                 .email(employee.getEmail())
@@ -379,6 +378,8 @@ public class AuthServiceImpl implements AuthService {
                 .departmentId(employee.getDepartment() != null ? employee.getDepartment().getId() : null)
                 .departmentName(employee.getDepartment() != null ? employee.getDepartment().getName() : null)
                 .timezone(employee.getTimezone())
+                .mustChangePassword(mustChangePassword)
+                .activated(employee.getActivated())
                 .build();
     }
 }

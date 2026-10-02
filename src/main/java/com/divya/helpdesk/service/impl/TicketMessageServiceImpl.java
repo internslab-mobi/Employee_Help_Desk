@@ -1,10 +1,10 @@
 package com.divya.helpdesk.service.impl;
 
 import com.divya.helpdesk.dto.ticket.MessageSenderDTO;
-import com.divya.helpdesk.dto.ticket.TicketMessageResponse;
-import com.divya.helpdesk.entity.HDEmployee;
-import com.divya.helpdesk.entity.HDTicket;
-import com.divya.helpdesk.entity.HDTicketMessage;
+import com.divya.helpdesk.dto.ticket.TicketMessageResponseDTO;
+import com.divya.helpdesk.entity.HDEmployeeEntity;
+import com.divya.helpdesk.entity.HDTicketEntity;
+import com.divya.helpdesk.entity.HDTicketMessageEntity;
 import com.divya.helpdesk.enums.NotificationType;
 import com.divya.helpdesk.repository.HDTicketMessageRepository;
 import com.divya.helpdesk.service.EmailService;
@@ -29,20 +29,20 @@ public class TicketMessageServiceImpl implements TicketMessageService {
     private final NotificationService notificationService;
 
     @Override
-    public HDTicketMessage sendMessage(HDTicket ticket, HDEmployee sender, String message) {
+    public HDTicketMessageEntity sendMessage(HDTicketEntity ticket, HDEmployeeEntity sender, String message) {
         if (ticket == null || sender == null || message == null || message.isBlank()) {
             throw new IllegalArgumentException("Ticket, sender, and message text must not be empty");
         }
 
-        HDTicketMessage ticketMessage = new HDTicketMessage();
+        HDTicketMessageEntity ticketMessage = new HDTicketMessageEntity();
         ticketMessage.setTicket(ticket);
         ticketMessage.setSender(sender);
         ticketMessage.setMessageText(message.trim());
 
-        HDTicketMessage saved = messageRepository.save(ticketMessage);
+        HDTicketMessageEntity saved = messageRepository.save(ticketMessage);
 
         // Determine recipient
-        HDEmployee recipient = null;
+        HDEmployeeEntity recipient = null;
         if (ticket.getRequester() != null && ticket.getRequester().getId().equals(sender.getId())) {
             // Requester sent the message -> notify assigned agent or manager
             recipient = ticket.getAssignedAgent() != null ? ticket.getAssignedAgent() : ticket.getAssignedManager();
@@ -60,22 +60,23 @@ public class TicketMessageServiceImpl implements TicketMessageService {
                     NotificationType.STATUS_CHANGED, ticket);
         }
 
+
         log.info("Message sent on ticket {} by user ID {}", ticket.getTicketNumber(), sender.getId());
         return saved;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<TicketMessageResponse> getMessages(Long ticketId) {
-        return messageRepository.findByTicket_IdOrderByCreatedAtAsc(ticketId)
+    public List<TicketMessageResponseDTO> getMessages(Long ticketId) {
+        return messageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
 
-    private TicketMessageResponse mapToResponse(HDTicketMessage message) {
-        return TicketMessageResponse.builder()
+    private TicketMessageResponseDTO mapToResponse(HDTicketMessageEntity message) {
+        return TicketMessageResponseDTO.builder()
                 .id(message.getId())
                 .ticketId(message.getTicket() != null ? message.getTicket().getId() : null)
                 .sender(mapToSender(message.getSender()))
@@ -84,7 +85,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
                 .build();
     }
 
-    private MessageSenderDTO mapToSender(HDEmployee employee){
+    private MessageSenderDTO mapToSender(HDEmployeeEntity employee){
         if(employee == null) return null;
 
         return MessageSenderDTO.builder()

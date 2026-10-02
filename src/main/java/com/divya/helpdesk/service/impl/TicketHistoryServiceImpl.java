@@ -1,9 +1,9 @@
 package com.divya.helpdesk.service.impl;
 
-import com.divya.helpdesk.dto.ticket.TicketHistoryResponse;
-import com.divya.helpdesk.entity.HDEmployee;
-import com.divya.helpdesk.entity.HDTicket;
-import com.divya.helpdesk.entity.HDTicketHistory;
+import com.divya.helpdesk.dto.ticket.TicketHistoryResponseDTO;
+import com.divya.helpdesk.entity.HDEmployeeEntity;
+import com.divya.helpdesk.entity.HDTicketEntity;
+import com.divya.helpdesk.entity.HDTicketHistoryEntity;
 import com.divya.helpdesk.enums.TicketEventType;
 import com.divya.helpdesk.mapper.TicketMapper;
 import com.divya.helpdesk.repository.HDTicketHistoryRepository;
@@ -23,15 +23,16 @@ import java.util.List;
 public class TicketHistoryServiceImpl implements TicketHistoryService {
 
     private final HDTicketHistoryRepository historyRepository;
+    private final TicketMapper ticketMapper;
 
     @Override
-    public void log(HDTicket ticket, HDEmployee actor, TicketEventType eventType, String oldValue, String newValue) {
+    public void log(HDTicketEntity ticket, HDEmployeeEntity actor, TicketEventType eventType, String oldValue, String newValue) {
         if (ticket == null) {
             log.warn("Cannot log ticket history for null ticket");
             return;
         }
 
-        HDTicketHistory history = new HDTicketHistory();
+        HDTicketHistoryEntity history = new HDTicketHistoryEntity();
         history.setTicket(ticket);
         history.setActor(actor);
         history.setEventType(eventType);
@@ -44,19 +45,18 @@ public class TicketHistoryServiceImpl implements TicketHistoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TicketHistoryResponse> getHistory(Long ticketId) {
-        return historyRepository.findByTicket_IdOrderByCreatedAtAsc(ticketId)
+    public List<TicketHistoryResponseDTO> getHistory(Long ticketId) {
+        return historyRepository.findByTicketIdOrderByCreatedAtAsc(ticketId)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
-
-    private TicketHistoryResponse mapToResponse(HDTicketHistory history) {
-        return TicketHistoryResponse.builder()
+    private TicketHistoryResponseDTO mapToResponse(HDTicketHistoryEntity history) {
+        return TicketHistoryResponseDTO.builder()
                 .id(history.getId())
                 .ticketId(history.getTicket() != null ? history.getTicket().getId() : null)
-                .actor(TicketMapper.toEmployeeResponse(history.getActor()))
+                .actor(history.getActor() != null ? ticketMapper.toEmployeeResponse(history.getActor()) : null)
                 .eventType(history.getEventType())
                 .oldValue(history.getOldValue())
                 .newValue(history.getNewValue())

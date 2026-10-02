@@ -1,6 +1,6 @@
 package com.divya.helpdesk.service.impl;
 
-import com.divya.helpdesk.dto.common.PageResponse;
+import com.divya.helpdesk.dto.PageResponse;
 import com.divya.helpdesk.dto.ticket.*;
 import com.divya.helpdesk.entity.*;
 import com.divya.helpdesk.enums.*;
@@ -11,23 +11,20 @@ import com.divya.helpdesk.exception.ResourceNotFoundException;
 import com.divya.helpdesk.exception.TicketNotFoundException;
 import com.divya.helpdesk.mapper.TicketMapper;
 import com.divya.helpdesk.repository.*;
-import com.divya.helpdesk.security.CurrentUserService;
+import com.divya.helpdesk.service.CurrentUserService;
 import com.divya.helpdesk.service.*;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
+import com.divya.helpdesk.util.TimezoneUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -45,27 +42,59 @@ public class TicketServiceImpl implements TicketService {
     private final HDSubCategoryRepository subCategoryRepository;
     private final HDSlaPolicyRepository slaPolicyRepository;
     private final HDTicketFeedbackRepository feedbackRepository;
+    private final HDSlaInstanceRepository slaInstanceRepository;
 
     private final CurrentUserService currentUserService;
-    private final HDSlaInstanceService slaInstanceService;
-    private final HDTicketAssignmentService ticketAssignmentService;
+    private final SlaInstanceService slaInstanceService;
+    private final TicketAssignmentService ticketAssignmentService;
     private final TicketHistoryService ticketHistoryService;
     private final TicketMessageService ticketMessageService;
     private final EmailService emailService;
     private final NotificationService notificationService;
+    private final TicketMapper ticketMapper;
+
+    // Helper for response building with service-level requester timezone conversion
+    private CreateTicketResponseDTO buildTicketResponse(HDTicketEntity ticket, boolean includeUpdatedAt) {
+        if (ticket == null) {
+            return null;
+        }
+
+        CreateTicketResponseDTO response = ticketMapper.mapToResponse(ticket);
+
+        String requesterTimezone = (ticket.getRequester() != null && ticket.getRequester().getTimezone() != null && !ticket.getRequester().getTimezone().isBlank())
+                ? ticket.getRequester().getTimezone()
+                : "UTC";
+
+        response.setCreatedAt(TimezoneUtil.convertToEmployeeTimezone(ticket.getCreatedAt(), requesterTimezone));
+        response.setWorkStartedAt(TimezoneUtil.convertToEmployeeTimezone(ticket.getWorkStartedAt(), requesterTimezone));
+        response.setResolvedAt(TimezoneUtil.convertToEmployeeTimezone(ticket.getResolvedAt(), requesterTimezone));
+        response.setWithdrawnAt(TimezoneUtil.convertToEmployeeTimezone(ticket.getWithdrawnAt(), requesterTimezone));
+
+        if (includeUpdatedAt) {
+            response.setUpdatedAt(TimezoneUtil.convertToEmployeeTimezone(ticket.getUpdatedAt(), requesterTimezone));
+        }
+
+        if (ticket.getId() != null) {
+            slaInstanceRepository.findByTicketId(ticket.getId()).ifPresent(sla -> {
+                response.setWarningAt(TimezoneUtil.convertToEmployeeTimezone(sla.getWarningAt(), requesterTimezone));
+            });
+        }
+
+        return response;
+    }
 
     // 1. CREATE TICKET (Concurrency-Safe Auto-Generated Ticket Number HD_001, HD_002...)
     @Override
-    public TicketResponse createTicket(CreateTicketRequest request) {
-        HDEmployee requester = currentUserService.getCurrentEmployee();
+    public CreateTicketResponseDTO createTicket(CreateTicketRequestDTO request) {
+        HDEmployeeEntity requester = currentUserService.getCurrentEmployee();
 
-        HDDepartment department = departmentRepository.findById(request.getDepartmentId())
+        HDDepartmentEntity department = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()));
 
-        HDCategory category = categoryRepository.findById(request.getCategoryId())
+        HDCategoryEntity category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + request.getCategoryId()));
 
-        HDSubCategory subCategory = subCategoryRepository.findById(request.getSubCategoryId())
+        HDSubCategoryEntity subCategory = subCategoryRepository.findById(request.getSubCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Sub-category not found with id: " + request.getSubCategoryId()));
 
         if (!category.getDepartment().getId().equals(department.getId())) {
@@ -77,9 +106,9 @@ public class TicketServiceImpl implements TicketService {
         }
 
         // Find active SLA policy for this department + subCategory
-        HDSlaPolicy slaPolicy = resolveSlaPolicy(department.getId(), subCategory.getId());
+        HDSlaPolicyEntity slaPolicy = resolveSlaPolicy(department.getId(), subCategory.getId());
 
-        HDTicket ticket = new HDTicket();
+        HDTicketEntity ticket = new HDTicketEntity();
         ticket.setTicketNumber(generateUniqueTicketNumber());
         ticket.setRequester(requester);
         ticket.setDepartment(department);
@@ -90,27 +119,24 @@ public class TicketServiceImpl implements TicketService {
         ticket.setStatus(TicketStatus.NEW);
         ticket.setSlaPolicy(slaPolicy);
         ticket.setReopenCount(0);
+        ticket.setWorkStartedAt(null);
 
-        HDTicket savedTicket = ticketRepository.save(ticket);
+        HDTicketEntity savedTicket = ticketRepository.save(ticket);
 
-        // 1. Initialize SLA Instance
-        HDSlaInstance slaInstance = slaInstanceService.createSlaInstance(savedTicket, slaPolicy);
-
-        // 2. Intelligent Agent Assignment
-        HDEmployee assignedAgent = ticketAssignmentService.assignAgent(savedTicket);
+        // Intelligent Agent Assignment (does NOT start SLA)
+        HDEmployeeEntity assignedAgent = ticketAssignmentService.assignAgent(savedTicket);
         if (assignedAgent != null) {
             savedTicket.setAssignedAgent(assignedAgent);
             savedTicket = ticketRepository.save(savedTicket);
         }
 
-        // 3. Automated History Logging
+        // Automated History Logging
         ticketHistoryService.log(savedTicket, requester, TicketEventType.CREATED, null, "Ticket created with status NEW");
         if (assignedAgent != null) {
-            ticketHistoryService.log(savedTicket, null, TicketEventType.ASSIGNED, null, assignedAgent.getId().toString());
+            ticketHistoryService.log(savedTicket, assignedAgent, TicketEventType.ASSIGNED, null, assignedAgent.getId().toString());
         }
-        ticketHistoryService.log(savedTicket, null, TicketEventType.SLA_STARTED, null, "SLA started. Deadline: " + slaInstance.getCurrentDeadlineAt());
 
-        // 4. Notifications & Emails
+        // Notifications & Emails
         emailService.sendTicketCreatedEmail(savedTicket);
         notificationService.createNotification(requester,
                 "Ticket Raised: " + savedTicket.getTicketNumber(),
@@ -126,14 +152,77 @@ public class TicketServiceImpl implements TicketService {
         }
 
         log.info("Ticket {} created successfully by {}", savedTicket.getTicketNumber(), requester.getEmail());
-        return TicketMapper.mapToResponse(savedTicket, false);
+        return buildTicketResponse(savedTicket, false);
+    }
+
+    // START WORKING (Agent starts work, sets workStartedAt, changes status to IN_PROGRESS, starts SLA)
+    @Override
+    public CreateTicketResponseDTO startWorking(Long ticketId) {
+        HDTicketEntity ticket = ticketRepository.findByIdForUpdate(ticketId)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + ticketId));
+
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
+
+        // Verify that the employee is the assigned agent
+        if (ticket.getAssignedAgent() == null || !ticket.getAssignedAgent().getId().equals(current.getId())) {
+            throw new AccessDeniedException("Only the assigned agent can start working on this ticket");
+        }
+
+        // Verify that ticket is allowed to start working
+        if (ticket.getStatus() == TicketStatus.RESOLVED || ticket.getStatus() == TicketStatus.WITHDRAWN) {
+            throw new InvalidOperationException("Cannot start working on a ticket that is " + ticket.getStatus());
+        }
+
+        // Verify workStartedAt is not already set
+        if (ticket.getWorkStartedAt() != null) {
+            throw new InvalidOperationException("Work has already started on this ticket");
+        }
+
+        Instant now = Instant.now();
+        ticket.setWorkStartedAt(now);
+
+        TicketStatus oldStatus = ticket.getStatus();
+        ticket.setStatus(TicketStatus.IN_PROGRESS);
+
+        HDSlaPolicyEntity slaPolicy = ticket.getSlaPolicy();
+        if (slaPolicy == null) {
+            slaPolicy = resolveSlaPolicy(ticket.getDepartment().getId(), ticket.getSubCategory().getId());
+            ticket.setSlaPolicy(slaPolicy);
+        }
+
+        HDTicketEntity savedTicket = ticketRepository.save(ticket);
+
+        // Start SLA instance from workStartedAt
+        HDSlaInstanceEntity slaInstance;
+        if (savedTicket.getReopenCount() != null && savedTicket.getReopenCount() > 0) {
+            slaInstance = slaInstanceService.reopenSlaInstance(savedTicket, slaPolicy);
+        } else {
+            slaInstance = slaInstanceService.createSlaInstance(savedTicket, slaPolicy);
+        }
+
+        ticketHistoryService.log(savedTicket, current, TicketEventType.STATUS_CHANGED,
+                oldStatus != null ? oldStatus.name() : null, TicketStatus.IN_PROGRESS.name());
+        ticketHistoryService.log(savedTicket, current, TicketEventType.SLA_STARTED,
+                null, "Agent started working. SLA started from " + now + ". Deadline: " + slaInstance.getCurrentDeadlineAt());
+
+        emailService.sendTicketStatusChangedEmail(savedTicket, oldStatus, TicketStatus.IN_PROGRESS);
+        notificationService.createNotification(
+                savedTicket.getRequester(),
+                "Agent Started Working: " + savedTicket.getTicketNumber(),
+                "The assigned agent has started working on your ticket.",
+                NotificationType.STATUS_CHANGED,
+                savedTicket
+        );
+
+        log.info("Agent {} started working on ticket {}", current.getEmail(), savedTicket.getTicketNumber());
+        return buildTicketResponse(savedTicket, true);
     }
 
     // 2. FLEXIBLE SINGLE PATCH ENDPOINT (PATCH /api/tickets/{id})
     @Override
-    public TicketResponse patchTicket(Long ticketId, TicketPatchRequest request) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+    public CreateTicketResponseDTO patchTicket(Long ticketId, TicketPatchRequestDTO request) {
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         validateCanManageAssignedTicket(ticket, current);
 
@@ -165,7 +254,9 @@ public class TicketServiceImpl implements TicketService {
                 slaInstanceService.resolveSlaInstance(ticket);
             } else if (newStatus == TicketStatus.WAITING_FOR_EMPLOYEE) {
                 ticket.setHoldStartedAt(Instant.now());
+                slaInstanceService.pauseSlaInstance(ticket);
             } else if (newStatus == TicketStatus.IN_PROGRESS && oldStatus == TicketStatus.WAITING_FOR_EMPLOYEE) {
+                slaInstanceService.resumeSlaInstance(ticket);
                 ticket.setHoldReason(null);
                 ticket.setHoldStartedAt(null);
             }
@@ -186,7 +277,7 @@ public class TicketServiceImpl implements TicketService {
             if (current.getRole() != EmployeeRole.MANAGER && current.getRole() != EmployeeRole.ADMIN) {
                 throw new AccessDeniedException("Only managers or administrators can reassign tickets");
             }
-            HDEmployee newAgent = employeeRepository.findById(request.getAssignedAgentId())
+            HDEmployeeEntity newAgent = employeeRepository.findById(request.getAssignedAgentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Agent not found with id: " + request.getAssignedAgentId()));
             ticket.setAssignedAgent(newAgent);
             ticketHistoryService.log(ticket, current, TicketEventType.ASSIGNED, null, newAgent.getId().toString());
@@ -202,7 +293,7 @@ public class TicketServiceImpl implements TicketService {
 
         if (request.getAssignedManagerId() != null) {
             if (current.getRole() == EmployeeRole.ADMIN) {
-                HDEmployee newManager = employeeRepository.findById(request.getAssignedManagerId())
+                HDEmployeeEntity newManager = employeeRepository.findById(request.getAssignedManagerId())
                         .orElseThrow(() -> new ResourceNotFoundException("Manager not found with id: " + request.getAssignedManagerId()));
                 ticket.setAssignedManager(newManager);
             }
@@ -218,38 +309,33 @@ public class TicketServiceImpl implements TicketService {
             ticket.setWithdrawalReason(request.getWithdrawalReason().trim());
         }
 
-        HDTicket saved = ticketRepository.save(ticket);
+        HDTicketEntity saved = ticketRepository.save(ticket);
         log.info("Ticket {} patched successfully by {}", saved.getTicketNumber(), current.getEmail());
 
-        return TicketMapper.mapToResponse(saved, true);
+        return buildTicketResponse(saved, true);
     }
 
     // 3. UPDATE TICKET (PUT)
     @Override
-    public TicketResponse updateTicket(Long ticketId, UpdateTicketRequest request) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+    public CreateTicketResponseDTO updateTicket(Long ticketId, UpdateTicketRequestDTO request) {
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         boolean isRequester = ticket.getRequester().getId().equals(current.getId());
-        boolean isManager = current.getRole() == EmployeeRole.MANAGER
-                && ticket.getDepartment() != null
-                && current.getDepartment() != null
-                && ticket.getDepartment().getId().equals(current.getDepartment().getId());
-        boolean isAdmin = current.getRole() == EmployeeRole.ADMIN;
 
-        if (!isRequester && !isManager && !isAdmin) {
+        if (!isRequester) {
             throw new AccessDeniedException("You are not authorized to update this ticket");
         }
 
-        if (isRequester && ticket.getStatus() != TicketStatus.NEW && ticket.getStatus() != TicketStatus.REOPENED) {
+        if (ticket.getStatus() != TicketStatus.NEW && ticket.getStatus() != TicketStatus.REOPENED) {
             throw new InvalidOperationException("Ticket can only be edited while in NEW or REOPENED status");
         }
 
-        HDDepartment department = departmentRepository.findById(request.getDepartmentId())
+        HDDepartmentEntity department = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()));
-        HDCategory category = categoryRepository.findById(request.getCategoryId())
+        HDCategoryEntity category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + request.getCategoryId()));
-        HDSubCategory subCategory = subCategoryRepository.findById(request.getSubCategoryId())
+        HDSubCategoryEntity subCategory = subCategoryRepository.findById(request.getSubCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Sub-category not found with id: " + request.getSubCategoryId()));
 
         boolean deptOrSubCategoryChanged = !ticket.getDepartment().getId().equals(department.getId())
@@ -262,32 +348,34 @@ public class TicketServiceImpl implements TicketService {
 
         if (deptOrSubCategoryChanged) {
             // Recalculate SLA Policy and Deadline
-            HDSlaPolicy newPolicy = resolveSlaPolicy(department.getId(), subCategory.getId());
+            HDSlaPolicyEntity newPolicy = resolveSlaPolicy(department.getId(), subCategory.getId());
             ticket.setSlaPolicy(newPolicy);
             ticket.setPriority(newPolicy.getPriority() != null ? newPolicy.getPriority() : ticket.getPriority());
 
-            slaInstanceService.createSlaInstance(ticket, newPolicy);
+            if (ticket.getWorkStartedAt() != null) {
+                slaInstanceService.createSlaInstance(ticket, newPolicy);
+            }
 
             // Re-evaluate Agent Assignment
-            HDEmployee newAgent = ticketAssignmentService.assignAgent(ticket);
+            HDEmployeeEntity oldAgent = employeeRepository.findById(current.getId()).orElse(null);
+            HDEmployeeEntity newAgent = ticketAssignmentService.assignAgent(ticket);
             if (newAgent != null && (ticket.getAssignedAgent() == null || !ticket.getAssignedAgent().getId().equals(newAgent.getId()))) {
                 ticket.setAssignedAgent(newAgent);
-                ticketHistoryService.log(ticket, current, TicketEventType.REASSIGNED, null, newAgent.getId().toString());
+                ticketHistoryService.log(ticket, current, TicketEventType.REASSIGNED, oldAgent.toString(), newAgent.getId().toString());
             }
         }
 
-        HDTicket updated = ticketRepository.save(ticket);
+        HDTicketEntity updated = ticketRepository.save(ticket);
         ticketHistoryService.log(ticket, current, TicketEventType.STATUS_CHANGED, null, "Ticket details updated");
 
-        return TicketMapper.mapToResponse(updated, true);
+        return buildTicketResponse(updated, true);
     }
-
 
     // 4. DELETE TICKET (MANAGER / ADMIN)
     @Override
     public void deleteTicket(Long ticketId) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         boolean isManager = current.getRole() == EmployeeRole.MANAGER
                 && ticket.getDepartment() != null
@@ -303,52 +391,51 @@ public class TicketServiceImpl implements TicketService {
         log.warn("Ticket {} deleted by {}", ticket.getTicketNumber(), current.getEmail());
     }
 
-    // 6. GET MY TICKETS (EMPLOYEE)
+    // 5. GET MY TICKETS (EMPLOYEE)
     @Override
     @Transactional(readOnly = true)
-    public List<TicketResponse> getMyTickets(TicketStatus status) {
+    public List<CreateTicketResponseDTO> getMyTickets(TicketStatus status) {
         Long employeeId = currentUserService.getEmployeeId();
-        List<HDTicket> tickets = (status == null)
-                ? ticketRepository.findByRequester_IdOrderByCreatedAtDesc(employeeId)
-                : ticketRepository.findByRequester_IdAndStatusOrderByCreatedAtDesc(employeeId, status);
+        List<HDTicketEntity> tickets = (status == null)
+                ? ticketRepository.findByRequesterIdOrderByCreatedAtDesc(employeeId)
+                : ticketRepository.findByRequesterIdAndStatusOrderByCreatedAtDesc(employeeId, status);
 
         return tickets.stream()
-                .map(t -> TicketMapper.mapToResponse(t, false))
+                .map(t -> buildTicketResponse(t, false))
                 .toList();
     }
 
     // 7. GET ASSIGNED TICKETS (AGENT / MANAGER)
     @Override
     @Transactional(readOnly = true)
-    public List<TicketResponse> getAssignedTickets(TicketStatus status) {
+    public List<CreateTicketResponseDTO> getAssignedTickets(TicketStatus status) {
         Long currentUserId = currentUserService.getEmployeeId();
-        HDEmployee current = currentUserService.getCurrentEmployee();
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
-        List<HDTicket> tickets;
+        List<HDTicketEntity> tickets;
         if (current.getRole() == EmployeeRole.MANAGER) {
             tickets = (status == null)
-                    ? ticketRepository.findByAssignedManager_IdOrderByCreatedAtDesc(currentUserId)
-                    : ticketRepository.findByAssignedManager_IdAndStatusOrderByCreatedAtDesc(currentUserId, status);
+                    ? ticketRepository.findByAssignedManagerIdOrderByCreatedAtDesc(currentUserId)
+                    : ticketRepository.findByAssignedManagerIdAndStatusOrderByCreatedAtDesc(currentUserId, status);
         } else {
             tickets = (status == null)
-                    ? ticketRepository.findByAssignedAgent_IdOrderByCreatedAtDesc(currentUserId)
-                    : ticketRepository.findByAssignedAgent_IdAndStatusOrderByCreatedAtDesc(currentUserId, status);
+                    ? ticketRepository.findByAssignedAgentIdOrderByCreatedAtDesc(currentUserId)
+                    : ticketRepository.findByAssignedAgentIdAndStatusOrderByCreatedAtDesc(currentUserId, status);
         }
 
-        return tickets.stream().map(t -> TicketMapper.mapToResponse(t, false)).toList();
+        return tickets.stream().map(t -> buildTicketResponse(t, false)).toList();
     }
 
     // 8. GET DEPARTMENT TICKETS (MANAGER)
-    // 8. GET DEPARTMENT TICKETS (MANAGER)
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<TicketResponse> getDepartmentTickets(Long agentId, TicketStatus status, int limit, long offset) {
+    public PageResponse<CreateTicketResponseDTO> getDepartmentTickets(Long agentId, TicketStatus status, int limit, long offset) {
         int safeLimit = (limit <= 0) ? 10 : Math.min(limit, 50);
         if (offset < 0) {
             throw new BadRequestException("Offset cannot be negative");
         }
 
-        HDEmployee current = currentUserService.getCurrentEmployee();
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
         if (current.getDepartment() == null) {
             throw new BadRequestException("Manager does not have an assigned department");
         }
@@ -357,23 +444,23 @@ public class TicketServiceImpl implements TicketService {
         int pageIndex = (int) (offset / safeLimit);
         Pageable pageable = PageRequest.of(pageIndex, safeLimit, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<HDTicket> page;
+        Page<HDTicketEntity> page;
         if (agentId != null && status != null) {
-            page = ticketRepository.findByDepartment_IdAndAssignedAgent_IdAndStatus(departmentId, agentId, status, pageable);
+            page = ticketRepository.findByDepartmentIdAndAssignedAgentIdAndStatus(departmentId, agentId, status, pageable);
         } else if (agentId != null) {
-            page = ticketRepository.findByDepartment_IdAndAssignedAgent_Id(departmentId, agentId, pageable);
+            page = ticketRepository.findByDepartmentIdAndAssignedAgentId(departmentId, agentId, pageable);
         } else if (status != null) {
-            page = ticketRepository.findByDepartment_IdAndStatus(departmentId, status, pageable);
+            page = ticketRepository.findByDepartmentIdAndStatus(departmentId, status, pageable);
         } else {
-            page = ticketRepository.findByDepartment_Id(departmentId, pageable);
+            page = ticketRepository.findByDepartmentId(departmentId, pageable);
         }
 
-        List<TicketResponse> content = page.getContent()
+        List<CreateTicketResponseDTO> content = page.getContent()
                 .stream()
-                .map(t -> TicketMapper.mapToResponse(t, false))
+                .map(t -> buildTicketResponse(t, false))
                 .toList();
 
-        return PageResponse.<TicketResponse>builder()
+        return PageResponse.<CreateTicketResponseDTO>builder()
                 .content(content)
                 .limit(safeLimit)
                 .offset(offset)
@@ -382,11 +469,11 @@ public class TicketServiceImpl implements TicketService {
                 .build();
     }
 
-    // 9. WITHDRAW TICKET
+    // 9. WITHDRAW TICKET (EMPLOYEE)
     @Override
-    public void withdrawTicket(Long ticketId, WithdrawTicketRequest request) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+    public void withdrawTicket(Long ticketId, WithdrawTicketRequestDTO request) {
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         if (!ticket.getRequester().getId().equals(current.getId())) {
             throw new AccessDeniedException("You can only withdraw your own ticket");
@@ -411,9 +498,9 @@ public class TicketServiceImpl implements TicketService {
 
     // 10. RESOLVE TICKET
     @Override
-    public TicketResponse resolveTicket(Long ticketId, ResolveTicketRequest request) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+    public CreateTicketResponseDTO resolveTicket(Long ticketId, ResolveTicketRequestDTO request) {
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         validateCanResolve(ticket, current);
 
@@ -426,7 +513,7 @@ public class TicketServiceImpl implements TicketService {
         ticket.setResolutionSummary(request.getResolutionSummary().trim());
         ticket.setResolvedAt(Instant.now());
 
-        HDTicket saved = ticketRepository.save(ticket);
+        HDTicketEntity saved = ticketRepository.save(ticket);
         slaInstanceService.resolveSlaInstance(saved);
 
         ticketHistoryService.log(saved, current, TicketEventType.STATUS_CHANGED, oldStatus.name(), TicketStatus.RESOLVED.name());
@@ -440,14 +527,14 @@ public class TicketServiceImpl implements TicketService {
                 NotificationType.TICKET_RESOLVED, saved);
 
         log.info("Ticket {} resolved by {}", saved.getTicketNumber(), current.getEmail());
-        return TicketMapper.mapToResponse(saved, true);
+        return buildTicketResponse(saved, true);
     }
 
     // 11. WAITING FOR EMPLOYEE
     @Override
-    public TicketResponse waitingForEmployee(Long ticketId, WaitingForEmployeeRequest request) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+    public CreateTicketResponseDTO waitingForEmployee(Long ticketId, WaitingForEmployeeRequestDTO request) {
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         validateCanManageAssignedTicket(ticket, current);
 
@@ -460,7 +547,8 @@ public class TicketServiceImpl implements TicketService {
         ticket.setHoldReason(request.getReason());
         ticket.setHoldStartedAt(Instant.now());
 
-        HDTicket saved = ticketRepository.save(ticket);
+        HDTicketEntity saved = ticketRepository.save(ticket);
+        slaInstanceService.pauseSlaInstance(saved);
 
         ticketHistoryService.log(
                 saved,
@@ -478,14 +566,14 @@ public class TicketServiceImpl implements TicketService {
                 saved
         );
 
-        return TicketMapper.mapToResponse(saved, true);
+        return buildTicketResponse(saved, true);
     }
 
     // 12. RESUME TICKET (AGENT / MANAGER)
     @Override
-    public TicketResponse resumeTicket(Long ticketId) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+    public CreateTicketResponseDTO resumeTicket(Long ticketId) {
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         validateCanManageAssignedTicket(ticket, current);
 
@@ -494,11 +582,13 @@ public class TicketServiceImpl implements TicketService {
         }
 
         TicketStatus oldStatus = ticket.getStatus();
+        slaInstanceService.resumeSlaInstance(ticket);
+
         ticket.setStatus(TicketStatus.IN_PROGRESS);
         ticket.setHoldReason(null);
         ticket.setHoldStartedAt(null);
 
-        HDTicket saved = ticketRepository.save(ticket);
+        HDTicketEntity saved = ticketRepository.save(ticket);
 
         ticketHistoryService.log(
                 saved,
@@ -508,14 +598,14 @@ public class TicketServiceImpl implements TicketService {
                 TicketStatus.IN_PROGRESS.name()
         );
 
-        return TicketMapper.mapToResponse(saved, true);
+        return buildTicketResponse(saved, true);
     }
 
     // 13. REOPEN TICKET (EMPLOYEE - 50% SLA ALLOCATION)
     @Override
-    public TicketResponse reopenTicket(Long ticketId, ReopenTicketRequest request) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+    public CreateTicketResponseDTO reopenTicket(Long ticketId, ReopenTicketRequestDTO request) {
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         if (!ticket.getRequester().getId().equals(current.getId())) {
             throw new AccessDeniedException("Only the ticket requester can reopen this ticket");
@@ -533,11 +623,9 @@ public class TicketServiceImpl implements TicketService {
         ticket.setReopenCount(currentReopenCount + 1);
         ticket.setStatus(TicketStatus.REOPENED);
         ticket.setResolvedAt(null);
+        ticket.setWorkStartedAt(null);
 
-        HDTicket saved = ticketRepository.save(ticket);
-
-        // Recalculate SLA with 50% allocation for reopen cycle
-        slaInstanceService.reopenSlaInstance(saved, saved.getSlaPolicy());
+        HDTicketEntity saved = ticketRepository.save(ticket);
 
         ticketHistoryService.log(
                 saved,
@@ -559,14 +647,14 @@ public class TicketServiceImpl implements TicketService {
         }
 
         log.info("Ticket {} reopened by requester {}", saved.getTicketNumber(), current.getEmail());
-        return TicketMapper.mapToResponse(saved, true);
+        return buildTicketResponse(saved, true);
     }
 
     // 14. SUBMIT FEEDBACK (EMPLOYEE)
     @Override
-    public void submitFeedback(Long ticketId, FeedbackRequest request) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+    public void submitFeedback(Long ticketId, FeedbackRequestDTO request) {
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         if (!ticket.getRequester().getId().equals(current.getId())) {
             throw new AccessDeniedException("Only the requester can submit feedback");
@@ -576,11 +664,11 @@ public class TicketServiceImpl implements TicketService {
             throw new InvalidOperationException("Feedback can only be submitted for RESOLVED tickets");
         }
 
-        if (feedbackRepository.existsByTicket_Id(ticketId)) {
+        if (feedbackRepository.existsByTicketId(ticketId)) {
             throw new InvalidOperationException("Feedback has already been submitted for this ticket");
         }
 
-        HDTicketFeedback feedback = new HDTicketFeedback();
+        HDTicketFeedbackEntity feedback = new HDTicketFeedbackEntity();
         feedback.setTicket(ticket);
         feedback.setSubmittedBy(current);
         feedback.setRating(request.getRating());
@@ -591,22 +679,22 @@ public class TicketServiceImpl implements TicketService {
 
     // 15. SEND MESSAGE
     @Override
-    public void sendMessage(Long ticketId, SendMessageRequest request) {
-        HDTicket ticket = getTicketEntity(ticketId);
-        HDEmployee current = currentUserService.getCurrentEmployee();
+    public TicketMessageResponseDTO sendMessage(Long ticketId, SendMessageRequestDTO request) {
+        HDTicketEntity ticket = getTicketEntity(ticketId);
+        HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
         validateCanViewTicket(ticket, current);
-        ticketMessageService.sendMessage(ticket, current, request.getMessage());
+        return mapToResponse(ticketMessageService.sendMessage(ticket, current, request.getMessage()));
     }
 
 
     // HELPER & SECURITY VALIDATION METHODS
-    private HDTicket getTicketEntity(Long ticketId) {
+    private HDTicketEntity getTicketEntity(Long ticketId) {
         return ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + ticketId));
     }
 
-    private void validateCanViewTicket(HDTicket ticket, HDEmployee current) {
+    private void validateCanViewTicket(HDTicketEntity ticket, HDEmployeeEntity current) {
         if (current.getRole() == EmployeeRole.ADMIN) {
             return;
         }
@@ -624,7 +712,7 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private void validateCanResolve(HDTicket ticket, HDEmployee current) {
+    private void validateCanResolve(HDTicketEntity ticket, HDEmployeeEntity current) {
         if (current.getRole() == EmployeeRole.ADMIN) {
             return;
         }
@@ -641,7 +729,7 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private void validateCanManageAssignedTicket(HDTicket ticket, HDEmployee current) {
+    private void validateCanManageAssignedTicket(HDTicketEntity ticket, HDEmployeeEntity current) {
         if (current.getRole() == EmployeeRole.ADMIN) {
             return;
         }
@@ -659,15 +747,15 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private HDSlaPolicy resolveSlaPolicy(Long departmentId, Long subCategoryId) {
+    private HDSlaPolicyEntity resolveSlaPolicy(Long departmentId, Long subCategoryId) {
 
-        return slaPolicyRepository.findByDepartment_IdAndSubCategory_IdAndActiveTrue(departmentId, subCategoryId)
+        return slaPolicyRepository.findByDepartmentIdAndSubCategoryIdAndActiveTrue(departmentId, subCategoryId)
                 .orElseThrow(() -> new InvalidOperationException("No active SLA policy configured for the selected department and sub-category"));
     }
 
     private synchronized String generateUniqueTicketNumber() {
         Pageable topOne = PageRequest.of(0, 1);
-        List<HDTicket> lastList = ticketRepository.findLastTicketForUpdate(topOne);
+        List<HDTicketEntity> lastList = ticketRepository.findLastTicketForUpdate(topOne);
         long nextNumber = 1;
         if (!lastList.isEmpty() && lastList.get(0).getTicketNumber() != null) {
             nextNumber = extractNextNumber(lastList.get(0).getTicketNumber());
@@ -697,6 +785,26 @@ public class TicketServiceImpl implements TicketService {
             } catch (NumberFormatException ignored) {}
         }
         return max > 0 ? max + 1 : 1;
+    }
+
+    private TicketMessageResponseDTO mapToResponse(HDTicketMessageEntity message) {
+        return TicketMessageResponseDTO.builder()
+                .id(message.getId())
+                .ticketId(message.getTicket() != null ? message.getTicket().getId() : null)
+                .sender(mapToSender(message.getSender()))
+                .messageText(message.getMessageText())
+                .createdAt(message.getCreatedAt().atZone(ZoneId.of(message.getSender().getTimezone())).toOffsetDateTime())
+                .build();
+    }
+
+    private MessageSenderDTO mapToSender(HDEmployeeEntity employee){
+        if(employee == null) return null;
+
+        return MessageSenderDTO.builder()
+                .id(employee.getId())
+                .name(employee.getFirstName() + " " + employee.getLastName())
+                .role(employee.getRole().toString())
+                .build();
     }
 
 }

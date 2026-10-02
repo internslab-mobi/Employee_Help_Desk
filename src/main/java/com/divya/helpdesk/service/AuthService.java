@@ -4,17 +4,15 @@ import com.divya.helpdesk.dto.auth.*;
 
 public interface AuthService {
 
-    LoginResponse login(LoginRequest request);
+    LoginResponseDTO login(LoginRequestDTO request);
 
-    AccountActivationResponse activateAccount(AccountActivationRequest request);
+    String forgotPassword(ForgotPasswordRequestDTO request);
 
-    String forgotPassword(ForgotPasswordRequest request);
+    VerifyOtpResponseDTO verifyOtp(VerifyOtpRequestDTO request);
 
-    VerifyOtpResponse verifyOtp(VerifyOtpRequest request);
+    String resetPassword(ResetPasswordRequestDTO request);
 
-    String resetPassword(ResetPasswordRequest request);
+    String changePassword(String email, ChangePasswordRequestDTO request);
 
-    String changePassword(String email, ChangePasswordRequest request);
-
-    LoginResponse refreshToken(RefreshTokenRequest request);
+    LoginResponseDTO refreshToken(RefreshTokenRequestDTO request);
 }

@@ -1,5 +1,7 @@
 package com.divya.helpdesk.security;
 
+import com.divya.helpdesk.service.HDUserDetailsService;
+import com.divya.helpdesk.service.JWTService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

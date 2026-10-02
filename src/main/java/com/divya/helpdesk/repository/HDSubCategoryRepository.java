@@ -1,12 +1,10 @@
 package com.divya.helpdesk.repository;
 
-import com.divya.helpdesk.entity.HDSubCategory;
+import com.divya.helpdesk.entity.HDSubCategoryEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
 @Repository
-public interface HDSubCategoryRepository extends JpaRepository<HDSubCategory, Long> {
+public interface HDSubCategoryRepository extends JpaRepository<HDSubCategoryEntity, Long> {
 
 }
