@@ -2,8 +2,7 @@ package com.divya.helpdesk.util;
 
 import com.divya.helpdesk.exception.BadRequestException;
 
-import java.time.DateTimeException;
-import java.time.ZoneId;
+import java.time.*;
 
 public final class TimezoneUtil {
 
@@ -29,5 +28,17 @@ public final class TimezoneUtil {
             throw new BadRequestException("Invalid timezone: '" + timezone
                     + "'. Must be a valid IANA timezone identifier (e.g. Asia/Kolkata, Asia/Kuala_Lumpur, America/New_York)");
         }
+    }
+
+    public static OffsetDateTime convertToEmployeeTimezone(Instant instant, String timezone) {
+        if (instant == null) {
+            return null;
+        }
+
+        ZoneId zoneId = (timezone != null && !timezone.isBlank())
+                ? ZoneId.of(timezone)
+                : ZoneOffset.UTC;
+
+        return instant.atZone(zoneId).toOffsetDateTime();
     }
 }

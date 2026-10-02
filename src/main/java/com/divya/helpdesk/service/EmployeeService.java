@@ -2,19 +2,17 @@ package com.divya.helpdesk.service;
 
 import com.divya.helpdesk.dto.user.*;
 
-import java.util.List;
-
 public interface EmployeeService {
 
-    EmployeeUpdateResponse updateEntireEmployee(Long employeeId, UpdateEmployeeRequest request);
+    UpdateEmployeeResponseDTO updateEntireEmployee(Long employeeId, UpdateEmployeeRequestDTO request);
 
-    EmployeeUpdateResponse patchEmployee(Long employeeId, EmployeePatchRequest request);
+    UpdateEmployeeResponseDTO patchEmployee(Long employeeId, PatchEmployeeRequestDTO request);
 
-    EmployeeUpdateResponse updateMyProfile(Long employeeId, UpdateProfileRequest request);
+    UpdateEmployeeResponseDTO updateMyProfile(Long employeeId, UpdateProfileRequestDTO request);
 
-    EmployeeResponse createEmployee(CreateEmployeeRequest request);
+    CreateEmployeeResponseDTO createEmployee(CreateEmployeeRequestDTO request);
 
-    EmployeeResponse getEmployee(Long employeeId);
+    CreateEmployeeResponseDTO getEmployee(Long employeeId);
 
-    EmployeeResponse getMyProfile(Long employeeId);
+    CreateEmployeeResponseDTO getMyProfile(Long employeeId);
 }

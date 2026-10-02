@@ -1,6 +1,6 @@
 package com.divya.helpdesk.scheduler;
 
-import com.divya.helpdesk.service.HDSlaInstanceService;
+import com.divya.helpdesk.service.SlaInstanceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SlaScheduler {
 
-    private final HDSlaInstanceService slaInstanceService;
+    private final SlaInstanceService slaInstanceService;
 
     @Scheduled(fixedRate = 60000)
     public void checkSla() {
