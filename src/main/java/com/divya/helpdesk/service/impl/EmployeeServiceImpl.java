@@ -1,8 +1,8 @@
 package com.divya.helpdesk.service.impl;
 
 import com.divya.helpdesk.dto.user.*;
-import com.divya.helpdesk.entity.HDEmployee;
-import com.divya.helpdesk.entity.HDDepartment;
+import com.divya.helpdesk.entity.HDDepartmentEntity;
+import com.divya.helpdesk.entity.HDEmployeeEntity;
 import com.divya.helpdesk.exception.DuplicateResourceException;
 import com.divya.helpdesk.exception.ResourceNotFoundException;
 import com.divya.helpdesk.mapper.EmployeeMapper;
@@ -34,6 +34,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final HDDepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final EmployeeMapper employeeMapper;
 
     private static final String UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
     private static final String LOWER = "abcdefghijkmnopqrstuvwxyz";
@@ -65,9 +66,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     // UPDATE EMPLOYEE - ADMIN - PUT
     @Override
-    public EmployeeUpdateResponse updateEntireEmployee(Long employeeId, UpdateEmployeeRequest request) {
+    public UpdateEmployeeResponseDTO updateEntireEmployee(Long employeeId, UpdateEmployeeRequestDTO request) {
 
-        HDEmployee employee = getEmployeeEntity(employeeId);
+        HDEmployeeEntity employee = getEmployeeEntity(employeeId);
 
         if (request.getFirstName() != null) {
             employee.setFirstName(request.getFirstName().trim());
@@ -82,7 +83,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             employee.setDesignation(request.getDesignation());
         }
         if (request.getDepartmentId() != null) {
-            HDDepartment department = departmentRepository.findById(request.getDepartmentId())
+            HDDepartmentEntity department = departmentRepository.findById(request.getDepartmentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()));
             employee.setDepartment(department);
         }
@@ -104,14 +105,14 @@ public class EmployeeServiceImpl implements EmployeeService {
             employee.setTimezone(tz);
         }
 
-        return EmployeeMapper.mapToUpdateResponse(employee);
+        return toUpdateResponse(employee);
     }
 
-    // PATCH EMPLOYEE - Single endpoint handling all eligible patchable fields
+    // PATCH EMPLOYEE
     @Override
-    public EmployeeUpdateResponse patchEmployee(Long employeeId, EmployeePatchRequest request) {
+    public UpdateEmployeeResponseDTO patchEmployee(Long employeeId, PatchEmployeeRequestDTO request) {
 
-        HDEmployee employee = getEmployeeEntity(employeeId);
+        HDEmployeeEntity employee = getEmployeeEntity(employeeId);
 
         // Protected fields like employeeCode, id, createdAt, updatedAt are NOT modified here
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
@@ -134,7 +135,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             employee.setDesignation(request.getDesignation());
         }
         if (request.getDepartmentId() != null) {
-            HDDepartment department = departmentRepository.findById(request.getDepartmentId())
+            HDDepartmentEntity department = departmentRepository.findById(request.getDepartmentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()));
             employee.setDepartment(department);
         }
@@ -161,16 +162,16 @@ public class EmployeeServiceImpl implements EmployeeService {
             TimezoneUtil.validateAndGetZoneId(tz);
             employee.setTimezone(tz);
         }
-        HDEmployee savedEmployee = employeeRepository.save(employee);
+        HDEmployeeEntity savedEmployee = employeeRepository.save(employee);
 
-        return EmployeeMapper.mapToUpdateResponse(savedEmployee);
+        return toUpdateResponse(savedEmployee);
     }
 
     // UPDATE MY PROFILE - EMPLOYEE - PATCH
     @Override
-    public EmployeeUpdateResponse updateMyProfile(Long employeeId, UpdateProfileRequest request) {
+    public UpdateEmployeeResponseDTO updateMyProfile(Long employeeId, UpdateProfileRequestDTO request) {
 
-        HDEmployee employee = getEmployeeEntity(employeeId);
+        HDEmployeeEntity employee = getEmployeeEntity(employeeId);
 
         if (request.getFirstName() != null && !request.getFirstName().isBlank()) {
             employee.setFirstName(request.getFirstName().trim());
@@ -189,19 +190,18 @@ public class EmployeeServiceImpl implements EmployeeService {
             TimezoneUtil.validateAndGetZoneId(tz);
             employee.setTimezone(tz);
         }
-
-        return EmployeeMapper.mapToUpdateResponse(employee);
+        return toUpdateResponse(employee);
     }
 
     // CREATE EMPLOYEE - AUTO GENERATED CONCURRENCY-SAFE EMPLOYEE CODE (EMP_001, EMP_002...)
     @Override
-    public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
+    public CreateEmployeeResponseDTO createEmployee(CreateEmployeeRequestDTO request) {
 
         if (employeeRepository.existsByEmail(request.getEmail().trim().toLowerCase())) {
             throw new DuplicateResourceException("Employee already exists with email: " + request.getEmail());
         }
 
-        HDDepartment department = departmentRepository.findById(request.getDepartmentId())
+        HDDepartmentEntity department = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()));
 
         String generatedCode = generateNextEmployeeCode();
@@ -212,7 +212,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 : TimezoneUtil.DEFAULT_TIMEZONE;
         TimezoneUtil.validateAndGetZoneId(tz);
 
-        HDEmployee employee = new HDEmployee();
+        HDEmployeeEntity employee = new HDEmployeeEntity();
         employee.setEmployeeCode(generatedCode);
         employee.setEmail(request.getEmail().trim().toLowerCase());
         employee.setFirstName(request.getFirstName().trim());
@@ -229,33 +229,51 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setActivated(false);
         employee.setEnabled(true);
 
-        HDEmployee savedEmployee = employeeRepository.save(employee);
+        HDEmployeeEntity savedEmployee = employeeRepository.save(employee);
         log.info("Successfully created employee with auto-generated code: {} and email: {}", savedEmployee.getEmployeeCode(), savedEmployee.getEmail());
 
         // Send temporary-password onboarding email
         String fullName = savedEmployee.getFirstName() + " " + savedEmployee.getLastName();
         emailService.sendTemporaryPasswordEmail(savedEmployee.getEmail(), fullName.trim(), savedEmployee.getEmployeeCode(), temporaryPassword);
 
-        return EmployeeMapper.mapToResponse(savedEmployee);
+        return toResponse(savedEmployee);
     }
 
     // GET EMPLOYEE BY ID
     @Override
     @Transactional(readOnly = true)
-    public EmployeeResponse getEmployee(Long employeeId) {
-        return EmployeeMapper.mapToResponse(getEmployeeEntity(employeeId));
+    public CreateEmployeeResponseDTO getEmployee(Long employeeId) {
+        return toResponse(getEmployeeEntity(employeeId));
     }
 
     // GET MY PROFILE
     @Override
     @Transactional(readOnly = true)
-    public EmployeeResponse getMyProfile(Long employeeId) {
-        return EmployeeMapper.mapToResponse(getEmployeeEntity(employeeId));
+    public CreateEmployeeResponseDTO getMyProfile(Long employeeId) {
+        return toResponse(getEmployeeEntity(employeeId));
     }
 
-
     // COMMON / HELPER METHODS
-    private HDEmployee getEmployeeEntity(Long employeeId) {
+    private CreateEmployeeResponseDTO toResponse(HDEmployeeEntity employee) {
+        if (employee == null) {
+            return null;
+        }
+        CreateEmployeeResponseDTO dto = employeeMapper.mapToResponse(employee);
+        dto.setCreatedAt(TimezoneUtil.convertToEmployeeTimezone(employee.getCreatedAt(), employee.getTimezone()));
+        return dto;
+    }
+
+    private UpdateEmployeeResponseDTO toUpdateResponse(HDEmployeeEntity employee) {
+        if (employee == null) {
+            return null;
+        }
+        UpdateEmployeeResponseDTO dto = employeeMapper.mapToUpdateResponse(employee);
+        dto.setCreatedAt(TimezoneUtil.convertToEmployeeTimezone(employee.getCreatedAt(), employee.getTimezone()));
+        dto.setUpdatedAt(TimezoneUtil.convertToEmployeeTimezone(employee.getUpdatedAt(), employee.getTimezone()));
+        return dto;
+    }
+
+    private HDEmployeeEntity getEmployeeEntity(Long employeeId) {
         return employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
     }
@@ -263,7 +281,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private synchronized String generateNextEmployeeCode() {
         Pageable topOne = PageRequest.of(0, 1);
-        List<HDEmployee> lastList = employeeRepository.findLastEmployeeForUpdate(topOne);
+        List<HDEmployeeEntity> lastList = employeeRepository.findLastEmployeeForUpdate(topOne);
         long nextNumber = 1;
         if (!lastList.isEmpty() && lastList.get(0).getEmployeeCode() != null) {
             nextNumber = extractNextNumber(lastList.get(0).getEmployeeCode());
