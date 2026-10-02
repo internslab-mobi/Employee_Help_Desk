@@ -1,6 +1,6 @@
 package com.divya.helpdesk.config;
 
-import com.divya.helpdesk.security.HDUserDetailsService;
+import com.divya.helpdesk.service.HDUserDetailsService;
 import com.divya.helpdesk.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -50,8 +50,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/login",
-                                "/api/auth/activate",
-                                "/api/auth/activate-account",
                                 "/api/auth/forgot-password",
                                 "/api/auth/verify-otp",
                                 "/api/auth/reset-password",

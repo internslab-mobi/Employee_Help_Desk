@@ -1,13 +1,13 @@
 package com.divya.helpdesk.repository;
 
-import com.divya.helpdesk.entity.HDNotification;
+import com.divya.helpdesk.entity.HDNotificationEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public interface HDNotificationRepository extends JpaRepository<HDNotification, Long> {
+public interface HDNotificationRepository extends JpaRepository<HDNotificationEntity, Long> {
 
-    List<HDNotification> findByRecipient_IdOrderByCreatedAtDesc(Long recipientId);
+    List<HDNotificationEntity> findByRecipientIdOrderByCreatedAtDesc(Long recipientId);
 }

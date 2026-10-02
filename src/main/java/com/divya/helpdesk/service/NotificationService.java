@@ -1,16 +1,16 @@
 package com.divya.helpdesk.service;
 
-import com.divya.helpdesk.dto.notification.NotificationResponse;
-import com.divya.helpdesk.entity.HDEmployee;
-import com.divya.helpdesk.entity.HDNotification;
-import com.divya.helpdesk.entity.HDTicket;
+import com.divya.helpdesk.dto.notification.NotificationResponseDTO;
+import com.divya.helpdesk.entity.HDEmployeeEntity;
+import com.divya.helpdesk.entity.HDNotificationEntity;
+import com.divya.helpdesk.entity.HDTicketEntity;
 import com.divya.helpdesk.enums.NotificationType;
 
 import java.util.List;
 
 public interface NotificationService {
 
-    HDNotification createNotification(HDEmployee recipient, String title, String message, NotificationType type, HDTicket referenceTicket);
+    HDNotificationEntity createNotification(HDEmployeeEntity recipient, String title, String message, NotificationType type, HDTicketEntity referenceTicket);
 
-    List<NotificationResponse> getMyNotifications(Long employeeId);
+    List<NotificationResponseDTO> getMyNotifications(Long employeeId);
 }

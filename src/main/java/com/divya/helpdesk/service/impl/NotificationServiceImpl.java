@@ -1,10 +1,10 @@
 package com.divya.helpdesk.service.impl;
 
-import com.divya.helpdesk.dto.notification.NotificationResponse;
+import com.divya.helpdesk.dto.notification.NotificationResponseDTO;
 import com.divya.helpdesk.dto.notification.ReferenceTicketDTO;
-import com.divya.helpdesk.entity.HDEmployee;
-import com.divya.helpdesk.entity.HDNotification;
-import com.divya.helpdesk.entity.HDTicket;
+import com.divya.helpdesk.entity.HDEmployeeEntity;
+import com.divya.helpdesk.entity.HDNotificationEntity;
+import com.divya.helpdesk.entity.HDTicketEntity;
 import com.divya.helpdesk.enums.NotificationType;
 import com.divya.helpdesk.repository.HDNotificationRepository;
 import com.divya.helpdesk.service.NotificationService;
@@ -25,14 +25,14 @@ public class NotificationServiceImpl implements NotificationService {
     private final HDNotificationRepository notificationRepository;
 
     @Override
-    public HDNotification createNotification(HDEmployee recipient, String title, String message, NotificationType type, HDTicket referenceTicket) {
+    public HDNotificationEntity createNotification(HDEmployeeEntity recipient, String title, String message, NotificationType type, HDTicketEntity referenceTicket) {
         if (recipient == null) {
             log.warn("Cannot create notification with null recipient for ticket: {}",
                     referenceTicket != null ? referenceTicket.getTicketNumber() : "N/A");
             return null;
         }
 
-        HDNotification notification = new HDNotification();
+        HDNotificationEntity notification = new HDNotificationEntity();
         notification.setRecipient(recipient);
         notification.setTitle(title);
         notification.setMessage(message);
@@ -45,15 +45,15 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<NotificationResponse> getMyNotifications(Long employeeId) {
-        return notificationRepository.findByRecipient_IdOrderByCreatedAtDesc(employeeId)
+    public List<NotificationResponseDTO> getMyNotifications(Long employeeId) {
+        return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(employeeId)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
 
-    private NotificationResponse mapToResponse(HDNotification notification) {
-        return NotificationResponse.builder()
+    private NotificationResponseDTO mapToResponse(HDNotificationEntity notification) {
+        return NotificationResponseDTO.builder()
                 .id(notification.getId())
                 .recipientId(notification.getRecipient() != null ? notification.getRecipient().getId() : null)
                 .title(notification.getTitle())
@@ -64,7 +64,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .build();
     }
 
-    private ReferenceTicketDTO mapToReferenceTicket(HDTicket ticket){
+    private ReferenceTicketDTO mapToReferenceTicket(HDTicketEntity ticket){
         if(ticket == null) return null;
 
         return ReferenceTicketDTO.builder()

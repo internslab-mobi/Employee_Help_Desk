@@ -16,43 +16,35 @@ public class AuthController {
 
     // LOGIN
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO request) {
 
         return ResponseEntity.ok(authService.login(request));
     }
 
-    // ACTIVATE ACCOUNT
-    @PostMapping("/activate")
-    public ResponseEntity<AccountActivationResponse> activateAccount(@RequestBody AccountActivationRequest request) {
-
-        return ResponseEntity.ok(authService.activateAccount(request));
-    }
-
-
     // FORGOT PASSWORD - SEND OTP
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequestDTO request) {
 
         return ResponseEntity.ok(authService.forgotPassword(request));
     }
 
     // VERIFY OTP
     @PostMapping("/verify-otp")
-    public ResponseEntity<VerifyOtpResponse> verifyOtp(@RequestBody VerifyOtpRequest request) {
+    public ResponseEntity<VerifyOtpResponseDTO> verifyOtp(@RequestBody VerifyOtpRequestDTO request) {
 
         return ResponseEntity.ok(authService.verifyOtp(request));
     }
 
     // RESET PASSWORD
     @PostMapping("/reset-password")
-    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequestDTO request) {
 
         return ResponseEntity.ok(authService.resetPassword(request));
     }
 
     // CHANGE PASSWORD
     @PostMapping("/change-password")
-    public ResponseEntity<String> changePassword(Authentication authentication, @RequestBody ChangePasswordRequest request) {
+    public ResponseEntity<String> changePassword(Authentication authentication, @RequestBody ChangePasswordRequestDTO request) {
         String email = authentication.getName();
 
         return ResponseEntity.ok(authService.changePassword(email, request));
@@ -60,7 +52,7 @@ public class AuthController {
 
     // REFRESH TOKEN
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResponse> refreshToken(@RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<LoginResponseDTO> refreshToken(@RequestBody RefreshTokenRequestDTO request) {
         return ResponseEntity.ok(authService.refreshToken(request));
     }
 }

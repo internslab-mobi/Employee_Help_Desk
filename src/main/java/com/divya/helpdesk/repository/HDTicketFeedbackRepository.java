@@ -1,14 +1,11 @@
 package com.divya.helpdesk.repository;
 
-import com.divya.helpdesk.entity.HDTicketFeedback;
+import com.divya.helpdesk.entity.HDTicketFeedbackEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-
 @Repository
-public interface HDTicketFeedbackRepository extends JpaRepository<HDTicketFeedback, Long> {
+public interface HDTicketFeedbackRepository extends JpaRepository<HDTicketFeedbackEntity, Long> {
 
-
-    boolean existsByTicket_Id(Long ticketId);
+    boolean existsByTicketId(Long ticketId);
 }
