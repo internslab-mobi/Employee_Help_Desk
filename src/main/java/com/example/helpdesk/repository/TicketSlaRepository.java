@@ -16,3 +16,6 @@ public interface TicketSlaRepository extends JpaRepository<TicketSla, Long> {
 
     List<TicketSla> findByStatusAndWarningAtBefore(String status, Instant warningTime);
 }
+
+
+

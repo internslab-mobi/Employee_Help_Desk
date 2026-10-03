@@ -8,16 +8,5 @@ import java.util.List;
 
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
-
-    boolean existsByTicketNumber(String ticketNumber);
-
-    List<Ticket> findByRequesterId(Long requesterId);
-
-    List<Ticket> findByDepartmentId(Long departmentId);
-
-    List<Ticket> findByAssignedAgentId(Long agentId);
-
-    List<Ticket> findByStatus(String status);
-
     long countByAssignedAgentIdAndStatusNotIn(Long agentId, List<String> statuses);
 }

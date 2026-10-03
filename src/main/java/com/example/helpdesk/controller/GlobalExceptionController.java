@@ -1,7 +1,7 @@
 package com.example.helpdesk.controller;
 
 import com.example.helpdesk.cache.ErrorCodeCache;
-import com.example.helpdesk.dto.response.ErrorResponse;
+import com.example.helpdesk.dto.response.ErrorResponseDTO;
 import com.example.helpdesk.entity.ErrorCode;
 import com.example.helpdesk.exception.AuthenticationException;
 import com.example.helpdesk.exception.AuthorizationException;
@@ -25,17 +25,18 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 public class GlobalExceptionController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionController.class);
 
     private final ErrorCodeCache errorCodeCache;
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
+    public ResponseEntity<ErrorResponseDTO> handleResourceNotFoundException(
             ResourceNotFoundException ex,
             HttpServletRequest request) {
         log.error("Resource not found: {}", ex.getMessage());
         String code = ex.getErrorCode();
         ErrorCode errorCode = errorCodeCache.getErrorCode(code);
-        ErrorResponse error = ErrorResponse.builder()
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
                 .errorCode(errorCode.getCode())
                 .statusCode(errorCode.getHttpStatus())
                 .errorMessage(ex.getMessage())
@@ -45,13 +46,13 @@ public class GlobalExceptionController {
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ErrorResponse> handleAuthenticationException(
+    public ResponseEntity<ErrorResponseDTO> handleAuthenticationException(
             AuthenticationException ex,
             HttpServletRequest request) {
         log.error("Authentication failed: {}", ex.getMessage());
         String code = ex.getErrorCode();
         ErrorCode errorCode = errorCodeCache.getErrorCode(code);
-        ErrorResponse error = ErrorResponse.builder()
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
                 .errorCode(errorCode.getCode())
                 .statusCode(errorCode.getHttpStatus())
                 .errorMessage(ex.getMessage())
@@ -61,13 +62,13 @@ public class GlobalExceptionController {
     }
 
     @ExceptionHandler(AuthorizationException.class)
-    public ResponseEntity<ErrorResponse> handleAuthorizationException(
+    public ResponseEntity<ErrorResponseDTO> handleAuthorizationException(
             AuthorizationException ex,
             HttpServletRequest request) {
         log.error("Authorization failed: {}", ex.getMessage());
         String code = ex.getErrorCode();
         ErrorCode errorCode = errorCodeCache.getErrorCode(code);
-        ErrorResponse error = ErrorResponse.builder()
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
                 .errorCode(errorCode.getCode())
                 .statusCode(errorCode.getHttpStatus())
                 .errorMessage(ex.getMessage())
@@ -77,12 +78,12 @@ public class GlobalExceptionController {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleBadCredentialsException(
+    public ResponseEntity<ErrorResponseDTO> handleBadCredentialsException(
             BadCredentialsException ex,
             HttpServletRequest request) {
         log.error("Bad credentials: {}", ex.getMessage());
         ErrorCode errorCode = errorCodeCache.getErrorCode("ERR_004");
-        ErrorResponse error = ErrorResponse.builder()
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
                 .errorCode(errorCode.getCode())
                 .statusCode(errorCode.getHttpStatus())
                 .errorMessage("Invalid email or password")
@@ -92,12 +93,12 @@ public class GlobalExceptionController {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+    public ResponseEntity<ErrorResponseDTO> handleAccessDeniedException(
             AccessDeniedException ex,
             HttpServletRequest request) {
         log.error("Access denied: {}", ex.getMessage());
         ErrorCode errorCode = errorCodeCache.getErrorCode("ERR_005");
-        ErrorResponse error = ErrorResponse.builder()
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
                 .errorCode(errorCode.getCode())
                 .statusCode(errorCode.getHttpStatus())
                 .errorMessage("You do not have permission to access this resource")
@@ -107,7 +108,7 @@ public class GlobalExceptionController {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(
+    public ResponseEntity<ErrorResponseDTO> handleValidationException(
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
         String errorMessage = ex.getBindingResult().getFieldErrors().stream()
@@ -115,7 +116,7 @@ public class GlobalExceptionController {
                 .collect(Collectors.joining(", "));
         log.error("Validation failed: {}", errorMessage);
         ErrorCode errorCode = errorCodeCache.getErrorCode("ERR_002");
-        ErrorResponse error = ErrorResponse.builder()
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
                 .errorCode(errorCode.getCode())
                 .statusCode(errorCode.getHttpStatus())
                 .errorMessage("Validation failed: " + errorMessage)
@@ -125,12 +126,12 @@ public class GlobalExceptionController {
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+    public ResponseEntity<ErrorResponseDTO> handleIllegalArgumentException(
             IllegalArgumentException ex,
             HttpServletRequest request) {
         log.error("Invalid argument: {}", ex.getMessage());
         ErrorCode errorCode = errorCodeCache.getErrorCode("ERR_006");
-        ErrorResponse error = ErrorResponse.builder()
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
                 .errorCode(errorCode.getCode())
                 .statusCode(errorCode.getHttpStatus())
                 .errorMessage(ex.getMessage())
@@ -148,12 +149,12 @@ public class GlobalExceptionController {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(
+    public ResponseEntity<ErrorResponseDTO> handleGenericException(
             Exception ex,
             HttpServletRequest request) {
         log.error("Unexpected error occurred", ex);
         ErrorCode errorCode = errorCodeCache.getErrorCode("ERR_010");
-        ErrorResponse error = ErrorResponse.builder()
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
                 .errorCode(errorCode.getCode())
                 .statusCode(errorCode.getHttpStatus())
                 .errorMessage("An unexpected error occurred")
@@ -162,3 +163,7 @@ public class GlobalExceptionController {
         return ResponseEntity.status(HttpStatus.valueOf(errorCode.getHttpStatus())).body(error);
     }
 }
+
+
+
+

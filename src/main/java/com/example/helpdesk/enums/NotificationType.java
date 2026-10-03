@@ -22,3 +22,4 @@ public enum NotificationType {
     TICKET_REASSIGNED,
     TICKET_WITHDRAWN
 }
+

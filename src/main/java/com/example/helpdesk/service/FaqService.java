@@ -1,28 +1,32 @@
 package com.example.helpdesk.service;
 
-import com.example.helpdesk.dto.request.CreateFaqRequest;
-import com.example.helpdesk.dto.request.UpdateFaqRequest;
-import com.example.helpdesk.dto.response.FaqResponse;
+import com.example.helpdesk.dto.request.CreateFaqRequestDTO;
+import com.example.helpdesk.dto.request.UpdateFaqRequestDTO;
+import com.example.helpdesk.dto.response.FaqResponseDTO;
 
 import java.util.List;
 
 public interface FaqService {
 
-    FaqResponse createFaq(CreateFaqRequest request);
+    FaqResponseDTO createFaq(CreateFaqRequestDTO request);
 
-    FaqResponse updateFaq(Long id, UpdateFaqRequest request);
+    FaqResponseDTO updateFaq(Long id, UpdateFaqRequestDTO request);
 
     void deleteFaq(Long id);
 
-    List<FaqResponse> getActiveFaqs();
+    List<FaqResponseDTO> getActiveFaqs();
 
-    List<FaqResponse> getAllFaqs();
+    List<FaqResponseDTO> getAllFaqs();
 
-    List<FaqResponse> searchFaqs(String query);
+    List<FaqResponseDTO> searchFaqs(String query);
 
-    FaqResponse getFaqById(Long id);
+    FaqResponseDTO getFaqById(Long id);
 
-    FaqResponse activateFaq(Long id);
+    FaqResponseDTO activateFaq(Long id);
 
-    FaqResponse deactivateFaq(Long id);
+    FaqResponseDTO deactivateFaq(Long id);
 }
+
+
+
+

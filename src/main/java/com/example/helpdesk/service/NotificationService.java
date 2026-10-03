@@ -1,6 +1,6 @@
 package com.example.helpdesk.service;
 
-import com.example.helpdesk.dto.response.NotificationResponse;
+import com.example.helpdesk.dto.response.NotificationResponseDTO;
 import com.example.helpdesk.entity.Employee;
 import com.example.helpdesk.entity.Ticket;
 import com.example.helpdesk.enums.NotificationType;
@@ -15,5 +15,9 @@ public interface NotificationService {
 
     void markAllAsReadForEmployee(Long employeeId);
 
-    List<NotificationResponse> getNotificationsByEmployee(Long employeeId);
+    List<NotificationResponseDTO> getNotificationsByEmployee(Long employeeId);
 }
+
+
+
+

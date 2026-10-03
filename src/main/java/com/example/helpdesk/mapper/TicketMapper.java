@@ -1,6 +1,6 @@
 package com.example.helpdesk.mapper;
 
-import com.example.helpdesk.dto.request.CreateTicketRequest;
+import com.example.helpdesk.dto.request.CreateTicketRequestDTO;
 import com.example.helpdesk.entity.Category;
 import com.example.helpdesk.entity.Department;
 import com.example.helpdesk.entity.Employee;
@@ -37,7 +37,7 @@ public interface TicketMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Ticket toEntity(
-            CreateTicketRequest request,
+            CreateTicketRequestDTO request,
             Employee requester,
             Department department,
             Category category,
@@ -47,3 +47,6 @@ public interface TicketMapper {
     );
 
 }
+
+
+

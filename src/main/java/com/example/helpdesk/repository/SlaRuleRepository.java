@@ -9,3 +9,6 @@ public interface SlaRuleRepository extends JpaRepository<SlaRule, Long> {
 
     SlaRule findByDepartmentIdAndSubCategoryIdAndActiveTrue(Long departmentId, Long subCategoryId);
 }
+
+
+

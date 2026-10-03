@@ -15,3 +15,6 @@ public interface LoginOTPRepository extends JpaRepository<LoginOTP, Long> {
 
     Optional<LoginOTP> findFirstByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
 }
+
+
+

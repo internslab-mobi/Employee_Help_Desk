@@ -1,6 +1,6 @@
 package com.example.helpdesk.controller;
 
-import com.example.helpdesk.dto.response.NotificationResponse;
+import com.example.helpdesk.dto.response.NotificationResponseDTO;
 import com.example.helpdesk.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,7 +23,7 @@ public class NotificationController {
     @GetMapping("/{employeeId}")
     @Operation(summary = "Get notifications", description = "🔔 Access: All roles — users can view only their own notifications; ADMIN can view notifications for any employee.")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<List<NotificationResponse>> getNotificationsByEmployee(
+    public ResponseEntity<List<NotificationResponseDTO>> getNotificationsByEmployee(
             @Parameter(description = "Employee ID") @PathVariable Long employeeId) {
         return ResponseEntity.ok(notificationService.getNotificationsByEmployee(employeeId));
     }
@@ -46,4 +46,8 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 }
+
+
+
+
 

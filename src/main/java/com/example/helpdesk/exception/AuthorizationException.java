@@ -59,3 +59,4 @@ public class AuthorizationException extends RuntimeException {
         return errorCode;
     }
 }
+

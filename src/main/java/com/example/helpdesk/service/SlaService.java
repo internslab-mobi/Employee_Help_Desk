@@ -19,3 +19,7 @@ public interface SlaService {
 
     TicketSla createSlaInstanceForReopen(Ticket ticket, Integer allocatedMinutes);
 }
+
+
+
+

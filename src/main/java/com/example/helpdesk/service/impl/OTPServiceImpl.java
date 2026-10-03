@@ -19,6 +19,7 @@ import java.time.Instant;
 @RequiredArgsConstructor
 @Slf4j
 public class OTPServiceImpl implements OTPService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OTPServiceImpl.class);
 
     private final LoginOTPRepository loginOTPRepository;
     private final PasswordEncoder passwordEncoder;
@@ -101,3 +102,7 @@ public class OTPServiceImpl implements OTPService {
         return isValid;
     }
 }
+
+
+
+

@@ -11,3 +11,5 @@ public interface AgentSkillRepository
     List<AgentSkill> findByAgentId(Long agentId);
     java.util.Optional<AgentSkill> findByAgentIdAndSkillId(Long agentId, Long skillId);
 }
+
+

@@ -55,3 +55,6 @@ public class EmployeeUserDetails implements UserDetails {
         return employee.getEmploymentStatus() == null || !"INACTIVE".equalsIgnoreCase(employee.getEmploymentStatus());
     }
 }
+
+
+

@@ -18,10 +18,10 @@ public class Faq {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, length = 500)
     private String question;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "text", nullable = false)
     private String answer;
 
     @ManyToOne(fetch = FetchType.LAZY)

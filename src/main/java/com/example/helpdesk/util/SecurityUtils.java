@@ -53,3 +53,6 @@ public class SecurityUtils {
         return getCurrentJwt().map(jwt -> jwt.getClaimAsString("role"));
     }
 }
+
+
+

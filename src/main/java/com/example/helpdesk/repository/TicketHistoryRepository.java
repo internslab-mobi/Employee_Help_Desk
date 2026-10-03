@@ -14,3 +14,6 @@ public interface TicketHistoryRepository extends JpaRepository<TicketHistory, Lo
     Optional<TicketHistory> findFirstByTicketIdOrderByCreatedAtDesc(Long ticketId);
     boolean existsByTicketIdAndEventType(Long ticketId, TicketEventType eventType);
 }
+
+
+

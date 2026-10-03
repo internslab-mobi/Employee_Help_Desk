@@ -21,3 +21,4 @@ public enum TicketEventType {
     TICKET_REOPENED,
     FEEDBACK_SUBMITTED
 }
+

@@ -17,3 +17,6 @@ public interface FaqRepository extends JpaRepository<Faq, Long> {
 
     List<Faq> findByCategoryIdAndActiveTrueOrderByCreatedAtDesc(Long categoryId);
 }
+
+
+

@@ -18,7 +18,7 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 500)
+    @Column(nullable = false, unique = true)
     private String token;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -28,14 +28,15 @@ public class RefreshToken {
     @Column(name = "expiry_date", nullable = false)
     private Instant expiryDate;
 
-    @Column(name = "refresh_count", nullable = false)
-    private Integer refreshCount;
-
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "refresh_count", nullable = false)
+    @Builder.Default
+    private Integer refreshCount = 0;
 
     @PrePersist
     protected void onCreate() {
@@ -48,6 +49,4 @@ public class RefreshToken {
     protected void onUpdate() {
         updatedAt = Instant.now();
     }
-
-
 }

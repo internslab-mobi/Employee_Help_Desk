@@ -11,3 +11,6 @@ public interface TicketFeedbackRepository extends JpaRepository<TicketFeedback, 
 
     Optional<TicketFeedback> findByTicketId(Long ticketId);
 }
+
+
+

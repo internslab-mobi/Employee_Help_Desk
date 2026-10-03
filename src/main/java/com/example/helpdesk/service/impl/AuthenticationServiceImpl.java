@@ -1,9 +1,9 @@
 package com.example.helpdesk.service.impl;
 
-import com.example.helpdesk.dto.request.FirstLoginPasswordResetRequest;
-import com.example.helpdesk.dto.request.FirstLoginRequest;
-import com.example.helpdesk.dto.request.LoginRequest;
-import com.example.helpdesk.dto.response.LoginResponse;
+import com.example.helpdesk.dto.request.FirstLoginPasswordResetRequestDTO;
+import com.example.helpdesk.dto.request.FirstLoginRequestDTO;
+import com.example.helpdesk.dto.request.LoginRequestDTO;
+import com.example.helpdesk.dto.response.LoginResponseDTO;
 import com.example.helpdesk.entity.Employee;
 import com.example.helpdesk.entity.RefreshToken;
 import com.example.helpdesk.exception.AuthenticationException;
@@ -41,7 +41,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private long jwtExpiration;
 
     @Override
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponseDTO login(LoginRequestDTO request) {
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
@@ -67,7 +67,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         String employeeName = employee.getFirstName() + " " +
                 (employee.getLastName() != null ? employee.getLastName() : "");
 
-        return LoginResponse.builder()
+        return LoginResponseDTO.builder()
                 .token(token)
                 .tokenType("Bearer")
                 .expiresIn(jwtExpiration / 1000)
@@ -80,7 +80,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
-    public LoginResponse firstLogin(FirstLoginRequest request) {
+    public LoginResponseDTO firstLogin(FirstLoginRequestDTO request) {
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
@@ -115,7 +115,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         String employeeName = employee.getFirstName() + " " +
                 (employee.getLastName() != null ? employee.getLastName() : "");
 
-        return LoginResponse.builder()
+        return LoginResponseDTO.builder()
                 .token(token)
                 .tokenType("Bearer")
                 .expiresIn(jwtExpiration / 1000)
@@ -128,7 +128,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
-    public void resetFirstLoginPassword(FirstLoginPasswordResetRequest request) {
+    public void resetFirstLoginPassword(FirstLoginPasswordResetRequestDTO request) {
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new AuthenticationException("ERR_024", "Password and confirm password do not match");
         }
@@ -148,3 +148,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         log.info("Password reset completed for employee {}", employee.getEmail());
     }
 }
+
+
+
+

@@ -1,7 +1,7 @@
 package com.example.helpdesk.config;
 
 import com.example.helpdesk.cache.ErrorCodeCache;
-import com.example.helpdesk.dto.response.ErrorResponse;
+import com.example.helpdesk.dto.response.ErrorResponseDTO;
 import com.example.helpdesk.filter.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
@@ -93,7 +93,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        configuration.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:8098"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
@@ -106,7 +106,7 @@ public class SecurityConfig {
     public AuthenticationEntryPoint customAuthenticationEntryPoint(ObjectMapper objectMapper, ErrorCodeCache errorCodeCache) {
         return (request, response, authException) -> {
             var errorCode = errorCodeCache.getErrorCode("ERR_004");
-            ErrorResponse errorResponse = ErrorResponse.builder()
+            ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
                     .errorCode(errorCode.getCode())
                     .statusCode(errorCode.getHttpStatus())
                     .errorMessage("Full authentication is required to access this resource")
@@ -122,7 +122,7 @@ public class SecurityConfig {
     public AccessDeniedHandler customAccessDeniedHandler(ObjectMapper objectMapper, ErrorCodeCache errorCodeCache) {
         return (request, response, accessDeniedException) -> {
             var errorCode = errorCodeCache.getErrorCode("ERR_005");
-            ErrorResponse errorResponse = ErrorResponse.builder()
+            ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
                     .errorCode(errorCode.getCode())
                     .statusCode(errorCode.getHttpStatus())
                     .errorMessage("You do not have permission to access this resource")
@@ -155,3 +155,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
+
+
+
