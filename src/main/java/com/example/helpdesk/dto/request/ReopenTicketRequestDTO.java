@@ -9,9 +9,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ReopenTicketRequest {
+public class ReopenTicketRequestDTO {
 
     @NotBlank(message = "Reopen reason is required")
     @Size(max = 500, message = "Reopen reason must not exceed 500 characters")
     private String reason;
 }
+
+
+
+
+

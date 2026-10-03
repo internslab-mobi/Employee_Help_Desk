@@ -13,3 +13,4 @@ public enum TicketEventType {
     TICKET_RESOLVED,
     TICKET_REOPENED
 }
+

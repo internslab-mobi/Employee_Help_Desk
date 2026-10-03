@@ -11,7 +11,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AssignmentProposalResponse {
+public class AssignmentProposalResponseDTO {
     
     private Long ticketId;
     private String ticketNumber;
@@ -24,3 +24,7 @@ public class AssignmentProposalResponse {
     private Integer currentWorkload;
     private String status;
 }
+
+
+
+

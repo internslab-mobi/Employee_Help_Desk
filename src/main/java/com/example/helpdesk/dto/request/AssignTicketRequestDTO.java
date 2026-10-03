@@ -8,7 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AssignTicketRequest {
+public class AssignTicketRequestDTO {
 
     @NotNull(message = "Agent ID is required")
     private Long agentId;
@@ -16,3 +16,8 @@ public class AssignTicketRequest {
     @NotNull(message = "Assigned by employee ID is required")
     private Long assignedBy;
 }
+
+
+
+
+

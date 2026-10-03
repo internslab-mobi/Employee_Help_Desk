@@ -9,9 +9,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UpdateTicketPriorityRequest {
+public class UpdateTicketPriorityRequestDTO {
 
     @NotNull(message = "Priority is required")
     @Size(max = 30, message = "Priority must not exceed 30 characters")
     private String priority;
 }
+
+
+
+
+

@@ -8,7 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UpdateTicketCategoryRequest {
+public class UpdateTicketCategoryRequestDTO {
 
     @NotNull(message = "Category ID is required")
     private Long categoryId;
@@ -17,3 +17,8 @@ public class UpdateTicketCategoryRequest {
     private Long subCategoryId;
 
 }
+
+
+
+
+

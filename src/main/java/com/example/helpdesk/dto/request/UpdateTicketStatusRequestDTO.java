@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UpdateTicketStatusRequest {
+public class UpdateTicketStatusRequestDTO {
 
     @NotNull(message = "Status is required")
     @Size(max = 30, message = "Status must not exceed 30 characters")

@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SlaResponse {
+public class SlaResponseDTO {
     
     private Long ticketId;
     private String ticketNumber;
@@ -25,3 +25,7 @@ public class SlaResponse {
     private LocalDateTime breachedAt;
     private Integer remainingMinutes;
 }
+
+
+
+

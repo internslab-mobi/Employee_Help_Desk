@@ -8,3 +8,4 @@ public enum NotificationType {
     TICKET_RESOLVED,
     TICKET_REOPENED
 }
+

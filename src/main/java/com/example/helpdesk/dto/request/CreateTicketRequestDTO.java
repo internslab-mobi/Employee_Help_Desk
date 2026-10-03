@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CreateTicketRequest {
+public class CreateTicketRequestDTO {
 
     @NotNull
     private Long requesterId;
