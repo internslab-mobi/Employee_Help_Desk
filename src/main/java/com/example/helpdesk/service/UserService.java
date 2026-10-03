@@ -1,8 +1,8 @@
 package com.example.helpdesk.service;
 
-import com.example.helpdesk.dto.request.CreateEmployeeRequest;
-import com.example.helpdesk.dto.request.CreateUserRequest;
-import com.example.helpdesk.dto.response.EmployeeResponse;
+import com.example.helpdesk.dto.request.CreateEmployeeRequestDTO;
+import com.example.helpdesk.dto.request.CreateUserRequestDTO;
+import com.example.helpdesk.dto.response.EmployeeResponseDTO;
 import com.example.helpdesk.entity.Category;
 import com.example.helpdesk.entity.Department;
 import com.example.helpdesk.entity.Employee;
@@ -16,9 +16,9 @@ public interface UserService {
 
     // ==================== EMPLOYEES ====================
 
-    EmployeeResponse createEmployee(CreateEmployeeRequest request);
+    EmployeeResponseDTO createEmployee(CreateEmployeeRequestDTO request);
 
-    EmployeeResponse createUser(CreateUserRequest request);
+    EmployeeResponseDTO createUser(CreateUserRequestDTO request);
 
     Optional<Employee> getEmployeeById(Long id);
 
@@ -36,13 +36,13 @@ public interface UserService {
 
     // ==================== AGENTS ====================
 
-    EmployeeResponse createAgent(CreateEmployeeRequest request);
+    EmployeeResponseDTO createAgent(CreateEmployeeRequestDTO request);
 
     List<Employee> getAllAgents();
 
     // ==================== MANAGERS ====================
 
-    EmployeeResponse createManager(CreateEmployeeRequest request);
+    EmployeeResponseDTO createManager(CreateEmployeeRequestDTO request);
 
     List<Employee> getAllManagers();
 
@@ -115,3 +115,7 @@ public interface UserService {
     void removeSkillFromAgent(Long agentId, Long skillId);
 
 }
+
+
+
+

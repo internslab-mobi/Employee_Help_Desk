@@ -1,11 +1,11 @@
 package com.example.helpdesk.controller;
 
-import com.example.helpdesk.dto.request.FirstLoginPasswordResetRequest;
-import com.example.helpdesk.dto.request.FirstLoginRequest;
-import com.example.helpdesk.dto.request.LoginRequest;
-import com.example.helpdesk.dto.request.RefreshTokenRequest;
-import com.example.helpdesk.dto.response.LoginResponse;
-import com.example.helpdesk.dto.response.RefreshTokenResponse;
+import com.example.helpdesk.dto.request.FirstLoginPasswordResetRequestDTO;
+import com.example.helpdesk.dto.request.FirstLoginRequestDTO;
+import com.example.helpdesk.dto.request.LoginRequestDTO;
+import com.example.helpdesk.dto.request.RefreshTokenRequestDTO;
+import com.example.helpdesk.dto.response.LoginResponseDTO;
+import com.example.helpdesk.dto.response.RefreshTokenResponseDTO;
 import com.example.helpdesk.service.AuthenticationService;
 import com.example.helpdesk.service.RefreshTokenService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,26 +27,30 @@ public class AuthenticationController {
 
     @PostMapping("/login")
     @Operation(summary = "Login", description = "🔐 Access: All roles — login is public and returns a JWT after successful authentication.")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
         return ResponseEntity.status(HttpStatus.OK).body(authenticationService.login(request));
     }
 
     @PostMapping("/first-login")
     @Operation(summary = "First Login with OTP", description = "🔐 Access: All roles — first login with temporary password and OTP for new accounts.")
-    public ResponseEntity<LoginResponse> firstLogin(@Valid @RequestBody FirstLoginRequest request) {
+    public ResponseEntity<LoginResponseDTO> firstLogin(@Valid @RequestBody FirstLoginRequestDTO request) {
         return ResponseEntity.status(HttpStatus.OK).body(authenticationService.firstLogin(request));
     }
 
     @PostMapping("/first-login/reset-password")
     @Operation(summary = "Reset Password After First Login", description = "🔐 Access: All roles — set permanent password after first login with temporary password.")
-    public ResponseEntity<Void> resetFirstLoginPassword(@Valid @RequestBody FirstLoginPasswordResetRequest request) {
+    public ResponseEntity<Void> resetFirstLoginPassword(@Valid @RequestBody FirstLoginPasswordResetRequestDTO request) {
         authenticationService.resetFirstLoginPassword(request);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
     @PostMapping("/refresh")
     @Operation(summary = "Refresh Access Token", description = "🔐 Access: All roles — refresh access token using refresh token. Maximum 3 refreshes per session.")
-    public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<RefreshTokenResponseDTO> refreshToken(@Valid @RequestBody RefreshTokenRequestDTO request) {
         return ResponseEntity.status(HttpStatus.OK).body(refreshTokenService.refreshAccessToken(request.getRefreshToken()));
     }
 }
+
+
+
+

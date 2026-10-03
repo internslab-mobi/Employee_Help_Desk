@@ -26,6 +26,10 @@ public class DepartmentAgent {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private Boolean active = true;
+
     @Column(name = "last_assigned_at")
     private Instant lastAssignedAt;
 

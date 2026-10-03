@@ -15,3 +15,6 @@ public interface TicketMessageRepository extends JpaRepository<TicketMessage, Lo
 
     long countByTicketIdAndSeenFalse(Long ticketId);
 }
+
+
+

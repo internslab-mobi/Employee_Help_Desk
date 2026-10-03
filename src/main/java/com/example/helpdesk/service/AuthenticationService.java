@@ -1,15 +1,12 @@
 package com.example.helpdesk.service;
 
-import com.example.helpdesk.dto.request.FirstLoginPasswordResetRequest;
-import com.example.helpdesk.dto.request.FirstLoginRequest;
-import com.example.helpdesk.dto.request.LoginRequest;
-import com.example.helpdesk.dto.response.LoginResponse;
+import com.example.helpdesk.dto.request.FirstLoginPasswordResetRequestDTO;
+import com.example.helpdesk.dto.request.FirstLoginRequestDTO;
+import com.example.helpdesk.dto.request.LoginRequestDTO;
+import com.example.helpdesk.dto.response.LoginResponseDTO;
 
 public interface AuthenticationService {
-
-    LoginResponse login(LoginRequest request);
-
-    LoginResponse firstLogin(FirstLoginRequest request);
-
-    void resetFirstLoginPassword(FirstLoginPasswordResetRequest request);
+    LoginResponseDTO login(LoginRequestDTO request);
+    LoginResponseDTO firstLogin(FirstLoginRequestDTO request);
+    void resetFirstLoginPassword(FirstLoginPasswordResetRequestDTO request);
 }

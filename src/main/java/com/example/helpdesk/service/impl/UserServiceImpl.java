@@ -1,8 +1,8 @@
 package com.example.helpdesk.service.impl;
 
-import com.example.helpdesk.dto.request.CreateEmployeeRequest;
-import com.example.helpdesk.dto.request.CreateUserRequest;
-import com.example.helpdesk.dto.response.EmployeeResponse;
+import com.example.helpdesk.dto.request.CreateEmployeeRequestDTO;
+import com.example.helpdesk.dto.request.CreateUserRequestDTO;
+import com.example.helpdesk.dto.response.EmployeeResponseDTO;
 import com.example.helpdesk.entity.AgentSkill;
 import com.example.helpdesk.entity.Category;
 import com.example.helpdesk.entity.Department;
@@ -20,6 +20,7 @@ import com.example.helpdesk.repository.EmployeeRepository;
 import com.example.helpdesk.repository.SkillRepository;
 import com.example.helpdesk.repository.SubCategoryRepository;
 import com.example.helpdesk.service.EmailService;
+import com.example.helpdesk.service.EmployeeCodeGenerator;
 import com.example.helpdesk.service.OTPService;
 import com.example.helpdesk.service.PasswordGenerationService;
 import com.example.helpdesk.service.UserService;
@@ -52,6 +53,7 @@ public class UserServiceImpl implements UserService {
     private final AuthenticatedEmployeeUtil authenticatedEmployeeUtil;
     private final OTPService otpService;
     private final EmailService emailService;
+    private final EmployeeCodeGenerator employeeCodeGenerator;
 
     @Value("${app.security.otp-expiration-minutes:10}")
     private int otpExpirationMinutes;
@@ -60,7 +62,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
+    public EmployeeResponseDTO createEmployee(CreateEmployeeRequestDTO request) {
         log.info("Creating employee with email: {}", request.getEmail());
 
         Department department = departmentRepository.findById(request.getDepartmentId())
@@ -69,8 +71,9 @@ public class UserServiceImpl implements UserService {
         String temporaryPassword = passwordGenerationService.generateTemporaryPassword();
         String temporaryPasswordHash = passwordEncoder.encode(temporaryPassword);
 
+        TimezoneUtil.parseZoneId(request.getTimezone());
+
         Employee employee = Employee.builder()
-                .employeeCode(request.getEmployeeCode())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .email(request.getEmail())
@@ -79,13 +82,19 @@ public class UserServiceImpl implements UserService {
                 .department(department)
                 .employmentStatus(request.getEmploymentStatus())
                 .dateOfJoining(request.getDateOfJoining())
-                .dateOfExit(request.getDateOfExit())
+                .dateOfExit(null)
                 .passwordHash(temporaryPasswordHash)
                 .mustChangePassword(true)
                 .role(request.getRole())
+                .timezone(request.getTimezone())
                 .build();
 
         Employee savedEmployee = employeeRepository.save(employee);
+
+        // Generate employeeCode based on the auto-generated ID
+        String employeeCode = employeeCodeGenerator.generateEmployeeCode(savedEmployee.getId());
+        savedEmployee.setEmployeeCode(employeeCode);
+        savedEmployee = employeeRepository.save(savedEmployee);
 
         String otp = otpService.createAndStoreOTP(savedEmployee);
 
@@ -93,12 +102,12 @@ public class UserServiceImpl implements UserService {
 
         log.info("Employee created with email {} and first-login credentials sent", savedEmployee.getEmail());
 
-        return mapToEmployeeResponse(savedEmployee);
+        return mapToEmployeeResponseDTO(savedEmployee);
     }
 
     @Override
     @Transactional
-    public EmployeeResponse createUser(CreateUserRequest request) {
+    public EmployeeResponseDTO createUser(CreateUserRequestDTO request) {
         log.info("Creating user with type: {} and email: {}", request.getType(), request.getEmail());
 
         Department department = departmentRepository.findById(request.getDepartmentId())
@@ -107,8 +116,9 @@ public class UserServiceImpl implements UserService {
         String temporaryPassword = passwordGenerationService.generateTemporaryPassword();
         String temporaryPasswordHash = passwordEncoder.encode(temporaryPassword);
 
+        TimezoneUtil.parseZoneId(request.getTimezone());
+
         Employee employee = Employee.builder()
-                .employeeCode(request.getEmployeeCode())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .email(request.getEmail())
@@ -117,13 +127,19 @@ public class UserServiceImpl implements UserService {
                 .department(department)
                 .employmentStatus(request.getEmploymentStatus())
                 .dateOfJoining(request.getDateOfJoining())
-                .dateOfExit(request.getDateOfExit())
+                .dateOfExit(null)
                 .passwordHash(temporaryPasswordHash)
                 .mustChangePassword(true)
                 .role(request.getType())
+                .timezone(request.getTimezone())
                 .build();
 
         Employee savedEmployee = employeeRepository.save(employee);
+
+        // Generate employeeCode based on the auto-generated ID
+        String employeeCode = employeeCodeGenerator.generateEmployeeCode(savedEmployee.getId());
+        savedEmployee.setEmployeeCode(employeeCode);
+        savedEmployee = employeeRepository.save(savedEmployee);
 
         String otp = otpService.createAndStoreOTP(savedEmployee);
 
@@ -131,7 +147,7 @@ public class UserServiceImpl implements UserService {
 
         log.info("User created with type {} and email {} and first-login credentials sent", request.getType(), savedEmployee.getEmail());
 
-        return mapToEmployeeResponse(savedEmployee);
+        return mapToEmployeeResponseDTO(savedEmployee);
     }
 
     @Override
@@ -194,7 +210,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public EmployeeResponse createAgent(CreateEmployeeRequest request) {
+    public EmployeeResponseDTO createAgent(CreateEmployeeRequestDTO request) {
         log.info("Creating agent with email: {}", request.getEmail());
 
         Department department = departmentRepository.findById(request.getDepartmentId())
@@ -203,8 +219,9 @@ public class UserServiceImpl implements UserService {
         String temporaryPassword = passwordGenerationService.generateTemporaryPassword();
         String temporaryPasswordHash = passwordEncoder.encode(temporaryPassword);
 
+        TimezoneUtil.parseZoneId(request.getTimezone());
+
         Employee employee = Employee.builder()
-                .employeeCode(request.getEmployeeCode())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .email(request.getEmail())
@@ -213,13 +230,19 @@ public class UserServiceImpl implements UserService {
                 .department(department)
                 .employmentStatus(request.getEmploymentStatus())
                 .dateOfJoining(request.getDateOfJoining())
-                .dateOfExit(request.getDateOfExit())
+                .dateOfExit(null)
                 .passwordHash(temporaryPasswordHash)
                 .mustChangePassword(true)
                 .role(Role.AGENT)
+                .timezone(request.getTimezone())
                 .build();
 
         Employee savedEmployee = employeeRepository.save(employee);
+
+        // Generate employeeCode based on the auto-generated ID
+        String employeeCode = employeeCodeGenerator.generateEmployeeCode(savedEmployee.getId());
+        savedEmployee.setEmployeeCode(employeeCode);
+        savedEmployee = employeeRepository.save(savedEmployee);
 
         String otp = otpService.createAndStoreOTP(savedEmployee);
 
@@ -227,7 +250,7 @@ public class UserServiceImpl implements UserService {
 
         log.info("Agent created with email {} and first-login credentials sent", savedEmployee.getEmail());
 
-        return mapToEmployeeResponse(savedEmployee);
+        return mapToEmployeeResponseDTO(savedEmployee);
     }
 
     @Override
@@ -239,7 +262,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public EmployeeResponse createManager(CreateEmployeeRequest request) {
+    public EmployeeResponseDTO createManager(CreateEmployeeRequestDTO request) {
         log.info("Creating manager with email: {}", request.getEmail());
 
         Department department = departmentRepository.findById(request.getDepartmentId())
@@ -248,8 +271,9 @@ public class UserServiceImpl implements UserService {
         String temporaryPassword = passwordGenerationService.generateTemporaryPassword();
         String temporaryPasswordHash = passwordEncoder.encode(temporaryPassword);
 
+        TimezoneUtil.parseZoneId(request.getTimezone());
+
         Employee employee = Employee.builder()
-                .employeeCode(request.getEmployeeCode())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .email(request.getEmail())
@@ -258,13 +282,19 @@ public class UserServiceImpl implements UserService {
                 .department(department)
                 .employmentStatus(request.getEmploymentStatus())
                 .dateOfJoining(request.getDateOfJoining())
-                .dateOfExit(request.getDateOfExit())
+                .dateOfExit(null)
                 .passwordHash(temporaryPasswordHash)
                 .mustChangePassword(true)
                 .role(Role.MANAGER)
+                .timezone(request.getTimezone())
                 .build();
 
         Employee savedEmployee = employeeRepository.save(employee);
+
+        // Generate employeeCode based on the auto-generated ID
+        String employeeCode = employeeCodeGenerator.generateEmployeeCode(savedEmployee.getId());
+        savedEmployee.setEmployeeCode(employeeCode);
+        savedEmployee = employeeRepository.save(savedEmployee);
 
         String otp = otpService.createAndStoreOTP(savedEmployee);
 
@@ -272,7 +302,7 @@ public class UserServiceImpl implements UserService {
 
         log.info("Manager created with email {} and first-login credentials sent", savedEmployee.getEmail());
 
-        return mapToEmployeeResponse(savedEmployee);
+        return mapToEmployeeResponseDTO(savedEmployee);
     }
 
     @Override
@@ -541,10 +571,10 @@ public class UserServiceImpl implements UserService {
         log.info("Removed skill {} from agent {}", skillId, agentId);
     }
 
-    private EmployeeResponse mapToEmployeeResponse(Employee employee) {
-        EmployeeResponse.DepartmentResponse departmentResponse = null;
+    private EmployeeResponseDTO mapToEmployeeResponseDTO(Employee employee) {
+        EmployeeResponseDTO.DepartmentResponseDTO DepartmentResponseDTO = null;
         if (employee.getDepartment() != null) {
-            departmentResponse = EmployeeResponse.DepartmentResponse.builder()
+            DepartmentResponseDTO = EmployeeResponseDTO.DepartmentResponseDTO.builder()
                     .id(employee.getDepartment().getId())
                     .code(employee.getDepartment().getCode())
                     .name(employee.getDepartment().getName())
@@ -553,7 +583,7 @@ public class UserServiceImpl implements UserService {
                     .build();
         }
 
-        return EmployeeResponse.builder()
+        return EmployeeResponseDTO.builder()
                 .id(employee.getId())
                 .employeeCode(employee.getEmployeeCode())
                 .firstName(employee.getFirstName())
@@ -561,12 +591,17 @@ public class UserServiceImpl implements UserService {
                 .email(employee.getEmail())
                 .phone(employee.getPhone())
                 .designation(employee.getDesignation())
-                .department(departmentResponse)
+                .department(DepartmentResponseDTO)
                 .employmentStatus(employee.getEmploymentStatus())
                 .dateOfJoining(employee.getDateOfJoining())
                 .dateOfExit(employee.getDateOfExit())
                 .role(employee.getRole())
+                .timezone(employee.getTimezone())
                 .createdAt(TimezoneUtil.toOffsetDateTime(employee.getCreatedAt(), authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone()))
                 .build();
     }
 }
+
+
+
+
