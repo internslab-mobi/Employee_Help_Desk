@@ -1,35 +1,37 @@
 package com.example.helpdesk.service.impl;
 
-import com.example.helpdesk.dto.request.AssignManagerRequest;
-import com.example.helpdesk.dto.request.AssignTicketRequest;
-import com.example.helpdesk.dto.request.CreateTicketRequest;
-import com.example.helpdesk.dto.request.HoldTicketRequest;
-import com.example.helpdesk.dto.request.ReopenTicketRequest;
-import com.example.helpdesk.dto.request.ResolveTicketRequest;
-import com.example.helpdesk.dto.request.TicketFeedbackRequest;
-import com.example.helpdesk.dto.request.TicketMessageRequest;
-import com.example.helpdesk.dto.request.UpdateTicketCategoryRequest;
-import com.example.helpdesk.dto.request.UpdateTicketPriorityRequest;
-import com.example.helpdesk.dto.request.UpdateTicketRequest;
-import com.example.helpdesk.dto.request.UpdateTicketStatusRequest;
-import com.example.helpdesk.dto.request.WithdrawTicketRequest;
+import com.example.helpdesk.dto.request.AssignManagerRequestDTO;
+import com.example.helpdesk.dto.request.AssignTicketRequestDTO;
+import com.example.helpdesk.dto.request.CreateTicketRequestDTO;
+import com.example.helpdesk.dto.request.HoldTicketRequestDTO;
+import com.example.helpdesk.dto.request.ReopenTicketRequestDTO;
+import com.example.helpdesk.dto.request.ResolveTicketRequestDTO;
+import com.example.helpdesk.dto.request.TicketFeedbackRequestDTO;
+import com.example.helpdesk.dto.request.TicketMessageRequestDTO;
+import com.example.helpdesk.dto.request.UpdateTicketCategoryRequestDTO;
+import com.example.helpdesk.dto.request.UpdateTicketPriorityRequestDTO;
+import com.example.helpdesk.dto.request.UpdateTicketRequestDTO;
+import com.example.helpdesk.dto.request.UpdateTicketStatusRequestDTO;
+import com.example.helpdesk.dto.request.WithdrawTicketRequestDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.example.helpdesk.dto.response.AssignmentProposalResponse;
-import com.example.helpdesk.dto.response.AssignedAgentResponse;
-import com.example.helpdesk.dto.response.AssignedManagerResponse;
-import com.example.helpdesk.dto.response.AssignmentResponse;
-import com.example.helpdesk.dto.response.CategoryResponse;
-import com.example.helpdesk.dto.response.DepartmentResponse;
-import com.example.helpdesk.dto.response.SlaResponse;
-import com.example.helpdesk.dto.response.SubCategoryResponse;
-import com.example.helpdesk.dto.response.TicketAttachmentResponse;
-import com.example.helpdesk.dto.response.TicketDetailsResponse;
-import com.example.helpdesk.dto.response.TicketFeedbackResponse;
-import com.example.helpdesk.dto.response.TicketMessageResponse;
-import com.example.helpdesk.dto.response.TicketResponse;
+import com.example.helpdesk.dto.response.AssignmentProposalResponseDTO;
+import com.example.helpdesk.dto.response.AssignedAgentResponseDTO;
+import com.example.helpdesk.dto.response.AssignedManagerResponseDTO;
+import com.example.helpdesk.dto.response.AssignmentResponseDTO;
+import com.example.helpdesk.dto.response.CategoryResponseDTO;
+import com.example.helpdesk.dto.response.DepartmentResponseDTO;
+import com.example.helpdesk.dto.response.EmployeeResponseDTO;
+import com.example.helpdesk.dto.response.SlaResponseDTO;
+import com.example.helpdesk.dto.response.SubCategoryResponseDTO;
+import com.example.helpdesk.dto.response.TicketAttachmentResponseDTO;
+import com.example.helpdesk.dto.response.TicketDetailsResponseDTO;
+import com.example.helpdesk.dto.response.TicketFeedbackResponseDTO;
+import com.example.helpdesk.dto.response.TicketMessageResponseDTO;
+import com.example.helpdesk.dto.response.TicketResponseDTO;
 import com.example.helpdesk.entity.AgentSkill;
 import com.example.helpdesk.exception.AuthorizationException;
 import com.example.helpdesk.exception.AuthenticationException;
+import com.example.helpdesk.exception.ResourceNotFoundException;
 import com.example.helpdesk.entity.Category;
 import com.example.helpdesk.entity.Department;
 import com.example.helpdesk.entity.DepartmentAgent;
@@ -44,6 +46,7 @@ import com.example.helpdesk.entity.TicketFeedback;
 import com.example.helpdesk.entity.TicketMessage;
 import com.example.helpdesk.entity.TicketSla;
 import com.example.helpdesk.enums.NotificationType;
+import com.example.helpdesk.enums.Priority;
 import com.example.helpdesk.enums.SlaStatus;
 import com.example.helpdesk.enums.TicketEventType;
 import com.example.helpdesk.enums.TicketStatus;
@@ -79,6 +82,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -250,8 +254,8 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketResponse createTicketWithAttachment(CreateTicketRequest request, Long uploadedById, MultipartFile file) {
-        TicketResponse response = createTicket(request);
+    public TicketResponseDTO createTicketWithAttachment(CreateTicketRequestDTO request, Long uploadedById, MultipartFile file) {
+        TicketResponseDTO response = createTicket(request);
 
         if (file != null && !file.isEmpty()) {
             validateFile(file);
@@ -295,14 +299,14 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketResponse createTicket(CreateTicketRequest request) {
+    public TicketResponseDTO createTicket(CreateTicketRequestDTO request) {
 
         // ---------------------------------------------------------
         // 1. Find requester
         // ---------------------------------------------------------
         Employee requester = employeeRepository.findById(request.getRequesterId())
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new ResourceNotFoundException(
                                 "Employee not found: " + request.getRequesterId()
                         )
                 );
@@ -313,7 +317,7 @@ public class TicketServiceImpl implements TicketService {
         // ---------------------------------------------------------
         Department department = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new ResourceNotFoundException(
                                 "Department not found: " + request.getDepartmentId()
                         )
                 );
@@ -325,7 +329,7 @@ public class TicketServiceImpl implements TicketService {
         // ---------------------------------------------------------
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
+                        new ResourceNotFoundException(
                                 "Category not found: " + request.getCategoryId()
                         )
                 );
@@ -338,7 +342,7 @@ public class TicketServiceImpl implements TicketService {
         SubCategory subCategory =
                 subCategoryRepository.findById(request.getSubCategoryId())
                         .orElseThrow(() ->
-                                new IllegalArgumentException(
+                                new ResourceNotFoundException(
                                         "SubCategory not found: "
                                                 + request.getSubCategoryId()
                                 )
@@ -485,13 +489,13 @@ public class TicketServiceImpl implements TicketService {
                 savedTicket.getTicketNumber()
         );
 
-        return buildNestedTicketResponse(savedTicket, false);
+        return buildNestedTicketResponseDTO(savedTicket, false);
     }
 
 
 
     @Override
-    public TicketResponse updateStatus(Long ticketId, UpdateTicketStatusRequest request) {
+    public TicketResponseDTO updateStatus(Long ticketId, UpdateTicketStatusRequestDTO request) {
         log.info("updateStatus called - ticketId={}, requestedStatus={}", ticketId, request.getStatus());
 
         Ticket ticket = ticketRepository.findById(ticketId)
@@ -556,11 +560,11 @@ public class TicketServiceImpl implements TicketService {
                 newStatus
         );
 
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse updatePriority(Long ticketId, UpdateTicketPriorityRequest request) {
+    public TicketResponseDTO updatePriority(Long ticketId, UpdateTicketPriorityRequestDTO request) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -594,11 +598,11 @@ public class TicketServiceImpl implements TicketService {
         }
 
         log.info("Ticket priority updated. ticketId={}, newPriority={}", ticketId, request.getPriority());
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse updateCategory(Long ticketId, UpdateTicketCategoryRequest request) {
+    public TicketResponseDTO updateCategory(Long ticketId, UpdateTicketCategoryRequestDTO request) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -640,11 +644,11 @@ public class TicketServiceImpl implements TicketService {
         }
 
         log.info("Ticket category updated. ticketId={}, newCategoryId={}", ticketId, request.getCategoryId());
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse updateTicket(Long ticketId, UpdateTicketRequest request) {
+    public TicketResponseDTO updateTicket(Long ticketId, UpdateTicketRequestDTO request) {
         log.info("PATCH request received - ticketId={}, operation={}", ticketId, request.getOperation());
         log.info("Request data: {}", request.getData());
 
@@ -693,15 +697,15 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private TicketResponse handleStatusUpdate(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
+    private TicketResponseDTO handleStatusUpdate(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
         try {
             log.info("handleStatusUpdate called - ticketId={}, data={}", ticketId, data);
-            UpdateTicketStatusRequest statusRequest = objectMapper.treeToValue(data, UpdateTicketStatusRequest.class);
-            log.info("Parsed UpdateTicketStatusRequest - status={}", statusRequest.getStatus());
+            UpdateTicketStatusRequestDTO statusRequest = objectMapper.treeToValue(data, UpdateTicketStatusRequestDTO.class);
+            log.info("Parsed UpdateTicketStatusRequestDTO - status={}", statusRequest.getStatus());
             if (statusRequest.getStatus() == null) {
                 throw new IllegalArgumentException("Status is required for STATUS operation");
             }
-            TicketResponse response = updateStatus(ticketId, statusRequest);
+            TicketResponseDTO response = updateStatus(ticketId, statusRequest);
             log.info("updateStatus completed successfully - ticketId={}, newStatus={}", ticketId, response.getStatus());
             return response;
         } catch (Exception e) {
@@ -710,9 +714,9 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private TicketResponse handlePriorityUpdate(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
+    private TicketResponseDTO handlePriorityUpdate(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
         try {
-            UpdateTicketPriorityRequest priorityRequest = objectMapper.treeToValue(data, UpdateTicketPriorityRequest.class);
+            UpdateTicketPriorityRequestDTO priorityRequest = objectMapper.treeToValue(data, UpdateTicketPriorityRequestDTO.class);
             if (priorityRequest.getPriority() == null) {
                 throw new IllegalArgumentException("Priority is required for PRIORITY operation");
             }
@@ -722,9 +726,9 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private TicketResponse handleCategoryUpdate(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
+    private TicketResponseDTO handleCategoryUpdate(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
         try {
-            UpdateTicketCategoryRequest categoryRequest = objectMapper.treeToValue(data, UpdateTicketCategoryRequest.class);
+            UpdateTicketCategoryRequestDTO categoryRequest = objectMapper.treeToValue(data, UpdateTicketCategoryRequestDTO.class);
             if (categoryRequest.getCategoryId() == null || categoryRequest.getSubCategoryId() == null) {
                 throw new IllegalArgumentException("CategoryId and SubCategoryId are required for CATEGORY operation");
             }
@@ -734,9 +738,9 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private TicketResponse handleAgentAssignment(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
+    private TicketResponseDTO handleAgentAssignment(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
         try {
-            AssignTicketRequest assignRequest = objectMapper.treeToValue(data, AssignTicketRequest.class);
+            AssignTicketRequestDTO assignRequest = objectMapper.treeToValue(data, AssignTicketRequestDTO.class);
             if (assignRequest.getAgentId() == null) {
                 throw new IllegalArgumentException("AgentId is required for ASSIGN_AGENT operation");
             }
@@ -748,9 +752,9 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private TicketResponse handleManagerAssignment(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
+    private TicketResponseDTO handleManagerAssignment(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
         try {
-            AssignManagerRequest managerRequest = objectMapper.treeToValue(data, AssignManagerRequest.class);
+            AssignManagerRequestDTO managerRequest = objectMapper.treeToValue(data, AssignManagerRequestDTO.class);
             if (managerRequest.getAssignedManagerId() == null) {
                 throw new IllegalArgumentException("AssignedManagerId is required for ASSIGN_MANAGER operation");
             }
@@ -776,21 +780,21 @@ public class TicketServiceImpl implements TicketService {
             );
             
             Ticket savedTicket = ticketRepository.save(ticket);
-            return buildNestedTicketResponse(savedTicket, true);
+            return buildNestedTicketResponseDTO(savedTicket, true);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid data for ASSIGN_MANAGER operation: " + e.getMessage());
         }
     }
 
-    private TicketResponse handleHold(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
+    private TicketResponseDTO handleHold(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
         try {
             log.info("handleHold called - ticketId={}, data={}", ticketId, data);
-            HoldTicketRequest holdRequest = objectMapper.treeToValue(data, HoldTicketRequest.class);
-            log.info("Parsed HoldTicketRequest - holdReason={}", holdRequest.getHoldReason());
+            HoldTicketRequestDTO holdRequest = objectMapper.treeToValue(data, HoldTicketRequestDTO.class);
+            log.info("Parsed HoldTicketRequestDTO - holdReason={}", holdRequest.getHoldReason());
             if (holdRequest.getHoldReason() == null || holdRequest.getHoldReason().isBlank()) {
                 throw new IllegalArgumentException("HoldReason is required for HOLD operation");
             }
-            TicketResponse response = holdTicket(ticketId, holdRequest);
+            TicketResponseDTO response = holdTicket(ticketId, holdRequest);
             log.info("holdTicket completed successfully - ticketId={}, newStatus={}", ticketId, response.getStatus());
             return response;
         } catch (Exception e) {
@@ -799,9 +803,9 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private TicketResponse handleResolve(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
+    private TicketResponseDTO handleResolve(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
         try {
-            ResolveTicketRequest resolveRequest = objectMapper.treeToValue(data, ResolveTicketRequest.class);
+            ResolveTicketRequestDTO resolveRequest = objectMapper.treeToValue(data, ResolveTicketRequestDTO.class);
             if (resolveRequest.getResolutionSummary() == null || resolveRequest.getResolutionSummary().isBlank()) {
                 throw new IllegalArgumentException("ResolutionSummary is required for RESOLVE operation");
             }
@@ -811,9 +815,9 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private TicketResponse handleWithdraw(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
+    private TicketResponseDTO handleWithdraw(Long ticketId, com.fasterxml.jackson.databind.JsonNode data) {
         try {
-            WithdrawTicketRequest withdrawRequest = objectMapper.treeToValue(data, WithdrawTicketRequest.class);
+            WithdrawTicketRequestDTO withdrawRequest = objectMapper.treeToValue(data, WithdrawTicketRequestDTO.class);
             if (withdrawRequest.getWithdrawalReason() == null || withdrawRequest.getWithdrawalReason().isBlank()) {
                 throw new IllegalArgumentException("WithdrawalReason is required for WITHDRAW operation");
             }
@@ -824,7 +828,7 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketResponse assignTicket(Long ticketId, AssignTicketRequest request) {
+    public TicketResponseDTO assignTicket(Long ticketId, AssignTicketRequestDTO request) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -844,13 +848,13 @@ public class TicketServiceImpl implements TicketService {
         );
 
         log.info("Ticket assigned. ticketId={}, agentId={}", ticketId, request.getAgentId());
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse resolveTicket(
+    public TicketResponseDTO resolveTicket(
             Long ticketId,
-            UpdateTicketStatusRequest request) {
+            UpdateTicketStatusRequestDTO request) {
 
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() ->
@@ -871,22 +875,22 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket resolved. ticketId={}", ticketId);
 
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse reopenTicket(Long ticketId, ReopenTicketRequest request) {
+    public TicketResponseDTO reopenTicket(Long ticketId, ReopenTicketRequestDTO request) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
         ticket.setStatus(TicketStatus.REOPENED.name());
         ticket.setReopenedAt(Instant.now());
         Ticket savedTicket = ticketRepository.save(ticket);
         log.info("Ticket reopened. ticketId={}", ticketId);
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse holdTicket(Long ticketId, HoldTicketRequest request) {
+    public TicketResponseDTO holdTicket(Long ticketId, HoldTicketRequestDTO request) {
         log.info("holdTicket called - ticketId={}, holdReason={}", ticketId, request.getHoldReason());
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
@@ -946,11 +950,11 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} put on hold by agent - final status={}", ticketId, savedTicket.getStatus());
 
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse resumeTicket(Long ticketId) {
+    public TicketResponseDTO resumeTicket(Long ticketId) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1000,11 +1004,11 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} resumed", ticketId);
 
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse resolveTicketWithSummary(Long ticketId, ResolveTicketRequest request) {
+    public TicketResponseDTO resolveTicketWithSummary(Long ticketId, ResolveTicketRequestDTO request) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1070,11 +1074,11 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} resolved with SLA met: {}", ticketId, slaMet);
 
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse reopenTicketWithSla(Long ticketId) {
+    public TicketResponseDTO reopenTicketWithSla(Long ticketId) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1141,11 +1145,11 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} reopened with new SLA cycle, allocated minutes: {}", ticketId, newAllocatedMinutes);
 
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override
-    public TicketResponse withdrawTicket(Long ticketId, String withdrawalReason) {
+    public TicketResponseDTO withdrawTicket(Long ticketId, String withdrawalReason) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1226,7 +1230,7 @@ public class TicketServiceImpl implements TicketService {
 
         log.info("Ticket {} withdrawn by employee {}", ticketId, employeeId);
 
-        return buildNestedTicketResponse(savedTicket, true);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     // ==================== INTERNAL ROUTING HELPER ====================
@@ -1350,7 +1354,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public AssignmentProposalResponse getAssignmentProposal(Long ticketId) {
+    public AssignmentProposalResponseDTO getAssignmentProposal(Long ticketId) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1435,7 +1439,7 @@ public class TicketServiceImpl implements TicketService {
                 Map.of("agentId", bestAgent.getAgent().getId(), "skillScore", bestAgent.getSkillScore())
         );
 
-        return AssignmentProposalResponse.builder()
+        return AssignmentProposalResponseDTO.builder()
                 .ticketId(ticket.getId())
                 .ticketNumber(ticket.getTicketNumber())
                 .proposedAgentId(bestAgent.getAgent().getId())
@@ -1531,7 +1535,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketMessageResponse sendMessage(Long ticketId, TicketMessageRequest request) {
+    public TicketMessageResponseDTO sendMessage(Long ticketId, TicketMessageRequestDTO request) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1587,8 +1591,8 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketMessageResponse sendMessageWithAttachment(Long ticketId, TicketMessageRequest request, Long uploadedById, MultipartFile file) {
-        TicketMessageResponse response = sendMessage(ticketId, request);
+    public TicketMessageResponseDTO sendMessageWithAttachment(Long ticketId, TicketMessageRequestDTO request, Long uploadedById, MultipartFile file) {
+        TicketMessageResponseDTO response = sendMessage(ticketId, request);
 
         if (file != null && !file.isEmpty()) {
             validateFile(file);
@@ -1647,7 +1651,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TicketMessageResponse> getTicketMessages(Long ticketId) {
+    public List<TicketMessageResponseDTO> getTicketMessages(Long ticketId) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1670,7 +1674,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TicketMessageResponse> getUnreadMessages(Long ticketId, Long recipientId) {
+    public List<TicketMessageResponseDTO> getUnreadMessages(Long ticketId, Long recipientId) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1701,7 +1705,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketAttachmentResponse uploadAttachment(Long ticketId, Long uploadedById, MultipartFile file, Long messageId, String attachmentType) {
+    public TicketAttachmentResponseDTO uploadAttachment(Long ticketId, Long uploadedById, MultipartFile file, Long messageId, String attachmentType) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1767,7 +1771,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TicketAttachmentResponse> getTicketAttachments(Long ticketId) {
+    public List<TicketAttachmentResponseDTO> getTicketAttachments(Long ticketId) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1813,7 +1817,7 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketAttachmentResponse uploadMessageAttachment(Long ticketId, Long messageId, Long uploadedById, MultipartFile file) {
+    public TicketAttachmentResponseDTO uploadMessageAttachment(Long ticketId, Long messageId, Long uploadedById, MultipartFile file) {
         return uploadAttachment(ticketId, uploadedById, file, messageId, "MESSAGE");
     }
 
@@ -1821,7 +1825,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketFeedbackResponse submitFeedback(Long ticketId, TicketFeedbackRequest request) {
+    public TicketFeedbackResponseDTO submitFeedback(Long ticketId, TicketFeedbackRequestDTO request) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
 
@@ -1880,60 +1884,12 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<TicketFeedbackResponse> getTicketFeedback(Long ticketId) {
+    public Optional<TicketFeedbackResponseDTO> getTicketFeedback(Long ticketId) {
         return ticketFeedbackRepository.findByTicketId(ticketId)
                 .map(this::toFeedbackResponse);
     }
 
     // ==================== HELPER METHODS ====================
-
-    private TicketResponse convertTicketResponseTimezones(TicketResponse response, Ticket ticket) {
-        String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
-        
-        if (ticket.getCreatedAt() != null) {
-            response.setCreatedAt(TimezoneUtil.toOffsetDateTime(ticket.getCreatedAt(), timezone));
-        }
-        if (ticket.getResolvedAt() != null) {
-            response.setResolvedAt(TimezoneUtil.toOffsetDateTime(ticket.getResolvedAt(), timezone));
-        }
-        if (ticket.getClosedAt() != null) {
-            response.setClosedAt(TimezoneUtil.toOffsetDateTime(ticket.getClosedAt(), timezone));
-        }
-        if (ticket.getWithdrawnAt() != null) {
-            response.setWithdrawnAt(TimezoneUtil.toOffsetDateTime(ticket.getWithdrawnAt(), timezone));
-        }
-        if (ticket.getHoldStartedAt() != null) {
-            response.setHoldStartedAt(TimezoneUtil.toOffsetDateTime(ticket.getHoldStartedAt(), timezone));
-        }
-        if (ticket.getUpdatedAt() != null) {
-            response.setUpdatedAt(TimezoneUtil.toOffsetDateTime(ticket.getUpdatedAt(), timezone));
-        }
-        
-        return response;
-    }
-
-    private TicketResponse convertTicketResponseTimezonesWithoutUpdatedAt(TicketResponse response, Ticket ticket) {
-        String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
-        
-        if (ticket.getCreatedAt() != null) {
-            response.setCreatedAt(TimezoneUtil.toOffsetDateTime(ticket.getCreatedAt(), timezone));
-        }
-        if (ticket.getResolvedAt() != null) {
-            response.setResolvedAt(TimezoneUtil.toOffsetDateTime(ticket.getResolvedAt(), timezone));
-        }
-        if (ticket.getClosedAt() != null) {
-            response.setClosedAt(TimezoneUtil.toOffsetDateTime(ticket.getClosedAt(), timezone));
-        }
-        if (ticket.getWithdrawnAt() != null) {
-            response.setWithdrawnAt(TimezoneUtil.toOffsetDateTime(ticket.getWithdrawnAt(), timezone));
-        }
-        if (ticket.getHoldStartedAt() != null) {
-            response.setHoldStartedAt(TimezoneUtil.toOffsetDateTime(ticket.getHoldStartedAt(), timezone));
-        }
-        // updatedAt NOT included for create responses
-        
-        return response;
-    }
 
     private int calculateWorkload(Long agentId) {
         List<String> inactiveStatuses = List.of("CLOSED", "RESOLVED", "WITHDRAWN");
@@ -1949,14 +1905,14 @@ public class TicketServiceImpl implements TicketService {
                 .collect(Collectors.toList());
     }
 
-    private TicketMessageResponse toMessageResponse(TicketMessage message) {
+    private TicketMessageResponseDTO toMessageResponse(TicketMessage message) {
         String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
-        List<TicketAttachmentResponse> attachments = ticketAttachmentRepository.findByMessageIdOrderByCreatedAtAsc(message.getId())
+        List<TicketAttachmentResponseDTO> attachments = ticketAttachmentRepository.findByMessageIdOrderByCreatedAtAsc(message.getId())
                 .stream()
                 .map(this::toAttachmentResponse)
                 .collect(Collectors.toList());
 
-        return TicketMessageResponse.builder()
+        return TicketMessageResponseDTO.builder()
                 .id(message.getId())
                 .ticketId(message.getTicket().getId())
                 .senderId(message.getSender().getId())
@@ -1999,9 +1955,9 @@ public class TicketServiceImpl implements TicketService {
     }
 
 
-    private TicketAttachmentResponse toAttachmentResponse(TicketAttachment attachment) {
+    private TicketAttachmentResponseDTO toAttachmentResponse(TicketAttachment attachment) {
         String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
-        return TicketAttachmentResponse.builder()
+        return TicketAttachmentResponseDTO.builder()
                 .id(attachment.getId())
                 .ticketId(attachment.getTicket().getId())
                 .uploadedById(attachment.getUploadedBy().getId())
@@ -2015,16 +1971,16 @@ public class TicketServiceImpl implements TicketService {
                 .build();
     }
 
-    private List<TicketAttachmentResponse> getTicketAttachmentsForResponse(Long ticketId) {
+    private List<TicketAttachmentResponseDTO> getTicketAttachmentsForResponse(Long ticketId) {
         return ticketAttachmentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId)
                 .stream()
                 .map(this::toAttachmentResponse)
                 .collect(Collectors.toList());
     }
 
-    private TicketFeedbackResponse toFeedbackResponse(TicketFeedback feedback) {
+    private TicketFeedbackResponseDTO toFeedbackResponse(TicketFeedback feedback) {
         String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
-        return TicketFeedbackResponse.builder()
+        return TicketFeedbackResponseDTO.builder()
                 .id(feedback.getId())
                 .ticketId(feedback.getTicket().getId())
                 .submittedById(feedback.getSubmittedBy().getId())
@@ -2035,164 +1991,117 @@ public class TicketServiceImpl implements TicketService {
                 .build();
     }
 
-    private TicketResponse buildNestedTicketResponse(Ticket ticket, boolean includeUpdatedAt) {
+    private TicketResponseDTO buildNestedTicketResponseDTO(Ticket ticket, boolean includeUpdatedAt) {
         String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
 
-        // Build ticket details
-        TicketDetailsResponse ticketDetails = TicketDetailsResponse.builder()
-                .id(ticket.getId())
-                .ticketNumber(ticket.getTicketNumber())
-                .subject(ticket.getSubject())
-                .description(ticket.getDescription())
-                .priority(ticket.getPriority())
-                .status(ticket.getStatus())
-                .reopenCount(ticket.getReopenCount())
-                .resolutionSummary(ticket.getResolutionSummary())
-                .holdReason(ticket.getHoldReason())
-                .withdrawalReason(ticket.getWithdrawalReason())
-                .build();
-
-        // Build employee (requester)
-        EmployeeResponse employee = null;
+        // Build requester
+        TicketResponseDTO.RequesterResponse requester = null;
         if (ticket.getRequester() != null) {
-            EmployeeResponse.DepartmentResponse deptResp = null;
-            if (ticket.getRequester().getDepartment() != null) {
-                deptResp = EmployeeResponse.DepartmentResponse.builder()
-                        .id(ticket.getRequester().getDepartment().getId())
-                        .code(ticket.getRequester().getDepartment().getCode())
-                        .name(ticket.getRequester().getDepartment().getName())
-                        .description(ticket.getRequester().getDepartment().getDescription())
-                        .active(ticket.getRequester().getDepartment().getActive())
-                        .build();
-            }
-            employee = EmployeeResponse.builder()
+            String name = buildFullName(ticket.getRequester().getFirstName(), ticket.getRequester().getLastName());
+            requester = TicketResponseDTO.RequesterResponse.builder()
                     .id(ticket.getRequester().getId())
-                    .employeeCode(ticket.getRequester().getEmployeeCode())
-                    .firstName(ticket.getRequester().getFirstName())
-                    .lastName(ticket.getRequester().getLastName())
-                    .email(ticket.getRequester().getEmail())
-                    .phone(ticket.getRequester().getPhone())
-                    .designation(ticket.getRequester().getDesignation())
-                    .department(deptResp)
-                    .employmentStatus(ticket.getRequester().getEmploymentStatus())
-                    .dateOfJoining(ticket.getRequester().getDateOfJoining())
-                    .dateOfExit(ticket.getRequester().getDateOfExit())
-                    .role(ticket.getRequester().getRole())
-                    .createdAt(TimezoneUtil.toOffsetDateTime(ticket.getRequester().getCreatedAt(), timezone))
+                    .name(name)
                     .build();
         }
 
         // Build department
-        DepartmentResponse department = null;
+        TicketResponseDTO.DepartmentResponse department = null;
         if (ticket.getDepartment() != null) {
-            department = DepartmentResponse.builder()
+            department = TicketResponseDTO.DepartmentResponse.builder()
                     .id(ticket.getDepartment().getId())
-                    .code(ticket.getDepartment().getCode())
                     .name(ticket.getDepartment().getName())
                     .build();
         }
 
-        // Build category with nested subcategory
-        CategoryResponse category = null;
+        // Build category
+        TicketResponseDTO.CategoryResponse category = null;
         if (ticket.getCategory() != null) {
-            SubCategoryResponse subCategory = null;
-            if (ticket.getSubCategory() != null) {
-                subCategory = SubCategoryResponse.builder()
-                        .id(ticket.getSubCategory().getId())
-                        .name(ticket.getSubCategory().getName())
-                        .build();
-            }
-            category = CategoryResponse.builder()
+            category = TicketResponseDTO.CategoryResponse.builder()
                     .id(ticket.getCategory().getId())
                     .name(ticket.getCategory().getName())
-                    .subCategory(subCategory)
                     .build();
         }
 
-        // Build assignment with nested agent and manager
-        AssignmentResponse assignment = AssignmentResponse.builder()
-                .assignedAgent(buildAssignedAgentResponse(ticket.getAssignedAgent()))
-                .assignedManager(buildAssignedManagerResponse(ticket.getAssignedManager()))
-                .build();
+        // Build subCategory as top-level field
+        TicketResponseDTO.SubCategoryResponse subCategory = null;
+        if (ticket.getSubCategory() != null) {
+            subCategory = TicketResponseDTO.SubCategoryResponse.builder()
+                    .id(ticket.getSubCategory().getId())
+                    .name(ticket.getSubCategory().getName())
+                    .build();
+        }
 
-        // Build SLA response
-        SlaResponse sla = buildSlaResponse(ticket.getId());
+        // Build assigned agent
+        TicketResponseDTO.AssignedAgentResponse assignedAgent = null;
+        if (ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getEmployee() != null) {
+            String agentName = buildFullName(ticket.getAssignedAgent().getEmployee().getFirstName(), 
+                    ticket.getAssignedAgent().getEmployee().getLastName());
+            assignedAgent = TicketResponseDTO.AssignedAgentResponse.builder()
+                    .id(ticket.getAssignedAgent().getEmployee().getId())
+                    .name(agentName)
+                    .build();
+        }
 
-        // Build attachments
-        List<TicketAttachmentResponse> attachments = getTicketAttachmentsForResponse(ticket.getId());
+        // Get manager ID
+        Long managerId = null;
+        if (ticket.getAssignedManager() != null && ticket.getAssignedManager().getEmployee() != null) {
+            managerId = ticket.getAssignedManager().getEmployee().getId();
+        }
 
-        // Build final response
-        TicketResponse response = TicketResponse.builder()
-                .ticket(ticketDetails)
-                .employee(employee)
+        // Get assignedAt timestamp from DepartmentAgent.lastAssignedAt
+        OffsetDateTime assignedAt = null;
+        if (ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getLastAssignedAt() != null) {
+            assignedAt = TimezoneUtil.toOffsetDateTime(ticket.getAssignedAgent().getLastAssignedAt(), timezone);
+        }
+
+        // Get SLA status
+        String slaStatus = getSlaStatus(ticket.getId());
+
+        // Build final flat response
+        TicketResponseDTO response = TicketResponseDTO.builder()
+                .id(ticket.getId())
+                .ticketNumber(ticket.getTicketNumber())
+                .requester(requester)
                 .department(department)
                 .category(category)
-                .assignment(assignment)
-                .sla(sla)
-                .attachments(attachments)
+                .subCategory(subCategory)
+                .subject(ticket.getSubject())
+                .description(ticket.getDescription())
+                .priority(Priority.valueOf(ticket.getPriority()))
+                .status(TicketStatus.valueOf(ticket.getStatus()))
+                .assignedAgent(assignedAgent)
+                .managerId(managerId)
+                .reopenCount(ticket.getReopenCount())
+                .createdAt(TimezoneUtil.toOffsetDateTime(ticket.getCreatedAt(), timezone))
+                .resolvedAt(ticket.getResolvedAt() != null ? TimezoneUtil.toOffsetDateTime(ticket.getResolvedAt(), timezone) : null)
+                .reopenedAt(ticket.getReopenedAt() != null ? TimezoneUtil.toOffsetDateTime(ticket.getReopenedAt(), timezone) : null)
+                .assignedAt(assignedAt)
+                .slaStatus(slaStatus)
                 .build();
-
-        // Add updatedAt if required
-        if (includeUpdatedAt && ticket.getUpdatedAt() != null) {
-            response.setUpdatedAt(TimezoneUtil.toOffsetDateTime(ticket.getUpdatedAt(), timezone));
-        }
 
         return response;
     }
 
-    private AssignedAgentResponse buildAssignedAgentResponse(DepartmentAgent departmentAgent) {
-        if (departmentAgent == null || departmentAgent.getEmployee() == null) {
-            return null;
+    private String buildFullName(String firstName, String lastName) {
+        StringBuilder name = new StringBuilder();
+        if (firstName != null && !firstName.isBlank()) {
+            name.append(firstName);
         }
-        return AssignedAgentResponse.builder()
-                .id(departmentAgent.getId())
-                .employeeCode(departmentAgent.getEmployee().getEmployeeCode())
-                .name(departmentAgent.getEmployee().getFirstName() + " " + departmentAgent.getEmployee().getLastName())
-                .build();
+        if (lastName != null && !lastName.isBlank()) {
+            if (name.length() > 0) {
+                name.append(" ");
+            }
+            name.append(lastName);
+        }
+        return name.length() > 0 ? name.toString() : null;
     }
 
-    private AssignedManagerResponse buildAssignedManagerResponse(DepartmentManager departmentManager) {
-        if (departmentManager == null || departmentManager.getEmployee() == null) {
+    private String getSlaStatus(Long ticketId) {
+        TicketSla sla = ticketSlaRepository.findByTicketId(ticketId);
+        if (sla == null) {
             return null;
         }
-        return AssignedManagerResponse.builder()
-                .id(departmentManager.getId())
-                .employeeCode(departmentManager.getEmployee().getEmployeeCode())
-                .name(departmentManager.getEmployee().getFirstName() + " " + departmentManager.getEmployee().getLastName())
-                .build();
-    }
-
-    private SlaResponse buildSlaResponse(Long ticketId) {
-        Optional<TicketSla> slaInstance = ticketSlaRepository.findByTicketId(ticketId);
-        if (slaInstance.isEmpty()) {
-            return null;
-        }
-        TicketSla sla = slaInstance.get();
-        String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
-        return SlaResponse.builder()
-                .ticketId(sla.getTicket().getId())
-                .ticketNumber(sla.getTicket().getTicketNumber())
-                .slaPolicyId(sla.getSlaPolicy().getId())
-                .cycleNumber(sla.getCycleNumber())
-                .allocatedMinutes(sla.getAllocatedMinutes())
-                .slaStartAt(TimezoneUtil.toOffsetDateTime(sla.getSlaStartAt(), timezone))
-                .warningAt(sla.getWarningAt() != null ? TimezoneUtil.toOffsetDateTime(sla.getWarningAt(), timezone) : null)
-                .deadlineAt(TimezoneUtil.toOffsetDateTime(sla.getCurrentDeadlineAt(), timezone))
-                .status(sla.getStatus())
-                .breachedAt(sla.getBreachedAt() != null ? TimezoneUtil.toOffsetDateTime(sla.getBreachedAt(), timezone) : null)
-                .remainingMinutes(calculateRemainingMinutes(sla))
-                .build();
-    }
-
-    private Integer calculateRemainingMinutes(TicketSla sla) {
-        if (sla.getStatus().equals(SlaStatus.BREACHED.name()) || sla.getStatus().equals(SlaStatus.COMPLETED.name())) {
-            return 0;
-        }
-        if (sla.getCurrentDeadlineAt() == null) {
-            return null;
-        }
-        long remainingMillis = sla.getCurrentDeadlineAt().toEpochMilli() - Instant.now().toEpochMilli();
-        return remainingMillis > 0 ? (int) (remainingMillis / 60000) : 0;
+        return sla.getStatus();
     }
 
     @lombok.Data
@@ -2207,3 +2116,7 @@ public class TicketServiceImpl implements TicketService {
     }
 
 }
+
+
+
+

@@ -60,3 +60,4 @@ public class ErrorCode {
         updatedAt = Instant.now();
     }
 }
+

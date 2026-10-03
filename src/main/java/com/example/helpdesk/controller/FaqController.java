@@ -1,8 +1,8 @@
 package com.example.helpdesk.controller;
 
-import com.example.helpdesk.dto.request.CreateFaqRequest;
-import com.example.helpdesk.dto.request.UpdateFaqRequest;
-import com.example.helpdesk.dto.response.FaqResponse;
+import com.example.helpdesk.dto.request.CreateFaqRequestDTO;
+import com.example.helpdesk.dto.request.UpdateFaqRequestDTO;
+import com.example.helpdesk.dto.response.FaqResponseDTO;
 import com.example.helpdesk.service.FaqService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -24,18 +24,18 @@ public class FaqController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(description = "Create a new FAQ. Access: ADMIN, MANAGER")
-    public ResponseEntity<FaqResponse> createFaq(@Valid @RequestBody CreateFaqRequest request) {
-        FaqResponse response = faqService.createFaq(request);
+    public ResponseEntity<FaqResponseDTO> createFaq(@Valid @RequestBody CreateFaqRequestDTO request) {
+        FaqResponseDTO response = faqService.createFaq(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(description = "Update an existing FAQ. Access: ADMIN, MANAGER")
-    public ResponseEntity<FaqResponse> updateFaq(
+    public ResponseEntity<FaqResponseDTO> updateFaq(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateFaqRequest request) {
-        FaqResponse response = faqService.updateFaq(id, request);
+            @Valid @RequestBody UpdateFaqRequestDTO request) {
+        FaqResponseDTO response = faqService.updateFaq(id, request);
         return ResponseEntity.ok(response);
     }
 
@@ -50,48 +50,52 @@ public class FaqController {
     @GetMapping
     @PreAuthorize("permitAll()")
     @Operation(description = "Get all active FAQs. Access: All users (including unauthenticated)")
-    public ResponseEntity<List<FaqResponse>> getActiveFaqs() {
-        List<FaqResponse> faqs = faqService.getActiveFaqs();
+    public ResponseEntity<List<FaqResponseDTO>> getActiveFaqs() {
+        List<FaqResponseDTO> faqs = faqService.getActiveFaqs();
         return ResponseEntity.ok(faqs);
     }
 
     @GetMapping("/all")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(description = "Get all FAQs (including inactive). Access: ADMIN, MANAGER")
-    public ResponseEntity<List<FaqResponse>> getAllFaqs() {
-        List<FaqResponse> faqs = faqService.getAllFaqs();
+    public ResponseEntity<List<FaqResponseDTO>> getAllFaqs() {
+        List<FaqResponseDTO> faqs = faqService.getAllFaqs();
         return ResponseEntity.ok(faqs);
     }
 
     @GetMapping("/search")
     @PreAuthorize("permitAll()")
     @Operation(description = "Search FAQs by keyword in question or answer. Access: All users (including unauthenticated)")
-    public ResponseEntity<List<FaqResponse>> searchFaqs(@RequestParam String query) {
-        List<FaqResponse> faqs = faqService.searchFaqs(query);
+    public ResponseEntity<List<FaqResponseDTO>> searchFaqs(@RequestParam String query) {
+        List<FaqResponseDTO> faqs = faqService.searchFaqs(query);
         return ResponseEntity.ok(faqs);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("permitAll()")
     @Operation(description = "Get FAQ by ID. Access: All users (including unauthenticated)")
-    public ResponseEntity<FaqResponse> getFaqById(@PathVariable Long id) {
-        FaqResponse faq = faqService.getFaqById(id);
+    public ResponseEntity<FaqResponseDTO> getFaqById(@PathVariable Long id) {
+        FaqResponseDTO faq = faqService.getFaqById(id);
         return ResponseEntity.ok(faq);
     }
 
     @PatchMapping("/{id}/activate")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(description = "Activate an FAQ. Access: ADMIN, MANAGER")
-    public ResponseEntity<FaqResponse> activateFaq(@PathVariable Long id) {
-        FaqResponse faq = faqService.activateFaq(id);
+    public ResponseEntity<FaqResponseDTO> activateFaq(@PathVariable Long id) {
+        FaqResponseDTO faq = faqService.activateFaq(id);
         return ResponseEntity.ok(faq);
     }
 
     @PatchMapping("/{id}/deactivate")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(description = "Deactivate an FAQ. Access: ADMIN, MANAGER")
-    public ResponseEntity<FaqResponse> deactivateFaq(@PathVariable Long id) {
-        FaqResponse faq = faqService.deactivateFaq(id);
+    public ResponseEntity<FaqResponseDTO> deactivateFaq(@PathVariable Long id) {
+        FaqResponseDTO faq = faqService.deactivateFaq(id);
         return ResponseEntity.ok(faq);
     }
 }
+
+
+
+

@@ -11,3 +11,6 @@ public interface ErrorCodeRepository extends JpaRepository<ErrorCode, Long> {
 
     Optional<ErrorCode> findByCodeAndActiveTrue(String code);
 }
+
+
+

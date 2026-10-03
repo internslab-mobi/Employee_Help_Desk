@@ -16,3 +16,6 @@ public interface DepartmentManagerRepository extends JpaRepository<DepartmentMan
 
     boolean existsByDepartmentIdAndEmployeeId(Long departmentId, Long employeeId);
 }
+
+
+
