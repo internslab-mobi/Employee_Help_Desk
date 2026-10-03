@@ -18,3 +18,6 @@ public interface DepartmentAgentRepository extends JpaRepository<DepartmentAgent
     @Query("SELECT COUNT(t) FROM Ticket t WHERE t.assignedAgent.id = :agentId AND t.status NOT IN :statuses")
     long countByIdAndTicketStatusNotIn(@Param("agentId") Long agentId, @Param("statuses") List<String> statuses);
 }
+
+
+

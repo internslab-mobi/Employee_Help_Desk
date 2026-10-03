@@ -1,7 +1,7 @@
 package com.example.helpdesk.service.impl;
 
 import com.example.helpdesk.config.HolidayConfig;
-import com.example.helpdesk.config.WorkingHoursConfig;
+import com.example.helpdesk.service.WorkingHours;
 import com.example.helpdesk.service.BusinessTimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -75,7 +75,7 @@ public class BusinessTimeServiceImpl implements BusinessTimeService {
             return false;
         }
 
-        return WorkingHoursConfig.isWorkingHour(time);
+        return WorkingHours.isWithinWorkingHours(time);
     }
 
     @Override
@@ -110,7 +110,11 @@ public class BusinessTimeServiceImpl implements BusinessTimeService {
     private Instant getEndOfWorkingDay(Instant instant, ZoneId zoneId) {
         LocalDateTime dateTime = LocalDateTime.ofInstant(instant, zoneId);
         LocalDate date = dateTime.toLocalDate();
-        LocalTime endTime = WorkingHoursConfig.getWorkEndTime();
+        LocalTime endTime = WorkingHours.END;
         return LocalDateTime.of(date, endTime).atZone(zoneId).toInstant();
     }
 }
+
+
+
+

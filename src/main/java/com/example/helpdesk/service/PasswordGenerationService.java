@@ -4,3 +4,7 @@ public interface PasswordGenerationService {
 
     String generateTemporaryPassword();
 }
+
+
+
+

@@ -1,8 +1,8 @@
 package com.example.helpdesk.service.impl;
 
-import com.example.helpdesk.dto.request.CreateFaqRequest;
-import com.example.helpdesk.dto.request.UpdateFaqRequest;
-import com.example.helpdesk.dto.response.FaqResponse;
+import com.example.helpdesk.dto.request.CreateFaqRequestDTO;
+import com.example.helpdesk.dto.request.UpdateFaqRequestDTO;
+import com.example.helpdesk.dto.response.FaqResponseDTO;
 import com.example.helpdesk.entity.Category;
 import com.example.helpdesk.entity.Faq;
 import com.example.helpdesk.repository.CategoryRepository;
@@ -29,7 +29,7 @@ public class FaqServiceImpl implements FaqService {
 
     @Override
     @Transactional
-    public FaqResponse createFaq(CreateFaqRequest request) {
+    public FaqResponseDTO createFaq(CreateFaqRequestDTO request) {
         Category category = null;
         if (request.getCategoryId() != null) {
             category = categoryRepository.findById(request.getCategoryId())
@@ -51,7 +51,7 @@ public class FaqServiceImpl implements FaqService {
 
     @Override
     @Transactional
-    public FaqResponse updateFaq(Long id, UpdateFaqRequest request) {
+    public FaqResponseDTO updateFaq(Long id, UpdateFaqRequestDTO request) {
         Faq faq = faqRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("FAQ not found: " + id));
 
@@ -86,7 +86,7 @@ public class FaqServiceImpl implements FaqService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<FaqResponse> getActiveFaqs() {
+    public List<FaqResponseDTO> getActiveFaqs() {
         return faqRepository.findByActiveTrueOrderByCreatedAtDesc()
                 .stream()
                 .map(this::toResponse)
@@ -95,7 +95,7 @@ public class FaqServiceImpl implements FaqService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<FaqResponse> getAllFaqs() {
+    public List<FaqResponseDTO> getAllFaqs() {
         return faqRepository.findAllByOrderByCreatedAtDesc()
                 .stream()
                 .map(this::toResponse)
@@ -104,7 +104,7 @@ public class FaqServiceImpl implements FaqService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<FaqResponse> searchFaqs(String query) {
+    public List<FaqResponseDTO> searchFaqs(String query) {
         return faqRepository.findByQuestionContainingIgnoreCaseOrAnswerContainingIgnoreCaseOrderByCreatedAtDesc(
                         query, query)
                 .stream()
@@ -114,7 +114,7 @@ public class FaqServiceImpl implements FaqService {
 
     @Override
     @Transactional(readOnly = true)
-    public FaqResponse getFaqById(Long id) {
+    public FaqResponseDTO getFaqById(Long id) {
         Faq faq = faqRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("FAQ not found: " + id));
         return toResponse(faq);
@@ -122,7 +122,7 @@ public class FaqServiceImpl implements FaqService {
 
     @Override
     @Transactional
-    public FaqResponse activateFaq(Long id) {
+    public FaqResponseDTO activateFaq(Long id) {
         Faq faq = faqRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("FAQ not found: " + id));
         faq.setActive(true);
@@ -133,7 +133,7 @@ public class FaqServiceImpl implements FaqService {
 
     @Override
     @Transactional
-    public FaqResponse deactivateFaq(Long id) {
+    public FaqResponseDTO deactivateFaq(Long id) {
         Faq faq = faqRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("FAQ not found: " + id));
         faq.setActive(false);
@@ -142,9 +142,9 @@ public class FaqServiceImpl implements FaqService {
         return toResponseWithUpdatedAt(savedFaq);
     }
 
-    private FaqResponse toResponse(Faq faq) {
+    private FaqResponseDTO toResponse(Faq faq) {
         String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
-        return FaqResponse.builder()
+        return FaqResponseDTO.builder()
                 .id(faq.getId())
                 .question(faq.getQuestion())
                 .answer(faq.getAnswer())
@@ -155,9 +155,9 @@ public class FaqServiceImpl implements FaqService {
                 .build();
     }
 
-    private FaqResponse toResponseWithUpdatedAt(Faq faq) {
+    private FaqResponseDTO toResponseWithUpdatedAt(Faq faq) {
         String timezone = authenticatedEmployeeUtil.getAuthenticatedEmployeeTimezone();
-        return FaqResponse.builder()
+        return FaqResponseDTO.builder()
                 .id(faq.getId())
                 .question(faq.getQuestion())
                 .answer(faq.getAnswer())
@@ -169,3 +169,7 @@ public class FaqServiceImpl implements FaqService {
                 .build();
     }
 }
+
+
+
+

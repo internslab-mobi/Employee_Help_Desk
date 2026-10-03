@@ -13,3 +13,6 @@ public interface TicketAttachmentRepository extends JpaRepository<TicketAttachme
 
     List<TicketAttachment> findByMessageIdOrderByCreatedAtAsc(Long messageId);
 }
+
+
+
