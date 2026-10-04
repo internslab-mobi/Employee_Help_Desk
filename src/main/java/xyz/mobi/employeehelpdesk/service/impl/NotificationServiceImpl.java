@@ -7,9 +7,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xyz.mobi.employeehelpdesk.dto.notification.NotificationResponse;
-import xyz.mobi.employeehelpdesk.dto.notification.NotificationUpdateResponse;
-import xyz.mobi.employeehelpdesk.dto.notification.UnreadNotificationCountResponse;
+import xyz.mobi.employeehelpdesk.dto.notification.NotificationResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.notification.NotificationUpdateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.notification.UnreadNotificationCountResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.Notification;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
@@ -101,7 +101,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> getNotifications(Pageable pageable) {
+    public Page<NotificationResponseDTO> getNotifications(Pageable pageable) {
         long currentEmployeeId = authService.getCurrentEmployeeId();
         Page<Notification> notifications = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(currentEmployeeId, pageable);
         return notifications.map(notificationMapper::toResponse);
@@ -109,7 +109,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> getUnreadNotifications(Pageable pageable) {
+    public Page<NotificationResponseDTO> getUnreadNotifications(Pageable pageable) {
         long currentEmployeeId = authService.getCurrentEmployeeId();
         Page<Notification> notifications = notificationRepository.findByRecipientIdAndReadFalseOrderByCreatedAtDesc(currentEmployeeId, pageable);
         return notifications.map(notificationMapper::toResponse);
@@ -117,15 +117,15 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public UnreadNotificationCountResponse getUnreadCount() {
+    public UnreadNotificationCountResponseDTO getUnreadCount() {
         long currentEmployeeId = authService.getCurrentEmployeeId();
-        long count = notificationRepository.countByRecipientIdAndReadFalse(currentEmployeeId);
-        return new UnreadNotificationCountResponse(count);
+        Long count = notificationRepository.countByRecipientIdAndReadFalse(currentEmployeeId);
+        return new UnreadNotificationCountResponseDTO(count != null ? count : 0L);
     }
 
     @Override
     @Transactional
-    public NotificationUpdateResponse markAsRead(Long notificationId) {
+    public NotificationUpdateResponseDTO markAsRead(Long notificationId) {
         long currentEmployeeId = authService.getCurrentEmployeeId();
 
         Notification notification = notificationRepository.findById(notificationId)

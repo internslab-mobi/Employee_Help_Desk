@@ -9,9 +9,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponse;
-import xyz.mobi.employeehelpdesk.dto.message.TicketMessageCreateResponse;
-import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponse;
+import xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.message.TicketMessageCreateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
@@ -55,7 +55,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TicketMessageCreateResponse createMessage(
+    public TicketMessageCreateResponseDTO createMessage(
             Long ticketId,
             String content,
             List<MultipartFile> attachments
@@ -94,7 +94,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
 
         message = ticketMessageRepository.save(message);
 
-        List<TicketAttachmentResponse> attachmentResponses = new ArrayList<>();
+        List<TicketAttachmentResponseDTO> attachmentResponses = new ArrayList<>();
         boolean hasSavedAttachments = false;
 
         if (attachments != null && !attachments.isEmpty()) {
@@ -161,7 +161,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TicketMessageResponse> getMessages(Long ticketId, Pageable pageable) {
+    public Page<TicketMessageResponseDTO> getMessages(Long ticketId, Pageable pageable) {
         long currentEmployeeId = authService.getCurrentEmployeeId();
 
         Ticket ticket = ticketRepository.findById(ticketId)
@@ -175,7 +175,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
                 .map(TicketMessage::getId)
                 .toList();
 
-        Map<Long, List<TicketAttachmentResponse>> attachmentMap;
+        Map<Long, List<TicketAttachmentResponseDTO>> attachmentMap;
         if (messageIds.isEmpty()) {
             attachmentMap = Collections.emptyMap();
         } else {
@@ -187,7 +187,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
                     ));
         }
 
-        List<TicketMessageResponse> responseList = messagesPage.getContent().stream()
+        List<TicketMessageResponseDTO> responseList = messagesPage.getContent().stream()
                 .map(m -> ticketMessageMapper.toResponse(m, attachmentMap.getOrDefault(m.getId(), Collections.emptyList())))
                 .toList();
 

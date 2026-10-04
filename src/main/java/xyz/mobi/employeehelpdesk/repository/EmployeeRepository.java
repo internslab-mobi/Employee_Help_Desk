@@ -21,7 +21,7 @@ public interface EmployeeRepository
     @EntityGraph(attributePaths = {"department"})
     Optional<Employee> findByEmail(String email);
 
-    boolean existsByEmail(String email);
+    Boolean existsByEmail(String email);
 
     @EntityGraph(attributePaths = {"department"})
     @Query(value = """

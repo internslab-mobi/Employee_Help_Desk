@@ -1,6 +1,6 @@
 package xyz.mobi.employeehelpdesk.service;
 
-import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponse;
+import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
 
@@ -12,7 +12,7 @@ public interface SlaService {
     SlaInstance completeSla(Ticket ticket);
 
 
-    SlaPolicyResponse getSlaPolicyById(Long id);
+    SlaPolicyResponseDTO getSlaPolicyById(Long id);
 
 
     //evaluation

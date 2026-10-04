@@ -1,6 +1,6 @@
 package xyz.mobi.employeehelpdesk.dto.auth;
 
-public record TokenRefreshResponse(
+public record TokenRefreshResponseDTO(
         String accessToken,
         String refreshToken,
         String tokenType,

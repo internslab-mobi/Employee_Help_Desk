@@ -34,7 +34,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
           AND r.usageCount < r.maxUses
           AND r.expiresAt > :now
     """)
-    int incrementUsageIfValid(
+    Integer incrementUsageIfValid(
             @Param("token") String token,
             @Param("now") Instant now
     );

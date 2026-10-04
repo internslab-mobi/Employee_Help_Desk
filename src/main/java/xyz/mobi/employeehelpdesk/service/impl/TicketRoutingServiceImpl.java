@@ -158,7 +158,7 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         Instant now = Instant.now();
 
         ticket.setAssignedAgent(agent);
-        ticket.setManagerId(resolveManagerId(agent, ticket));
+        ticket.setManagerId(resolveManagerId(agent));
         agent.setLastAssignedAt(now);
 
         ticket.setAssignedAt(now);
@@ -179,61 +179,18 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         }
     }
 
-    private Long resolveManagerId(DepartmentAgent agent, Ticket ticket) {
-        if (agent == null) {
+    private Long resolveManagerId(DepartmentAgent agent) {
+
+        if (agent == null || agent.getEmployee() == null) {
             return null;
         }
 
-        Employee agentEmployee = agent.getEmployee();
-        if (agentEmployee != null) {
-            // 1. Direct manager from agent's Employee record
-            if (agentEmployee.getManager() != null) {
-                DepartmentManager dm = agentEmployee.getManager();
-                if (dm.getEmployee() != null && dm.getEmployee().getId() != null) {
-                    return dm.getEmployee().getId();
-                }
-                if (dm.getId() != null) {
-                    Optional<DepartmentManager> fetchedDm = departmentManagerRepository.findById(dm.getId());
-                    if (fetchedDm.isPresent() && fetchedDm.get().getEmployee() != null) {
-                        return fetchedDm.get().getEmployee().getId();
-                    }
-                    return dm.getId();
-                }
-            }
+        DepartmentManager manager = agent.getEmployee().getManager();
 
-            // 2. Department relationship: primary or active manager of agent's department
-            Long departmentId = agentEmployee.getDepartment() != null
-                    ? agentEmployee.getDepartment().getId()
-                    : (ticket != null && ticket.getDepartment() != null ? ticket.getDepartment().getId() : null);
-
-            if (departmentId != null) {
-                Optional<DepartmentManager> primaryManager =
-                        departmentManagerRepository.findByDepartmentIdAndIsPrimaryTrue(departmentId);
-                if (primaryManager.isPresent() && primaryManager.get().getEmployee() != null) {
-                    return primaryManager.get().getEmployee().getId();
-                }
-
-                List<DepartmentManager> managers =
-                        departmentManagerRepository.findByDepartmentId(departmentId);
-                if (!managers.isEmpty() && managers.get(0).getEmployee() != null) {
-                    return managers.get(0).getEmployee().getId();
-                }
-            }
-        } else if (ticket != null && ticket.getDepartment() != null && ticket.getDepartment().getId() != null) {
-            Long departmentId = ticket.getDepartment().getId();
-            Optional<DepartmentManager> primaryManager =
-                    departmentManagerRepository.findByDepartmentIdAndIsPrimaryTrue(departmentId);
-            if (primaryManager.isPresent() && primaryManager.get().getEmployee() != null) {
-                return primaryManager.get().getEmployee().getId();
-            }
-
-            List<DepartmentManager> managers =
-                    departmentManagerRepository.findByDepartmentId(departmentId);
-            if (!managers.isEmpty() && managers.get(0).getEmployee() != null) {
-                return managers.get(0).getEmployee().getId();
-            }
+        if (manager == null || manager.getEmployee() == null) {
+            return null;
         }
 
-        return null;
+        return manager.getEmployee().getId();
     }
 }

@@ -10,7 +10,7 @@ import xyz.mobi.employeehelpdesk.validator.ValidTimezone;
 import java.time.LocalDate;
 
 @Builder
-public record CreateEmployeeRequest(
+public record CreateEmployeeRequestDTO(
         @NotBlank(message = "First name is required")
         @Size(max = 100, message = "First name cannot exceed 100 characters")
         String firstName,
