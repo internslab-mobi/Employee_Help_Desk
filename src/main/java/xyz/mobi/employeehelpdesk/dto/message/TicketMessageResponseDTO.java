@@ -2,13 +2,13 @@ package xyz.mobi.employeehelpdesk.dto.message;
 
 import java.util.List;
 
-public record TicketMessageResponse(
+public record TicketMessageResponseDTO(
         Long id,
         Long ticketId,
         Long senderId,
         String senderName,
         String content,
         Boolean seen,
-        List<TicketAttachmentResponse> attachments
+        List<TicketAttachmentResponseDTO> attachments
 ) {
 }

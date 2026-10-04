@@ -65,10 +65,6 @@ public class JwtTokenProvider {
         }
     }
 
-    public String generateToken(Long employeeId, UserRole role) {
-        return generateToken(employeeId, role, "UTC");
-    }
-
     public boolean validateToken(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);

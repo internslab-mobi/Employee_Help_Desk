@@ -2,8 +2,8 @@ package xyz.mobi.employeehelpdesk.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import xyz.mobi.employeehelpdesk.dto.notification.NotificationResponse;
-import xyz.mobi.employeehelpdesk.dto.notification.NotificationUpdateResponse;
+import xyz.mobi.employeehelpdesk.dto.notification.NotificationResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.notification.NotificationUpdateResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Notification;
 
 @Mapper(componentModel = "spring")
@@ -18,7 +18,7 @@ public interface NotificationMapper {
     @Mapping(source = "message", target = "message")
     @Mapping(source = "read", target = "read")
     @Mapping(source = "updatedAt", target = "updatedAt")
-    NotificationUpdateResponse toUpdateResponse(Notification notification);
+    NotificationUpdateResponseDTO toUpdateResponse(Notification notification);
 
     @Mapping(source = "id", target = "id")
     @Mapping(source = "recipient.id", target = "recipientId")
@@ -28,5 +28,5 @@ public interface NotificationMapper {
     @Mapping(source = "title", target = "title")
     @Mapping(source = "message", target = "message")
     @Mapping(source = "read", target = "read")
-    NotificationResponse toResponse(Notification notification);
+    NotificationResponseDTO toResponse(Notification notification);
 }

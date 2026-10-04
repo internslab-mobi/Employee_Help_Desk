@@ -3,7 +3,10 @@ package xyz.mobi.employeehelpdesk.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
+import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 
 import java.time.LocalDate;
 
@@ -14,7 +17,10 @@ import java.time.LocalDate;
                 @Index(name = "idx_employee_department", columnList = "department_id"),
                 @Index(name = "idx_employee_status", columnList = "employmentStatus"),
                 @Index(name = "idx_employee_role", columnList = "role"),
-                @Index(name = "idx_employee_dept_status_role", columnList = "department_id, employmentStatus, role")
+                @Index(
+                        name = "idx_employee_dept_status_role",
+                        columnList = "department_id, employmentStatus, role"
+                )
         }
 )
 @Getter
@@ -52,7 +58,7 @@ public class Employee extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 30)
-    private xyz.mobi.employeehelpdesk.entity.enums.UserRole role;
+    private UserRole role;
 
     private LocalDate dateOfJoining;
 
@@ -61,10 +67,15 @@ public class Employee extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String timezone = "UTC";
 
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    /**
+     * Maintained by MySQL triggers.
+     * Hibernate only reads this field.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(
             name = "ticket_status_counts",
             columnDefinition = "JSON",
+            nullable = false,
             insertable = false,
             updatable = false
     )
@@ -73,5 +84,4 @@ public class Employee extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")
     private DepartmentManager manager;
-
 }

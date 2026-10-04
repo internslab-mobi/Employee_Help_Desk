@@ -5,15 +5,17 @@ import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 
 public interface AuthService {
 
-    LoginResponse login(LoginRequest request);
+    LoginResponseDTO login(LoginRequestDTO request);
 
-    TokenRefreshResponse refreshToken(RefreshTokenRequest request);
+    TokenRefreshResponseDTO refreshToken(RefreshTokenRequestDTO request);
 
-    void changePassword(ChangePasswordRequest request);
+    void changePassword(ChangePasswordRequestDTO request);
 
-    void requestForgotPasswordOtp(ForgotPasswordOtpRequest request);
+    void requestForgotPasswordOtp(ForgotPasswordOtpRequestDTO request);
 
-    void resetPasswordWithOtp(ResetPasswordWithOtpRequest request);
+    VerifyOtpResponseDTO verifyOtp(VerifyOtpRequestDTO request);
+
+    void resetPassword(ResetPasswordRequestDTO request);
 
     Long getCurrentEmployeeId();
 

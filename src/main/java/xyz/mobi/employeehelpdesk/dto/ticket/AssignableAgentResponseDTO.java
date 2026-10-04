@@ -9,7 +9,7 @@ import java.time.Instant;
 @Getter
 @Builder
 @AllArgsConstructor
-public class AssignableAgentResponse {
+public class AssignableAgentResponseDTO {
 
     private Long agentId;
     private Long employeeId;

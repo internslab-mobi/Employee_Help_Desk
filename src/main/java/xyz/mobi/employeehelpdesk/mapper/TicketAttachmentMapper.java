@@ -40,5 +40,5 @@ public interface TicketAttachmentMapper {
             AttachmentType type
     );
 
-    xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponse toResponse(TicketAttachment attachment);
+    xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO toResponse(TicketAttachment attachment);
 }

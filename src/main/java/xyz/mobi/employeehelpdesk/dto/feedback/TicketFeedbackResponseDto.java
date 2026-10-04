@@ -1,6 +1,6 @@
 package xyz.mobi.employeehelpdesk.dto.feedback;
 
-public record TicketFeedbackResponseDto(
+public record TicketFeedbackResponseDTO(
         Long id,
         Long ticketId,
         Long submittedById,
