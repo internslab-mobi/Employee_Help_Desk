@@ -12,9 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponse;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDto;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDto;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
@@ -37,17 +37,16 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<TicketCreateResponse> createTicket(
-            @Valid @RequestPart("request") CreateTicketRequest request,
+    public ResponseEntity<TicketCreateResponseDTO> createTicket(
+            @Valid @RequestPart("request") CreateTicketRequestDTO request,
             @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments
     ) throws IOException {
 
-        Long requesterId = authService.getCurrentEmployeeId();
 
-        TicketCreateResponse response = ticketService.createTicket(
+
+        TicketCreateResponseDTO response = ticketService.createTicket(
                 request,
-                attachments,
-                requesterId
+                attachments
         );
 
         return ResponseEntity
@@ -57,9 +56,9 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PatchMapping("/{ticketId}")
-    public ResponseEntity<TicketUpdateResponse> updateTicket(
+    public ResponseEntity<TicketUpdateResponseDTO> updateTicket(
             @PathVariable Long ticketId,
-            @Valid @RequestBody UpdateTicketRequest request
+            @Valid @RequestBody UpdateTicketRequestDTO request
     ) {
 
         return ResponseEntity.ok(
@@ -72,7 +71,7 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/{ticketId}")
-    public ResponseEntity<TicketResponse> getTicket(
+    public ResponseEntity<TicketResponseDTO> getTicket(
             @PathVariable Long ticketId
     ) {
 
@@ -83,7 +82,7 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     @GetMapping("/{ticketId}/assignable-agents")
-    public ResponseEntity<List<AssignableAgentResponse>> getAssignableAgents(
+    public ResponseEntity<List<AssignableAgentResponseDTO>> getAssignableAgents(
             @PathVariable Long ticketId
     ) {
 
@@ -94,7 +93,7 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping
-    public ResponseEntity<Page<TicketResponse>> getAllTickets(
+    public ResponseEntity<Page<TicketResponseDTO>> getAllTickets(
             @RequestParam TicketView view,
             @RequestParam(required = false) Long employeeId,
             @PageableDefault(
@@ -115,7 +114,7 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/search")
-    public ResponseEntity<Page<TicketResponse>> searchTickets(
+    public ResponseEntity<Page<TicketResponseDTO>> searchTickets(
             @RequestParam TicketView view,
             @RequestParam(required = false) Long employeeId,
             @RequestParam(required = false) TicketStatus status,
@@ -163,12 +162,12 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping("/{ticketId}/feedback")
-    public ResponseEntity<TicketFeedbackCreateResponse> createFeedback(
+    public ResponseEntity<TicketFeedbackCreateResponseDTO> createFeedback(
             @PathVariable Long ticketId,
-            @Valid @RequestBody TicketFeedbackRequestDto request
+            @Valid @RequestBody TicketFeedbackRequestDTO request
     ) {
 
-        TicketFeedbackCreateResponse response =
+        TicketFeedbackCreateResponseDTO response =
                 ticketService.createFeedback(
                         ticketId,
                         request
@@ -181,11 +180,11 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/{ticketId}/feedback")
-    public ResponseEntity<TicketFeedbackResponseDto> getFeedback(
+    public ResponseEntity<TicketFeedbackResponseDTO> getFeedback(
             @PathVariable Long ticketId
     ) {
 
-        TicketFeedbackResponseDto response =
+        TicketFeedbackResponseDTO response =
                 ticketService.getFeedback(ticketId);
 
         return ResponseEntity.ok(response);

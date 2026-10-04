@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequest;
-import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponse;
-import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponse;
+import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.DepartmentAgent;
 import xyz.mobi.employeehelpdesk.entity.Employee;
@@ -54,7 +54,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional
-    public EmployeeCreateResponse createEmployee(CreateEmployeeRequest request) {
+    public EmployeeCreateResponseDTO createEmployee(CreateEmployeeRequestDTO request) {
         Long currentEmployeeId = authService.getCurrentEmployeeId();
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
@@ -73,7 +73,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         String email = request.email().trim().toLowerCase();
-        if (employeeRepository.existsByEmail(email)) {
+        if (Boolean.TRUE.equals(employeeRepository.existsByEmail(email))) {
             throw new DuplicateResourceException("Employee with email '" + email + "' already exists");
         }
 
@@ -157,7 +157,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<EmployeeResponse> getAllEmployees(Pageable pageable) {
+    public Page<EmployeeResponseDTO> getAllEmployees(Pageable pageable) {
 
         Long currentEmployeeId = authService.getCurrentEmployeeId();
 
@@ -192,7 +192,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<EmployeeResponse> searchEmployees(
+    public Page<EmployeeResponseDTO> searchEmployees(
             String search,
             Long departmentId,
             EmploymentStatus status,
@@ -245,7 +245,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional(readOnly = true)
-    public EmployeeResponse getEmployeeById(Long id) {
+    public EmployeeResponseDTO getEmployeeById(Long id) {
 
         Long currentEmployeeId = authService.getCurrentEmployeeId();
 
@@ -320,9 +320,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setEmploymentStatus(EmploymentStatus.INACTIVE);
     }
 
-    private EmployeeResponse toResponse(Employee employee) {
+    private EmployeeResponseDTO toResponse(Employee employee) {
 
-        return EmployeeResponse.builder()
+        return EmployeeResponseDTO.builder()
                 .id(employee.getId())
                 .employeeCode(employee.getEmployeeCode())
                 .firstName(employee.getFirstName())
@@ -348,9 +348,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .build();
     }
 
-    private EmployeeCreateResponse toCreateResponse(Employee employee) {
+    private EmployeeCreateResponseDTO toCreateResponse(Employee employee) {
 
-        return EmployeeCreateResponse.builder()
+        return EmployeeCreateResponseDTO.builder()
                 .id(employee.getId())
                 .employeeCode(employee.getEmployeeCode())
                 .firstName(employee.getFirstName())

@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 @Builder
-public record EmployeeCreateResponse(
+public record EmployeeCreateResponseDTO(
         Long id,
         String employeeCode,
         String firstName,

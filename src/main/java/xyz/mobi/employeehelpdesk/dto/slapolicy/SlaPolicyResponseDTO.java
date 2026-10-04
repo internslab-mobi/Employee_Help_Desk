@@ -3,7 +3,7 @@ package xyz.mobi.employeehelpdesk.dto.slapolicy;
 import lombok.Builder;
 
 @Builder
-public record SlaPolicyResponse(
+public record SlaPolicyResponseDTO(
         Long id,
         Long departmentId,
         String departmentName,

@@ -1,8 +1,7 @@
 package xyz.mobi.employeehelpdesk.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Table(
@@ -16,6 +15,9 @@ import lombok.Setter;
 )
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class TicketFeedback extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)

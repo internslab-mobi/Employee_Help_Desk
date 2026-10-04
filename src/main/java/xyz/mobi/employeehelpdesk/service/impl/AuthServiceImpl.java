@@ -28,6 +28,7 @@ import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 import java.util.UUID;
 
 @Slf4j
@@ -44,7 +45,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponseDTO login(LoginRequestDTO request) {
         if (request == null || request.email() == null || request.password() == null) {
             throw new UnauthorizedException("Invalid email or password");
         }
@@ -81,7 +82,7 @@ public class AuthServiceImpl implements AuthService {
 
         refreshTokenRepository.save(refreshToken);
 
-        return new LoginResponse(
+        return new LoginResponseDTO(
                 accessToken,
                 refreshTokenStr,
                 "Bearer",
@@ -93,7 +94,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public TokenRefreshResponse refreshToken(RefreshTokenRequest request) {
+    public TokenRefreshResponseDTO refreshToken(RefreshTokenRequestDTO request) {
         if (request == null || request.refreshToken() == null || request.refreshToken().isBlank()) {
             throw new UnauthorizedException("Refresh token is required");
         }
@@ -102,8 +103,8 @@ public class AuthServiceImpl implements AuthService {
         Instant now = Instant.now();
 
         // Atomically increment usage count and revoke if limit reached
-        int updated = refreshTokenRepository.incrementUsageIfValid(tokenStr, now);
-        if (updated == 0) {
+        Integer updated = refreshTokenRepository.incrementUsageIfValid(tokenStr, now);
+        if (updated == null || updated == 0) {
             throw new UnauthorizedException("Invalid or expired refresh token");
         }
 
@@ -119,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
         String timezone = employee.getTimezone() != null ? employee.getTimezone() : "UTC";
         String newAccessToken = jwtTokenProvider.generateToken(employee.getId(), role, timezone);
 
-        return new TokenRefreshResponse(
+        return new TokenRefreshResponseDTO(
                 newAccessToken,
                 refreshToken.getToken(),
                 "Bearer",
@@ -129,7 +130,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void changePassword(ChangePasswordRequest request) {
+    public void changePassword(ChangePasswordRequestDTO request) {
         if (request == null || request.currentPassword() == null || request.newPassword() == null || request.confirmNewPassword() == null) {
             throw new BadRequestException("All password fields are required");
         }
@@ -163,7 +164,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void requestForgotPasswordOtp(ForgotPasswordOtpRequest request) {
+    public void requestForgotPasswordOtp(ForgotPasswordOtpRequestDTO request) {
         if (request == null || request.email() == null || request.email().isBlank()) {
             throw new BadRequestException("Email is required");
         }
@@ -180,15 +181,18 @@ public class AuthServiceImpl implements AuthService {
         SecureRandom random = new SecureRandom();
         String otp = String.format("%06d", random.nextInt(1000000));
 
-        // Delete existing OTPs for this email
+        // Invalidate/replace existing OTPs for this email
         passwordResetOtpRepository.deleteByEmail(email);
 
         PasswordResetOtp resetOtp = PasswordResetOtp.builder()
                 .email(email)
-                .otp(passwordEncoder.encode(otp))
-                .expiresAt(Instant.now().plus(10, ChronoUnit.MINUTES))
-                .used(false)
-                .createdAt(Instant.now())
+                .otpHash(passwordEncoder.encode(otp))
+                .otpExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES))
+                .otpAttemptCount(0)
+                .otpVerified(false)
+                .resetTokenHash(null)
+                .resetTokenExpiresAt(null)
+                .resetTokenUsed(false)
                 .build();
 
         passwordResetOtpRepository.save(resetOtp);
@@ -202,8 +206,70 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void resetPasswordWithOtp(ResetPasswordWithOtpRequest request) {
-        if (request == null || request.email() == null || request.otp() == null
+    public VerifyOtpResponseDTO verifyOtp(VerifyOtpRequestDTO request) {
+        if (request == null || request.email() == null || request.otp() == null) {
+            throw new BadRequestException("Email and OTP are required");
+        }
+
+        String email = request.email().trim();
+        String otp = request.otp().trim();
+
+        Employee employee = employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("No active employee found with email: " + email));
+
+        if (employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
+            throw new BadRequestException("Employee account is not active");
+        }
+
+        PasswordResetOtp resetOtp = passwordResetOtpRepository
+                .findTopByEmailOrderByCreatedAtDesc(email)
+                .orElseThrow(() -> new BadRequestException("No OTP request found for this email. Please request a new OTP."));
+
+        if (resetOtp.isOtpVerified()) {
+            throw new BadRequestException("OTP has already been verified");
+        }
+
+        if (resetOtp.getOtpExpiresAt().isBefore(Instant.now())) {
+            throw new BadRequestException("OTP has expired. Please request a new OTP.");
+        }
+
+        if (resetOtp.getOtpAttemptCount() >= 3) {
+            throw new BadRequestException("Maximum OTP attempts exceeded. Please request a new OTP.");
+        }
+
+        if (!passwordEncoder.matches(otp, resetOtp.getOtpHash())) {
+            int newAttemptCount = resetOtp.getOtpAttemptCount() + 1;
+            resetOtp.setOtpAttemptCount(newAttemptCount);
+            passwordResetOtpRepository.save(resetOtp);
+
+            if (newAttemptCount >= 3) {
+                throw new BadRequestException("Maximum OTP attempts exceeded. Please request a new OTP.");
+            }
+            int remainingAttempts = 3 - newAttemptCount;
+            throw new BadRequestException("Invalid OTP. " + remainingAttempts + " attempt(s) remaining.");
+        }
+
+        // Mark OTP verification as successful
+        resetOtp.setOtpVerified(true);
+
+        // Generate cryptographically secure, short-lived reset token
+        byte[] randomBytes = new byte[32];
+        new SecureRandom().nextBytes(randomBytes);
+        String resetToken = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+
+        // Store only the hash of the reset token
+        resetOtp.setResetTokenHash(passwordEncoder.encode(resetToken));
+        resetOtp.setResetTokenExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
+        resetOtp.setResetTokenUsed(false);
+        passwordResetOtpRepository.save(resetOtp);
+
+        return new VerifyOtpResponseDTO(resetToken);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequestDTO request) {
+        if (request == null || request.email() == null || request.resetToken() == null
                 || request.newPassword() == null || request.confirmNewPassword() == null) {
             throw new BadRequestException("All fields are required");
         }
@@ -217,28 +283,45 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String email = request.email().trim();
-        String otp = request.otp().trim();
-
-        PasswordResetOtp resetOtp = passwordResetOtpRepository
-                .findTopByEmailAndUsedFalseOrderByCreatedAtDesc(email)
-                .orElseThrow(() -> new BadRequestException("Invalid or expired OTP"));
-
-        if (resetOtp.isUsed() || resetOtp.getExpiresAt().isBefore(Instant.now())
-                || !passwordEncoder.matches(otp, resetOtp.getOtp())) {
-            throw new BadRequestException("Invalid or expired OTP");
-        }
-
-        // Atomically mark OTP as used to prevent concurrent replay
-        int updated = passwordResetOtpRepository.consumeOtpIfValid(resetOtp.getId(), Instant.now());
-        if (updated == 0) {
-            throw new BadRequestException("Invalid or expired OTP");
-        }
+        String resetToken = request.resetToken().trim();
 
         Employee employee = employeeRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("No active employee found with email: " + email));
+
+        if (employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
+            throw new BadRequestException("Employee account is not active");
+        }
+
+        PasswordResetOtp resetOtp = passwordResetOtpRepository
+                .findTopByEmailOrderByCreatedAtDesc(email)
+                .orElseThrow(() -> new BadRequestException("Invalid or expired password reset token"));
+
+        if (!resetOtp.isOtpVerified()) {
+            throw new BadRequestException("OTP verification required before resetting password");
+        }
+
+        if (resetOtp.isResetTokenUsed()) {
+            throw new BadRequestException("Reset token has already been used");
+        }
+
+        if (resetOtp.getResetTokenExpiresAt() == null || resetOtp.getResetTokenExpiresAt().isBefore(Instant.now())) {
+            throw new BadRequestException("Reset token has expired");
+        }
+
+        if (resetOtp.getResetTokenHash() == null || !passwordEncoder.matches(resetToken, resetOtp.getResetTokenHash())) {
+            throw new BadRequestException("Invalid password reset token");
+        }
+
+        if (employee.getPasswordHash() != null && passwordEncoder.matches(request.newPassword(), employee.getPasswordHash())) {
+            throw new BadRequestException("New password cannot be the same as current password");
+        }
 
         employee.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         employeeRepository.save(employee);
+
+        // Invalidate reset token immediately after successful password reset
+        resetOtp.setResetTokenUsed(true);
+        passwordResetOtpRepository.save(resetOtp);
 
         // Invalidate active refresh tokens
         refreshTokenRepository.deleteByEmployeeId(employee.getId());

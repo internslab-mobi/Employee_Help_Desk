@@ -1,39 +1,48 @@
 package xyz.mobi.employeehelpdesk.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
 import lombok.*;
 
 import java.time.Instant;
 
 @Entity
 @Table(name = "password_reset_otps", indexes = {
-        @Index(name = "idx_otp_email", columnList = "email"),
-        @Index(name = "idx_otp_email_otp", columnList = "email, otp")
+        @Index(name = "idx_otp_email", columnList = "email")
 })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PasswordResetOtp {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class PasswordResetOtp extends BaseEntity {
 
     @Column(name = "email", nullable = false, length = 150)
     private String email;
 
-    @Column(name = "otp", nullable = false, length = 255)
-    private String otp;
+    @Column(name = "otp_hash", nullable = false, length = 255)
+    private String otpHash;
 
-    @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
+    @Column(name = "otp_expires_at", nullable = false)
+    private Instant otpExpiresAt;
 
     @Builder.Default
-    @Column(name = "used", nullable = false)
-    private boolean used = false;
+    @Column(name = "otp_attempt_count", nullable = false)
+    private int otpAttemptCount = 0;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Builder.Default
+    @Column(name = "otp_verified", nullable = false)
+    private boolean otpVerified = false;
+
+    @Column(name = "reset_token_hash", length = 255)
+    private String resetTokenHash;
+
+    @Column(name = "reset_token_expires_at")
+    private Instant resetTokenExpiresAt;
+
+    @Builder.Default
+    @Column(name = "reset_token_used", nullable = false)
+    private boolean resetTokenUsed = false;
 }

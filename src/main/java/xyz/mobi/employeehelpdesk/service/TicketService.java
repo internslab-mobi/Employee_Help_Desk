@@ -3,9 +3,9 @@ package xyz.mobi.employeehelpdesk.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponse;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDto;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDto;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketView;
@@ -17,30 +17,20 @@ import java.util.Map;
 
 public interface TicketService {
 
-    TicketCreateResponse createTicket(
-            CreateTicketRequest request,
-            List<MultipartFile> attachments,
-            Long requesterId) throws IOException;
+    TicketCreateResponseDTO createTicket(
+            CreateTicketRequestDTO request,
+            List<MultipartFile> attachments)
+            throws IOException;
 
-    TicketResponse getTicket(Long ticketId);
+    TicketResponseDTO getTicket(Long ticketId);
 
-    Page<TicketResponse> getAllTickets(
+    Page<TicketResponseDTO> getAllTickets(
             TicketView view,
             Long employeeId,
             Pageable pageable
     );
 
-    Page<TicketResponse> searchTickets(
-            TicketView view,
-            Long employeeId,
-            TicketStatus status,
-            LocalDate fromDate,
-            LocalDate toDate,
-            String search,
-            Pageable pageable
-    );
-
-    Page<TicketResponse> searchTickets(
+    Page<TicketResponseDTO> searchTickets(
             TicketView view,
             Long employeeId,
             TicketStatus status,
@@ -52,35 +42,35 @@ public interface TicketService {
             Pageable pageable
     );
 
-    List<AssignableAgentResponse> getAssignableAgents(Long ticketId);
+    List<AssignableAgentResponseDTO> getAssignableAgents(Long ticketId);
 
     Map<String, Integer> getTicketSummary(
             TicketView view,
             Long employeeId
     );
 
-    TicketUpdateResponse updateTicket(
+    TicketUpdateResponseDTO updateTicket(
             Long ticketId,
-            UpdateTicketRequest request
+            UpdateTicketRequestDTO request
     );
 
-    TicketUpdateResponse assignTicketByManager(Long ticketId, Long agentId);
+    TicketUpdateResponseDTO assignTicketByManager(Long ticketId, Long agentId);
 
-    TicketUpdateResponse withdrawTicket(Long ticketId, WithdrawRequestDto withdrawRequest);
+    TicketUpdateResponseDTO withdrawTicket(Long ticketId, WithdrawRequestDTO withdrawRequest);
 
-    TicketUpdateResponse startTicket(Long ticketId);
+    TicketUpdateResponseDTO startTicket(Long ticketId);
 
-    TicketUpdateResponse holdTicket(Long ticketId, HoldTicketRequestDto request);
+    TicketUpdateResponseDTO holdTicket(Long ticketId, HoldTicketRequestDTO request);
 
-    TicketUpdateResponse resumeTicket(Long ticketId);
+    TicketUpdateResponseDTO resumeTicket(Long ticketId);
 
-    TicketUpdateResponse resolveTicket(Long ticketId, ResolveTicketRequestDto request);
+    TicketUpdateResponseDTO resolveTicket(Long ticketId, ResolveTicketRequestDTO request);
 
-    TicketUpdateResponse reopenTicket(Long ticketId, ReopenRequestDto request);
+    TicketUpdateResponseDTO reopenTicket(Long ticketId, ReopenRequestDTO request);
 
     // feedback
 
-    TicketFeedbackCreateResponse createFeedback(Long ticketId, TicketFeedbackRequestDto request);
+    TicketFeedbackCreateResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request);
 
-    TicketFeedbackResponseDto getFeedback(Long ticketId);
+    TicketFeedbackResponseDTO getFeedback(Long ticketId);
 }

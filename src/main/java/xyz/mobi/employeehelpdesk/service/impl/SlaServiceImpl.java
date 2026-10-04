@@ -2,12 +2,13 @@ package xyz.mobi.employeehelpdesk.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponse;
+import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.SlaPolicy;
@@ -41,7 +42,8 @@ public class SlaServiceImpl implements SlaService {
     private final AuthService authService;
     private final DepartmentManagerRepository departmentManagerRepository;
     private final NotificationService notificationService;
-    private final int batchSize = 50;
+    @Value("${helpdesk.sla.batch-size}")
+    private  int batchSize;
 
     /**
      * Starts the INITIAL SLA cycle for a newly created ticket.
@@ -88,7 +90,7 @@ public class SlaServiceImpl implements SlaService {
 
         Instant startAt = workingCalendarService.moveToWorkingTime(baseInstant, departmentId, departmentZone);
 
-        // 4. Cycle number: always 1 for initial SLA
+        // 4. cycle number 1 for initial SLA
         int cycleNumber = 1;
 
         // 5. Calculate SLA deadline using full policy duration
@@ -402,7 +404,7 @@ public class SlaServiceImpl implements SlaService {
 
     @Override
     @Transactional(readOnly = true)
-    public SlaPolicyResponse getSlaPolicyById(Long id) {
+    public SlaPolicyResponseDTO getSlaPolicyById(Long id) {
         SlaPolicy policy = slaPolicyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("SlaPolicy not found with id: " + id));
         return toResponse(policy);
@@ -438,8 +440,8 @@ public class SlaServiceImpl implements SlaService {
         throw new AccessDeniedException("Access denied: Insufficient permissions");
     }
 
-    private SlaPolicyResponse toResponse(SlaPolicy policy) {
-        return SlaPolicyResponse.builder()
+    private SlaPolicyResponseDTO toResponse(SlaPolicy policy) {
+        return SlaPolicyResponseDTO.builder()
                 .id(policy.getId())
                 .departmentId(policy.getDepartment().getId())
                 .departmentName(policy.getDepartment().getName())
@@ -461,11 +463,13 @@ public class SlaServiceImpl implements SlaService {
             return false;
         }
 
-        return departmentManagerRepository
-                .existsByEmployeeIdAndDepartmentId(
-                        employeeId,
-                        departmentId
-                );
+        return Boolean.TRUE.equals(
+                departmentManagerRepository
+                        .existsByEmployeeIdAndDepartmentId(
+                                employeeId,
+                                departmentId
+                        )
+        );
     }
 
 
@@ -569,14 +573,14 @@ public class SlaServiceImpl implements SlaService {
         Instant now = Instant.now();
         List<SlaStatus> expectedStatuses = List.of(SlaStatus.ACTIVE, SlaStatus.WARNING);
 
-        int updated = slaInstanceRepository.updateStatusToBreachedIfEligible(
+        Integer updated = slaInstanceRepository.updateStatusToBreachedIfEligible(
                 slaInstanceId,
                 SlaStatus.BREACHED,
                 expectedStatuses,
                 now
         );
 
-        if (updated > 0) {
+        if (updated != null && updated > 0) {
             log.info("SLA breached: id={}", slaInstanceId);
 
             SlaInstance sla = slaInstanceRepository.findById(slaInstanceId).orElse(null);
@@ -595,14 +599,14 @@ public class SlaServiceImpl implements SlaService {
     public void evaluateWarning(Long slaInstanceId) {
         Instant now = Instant.now();
 
-        int updated = slaInstanceRepository.updateStatusToWarningIfEligible(
+        Integer updated = slaInstanceRepository.updateStatusToWarningIfEligible(
                 slaInstanceId,
                 SlaStatus.WARNING,
                 SlaStatus.ACTIVE,
                 now
         );
 
-        if (updated > 0) {
+        if (updated != null && updated > 0) {
             log.info("SLA warning triggered: id={}", slaInstanceId);
 
             SlaInstance sla = slaInstanceRepository.findById(slaInstanceId).orElse(null);

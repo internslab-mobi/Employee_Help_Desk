@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponse;
+import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
 import xyz.mobi.employeehelpdesk.service.SlaService;
 
 @RestController
@@ -19,8 +19,8 @@ public class SlaPolicyController {
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AGENT', 'EMPLOYEE')")
     @GetMapping("/{id}")
-    public ResponseEntity<SlaPolicyResponse> getSlaPolicyById(@PathVariable Long id) {
-        SlaPolicyResponse response = slaService.getSlaPolicyById(id);
+    public ResponseEntity<SlaPolicyResponseDTO> getSlaPolicyById(@PathVariable Long id) {
+        SlaPolicyResponseDTO response = slaService.getSlaPolicyById(id);
         return ResponseEntity.ok(response);
     }
 

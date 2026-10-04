@@ -2,19 +2,19 @@ package xyz.mobi.employeehelpdesk.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequest;
-import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponse;
-import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponse;
+import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 
 public interface EmployeeService {
 
-    EmployeeCreateResponse createEmployee(CreateEmployeeRequest request);
+    EmployeeCreateResponseDTO createEmployee(CreateEmployeeRequestDTO request);
 
-    Page<EmployeeResponse> getAllEmployees(Pageable pageable);
+    Page<EmployeeResponseDTO> getAllEmployees(Pageable pageable);
 
-    Page<EmployeeResponse> searchEmployees(
+    Page<EmployeeResponseDTO> searchEmployees(
             String search,
             Long departmentId,
             EmploymentStatus status,
@@ -22,7 +22,7 @@ public interface EmployeeService {
             Pageable pageable
     );
 
-    EmployeeResponse getEmployeeById(Long id);
+    EmployeeResponseDTO getEmployeeById(Long id);
 
     void deactivateEmployee(Long id);
 }

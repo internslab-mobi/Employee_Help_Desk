@@ -12,5 +12,5 @@ public interface TicketFeedbackRepository
     @EntityGraph(attributePaths = {"submittedBy", "ticket"})
     Optional<TicketFeedback> findByTicketId(Long ticketId);
 
-    boolean existsByTicketId(Long ticketId);
+    Boolean existsByTicketId(Long ticketId);
 }
