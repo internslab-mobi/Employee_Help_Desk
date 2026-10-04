@@ -7,7 +7,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import java.time.LocalDate;
 
 @Builder
-public record EmployeeResponse(
+public record EmployeeResponseDTO(
         Long id,
         String employeeCode,
         String firstName,

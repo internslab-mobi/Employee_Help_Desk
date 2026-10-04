@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CreateTicketRequest {
+public class CreateTicketRequestDTO {
 
     @NotNull(message = "Department is required")
     private Long departmentId;

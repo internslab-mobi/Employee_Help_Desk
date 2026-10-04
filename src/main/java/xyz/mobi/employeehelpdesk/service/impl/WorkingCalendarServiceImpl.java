@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import xyz.mobi.employeehelpdesk.entity.Holiday;
+import xyz.mobi.employeehelpdesk.exception.BadRequestException;
 import xyz.mobi.employeehelpdesk.repository.HolidayRepository;
 import xyz.mobi.employeehelpdesk.service.WorkingCalendarService;
 
@@ -17,10 +18,10 @@ import java.util.stream.Collectors;
 public class WorkingCalendarServiceImpl implements WorkingCalendarService {
 
     @Value("${helpdesk.sla.work-start:08:30}")
-    private LocalTime workStart = LocalTime.of(8, 30);
+    private LocalTime workStart;
 
     @Value("${helpdesk.sla.work-end:17:30}")
-    private LocalTime workEnd = LocalTime.of(17, 30);
+    private LocalTime workEnd;
 
     private final HolidayRepository holidayRepository;
 
@@ -34,7 +35,7 @@ public class WorkingCalendarServiceImpl implements WorkingCalendarService {
             return null;
         }
         if (departmentZone == null) {
-            throw new IllegalArgumentException("Department ZoneId must not be null");
+            throw new BadRequestException("Department ZoneId must not be null");
         }
 
         ZonedDateTime zdt = instant.atZone(departmentZone);
@@ -57,7 +58,7 @@ public class WorkingCalendarServiceImpl implements WorkingCalendarService {
             return null;
         }
         if (departmentZone == null) {
-            throw new IllegalArgumentException("Department ZoneId must not be null");
+            throw new BadRequestException("Department ZoneId must not be null");
         }
 
         if (workingMinutes <= 0) {
@@ -104,7 +105,7 @@ public class WorkingCalendarServiceImpl implements WorkingCalendarService {
             return 0;
         }
         if (departmentZone == null) {
-            throw new IllegalArgumentException("Department ZoneId must not be null");
+            throw new BadRequestException("Department ZoneId must not be null");
         }
 
         ZonedDateTime startZdt = start.atZone(departmentZone);

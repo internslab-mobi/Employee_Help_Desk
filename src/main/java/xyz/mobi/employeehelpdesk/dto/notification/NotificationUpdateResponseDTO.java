@@ -4,7 +4,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
 
 import java.time.Instant;
 
-public record NotificationUpdateResponse(
+public record NotificationUpdateResponseDTO(
         Long id,
         Long recipientId,
         Long ticketId,

@@ -4,7 +4,7 @@ import lombok.Builder;
 import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 
 @Builder
-public record SubCategoryResponse(
+public record SubCategoryResponseDTO(
         Long id,
         Long categoryId,
         String categoryName,

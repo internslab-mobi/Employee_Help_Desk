@@ -10,9 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponse;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDto;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDto;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
 import xyz.mobi.employeehelpdesk.entity.*;
 import xyz.mobi.employeehelpdesk.entity.enums.*;
@@ -36,8 +36,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static xyz.mobi.employeehelpdesk.entity.enums.TicketStatus.IN_PROGRESS;
-import static xyz.mobi.employeehelpdesk.entity.enums.TicketStatus.ON_HOLD;
+import static xyz.mobi.employeehelpdesk.entity.enums.TicketStatus.*;
 
 @Service
 @RequiredArgsConstructor
@@ -68,13 +67,14 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketCreateResponse createTicket(
-            CreateTicketRequest request,
-            List<MultipartFile> attachments,
-            Long requesterId
+    public TicketCreateResponseDTO createTicket(
+            CreateTicketRequestDTO request,
+            List<MultipartFile> attachments
     ) throws IOException {
 
-        // 1. Find requester
+        Long requesterId = authService.getCurrentEmployeeId();
+
+        // Find requester
         Employee requester = employeeRepository.findById(requesterId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -82,7 +82,7 @@ public class TicketServiceImpl implements TicketService {
                         )
                 );
 
-        // 2. Find and validate department
+        // Find and validate department
         Department department = departmentRepository
                 .findById(request.getDepartmentId())
                 .orElseThrow(() ->
@@ -95,21 +95,21 @@ public class TicketServiceImpl implements TicketService {
             throw new BadRequestException("Department is inactive");
         }
 
-        // 3. Find and validate category
+        // Find and validate category
         Category category = findAndValidateCategory(
                 request,
                 department
         );
 
 
-        // 4. Find and validate subcategory
+        // Find and validate subcategory
         SubCategory subCategory = findAndValidateSubCategory(
                 request,
                 category
         );
 
 
-        // 5. Create Ticket using MapStruct
+        // Create Ticket using MapStruct
         Ticket ticket = ticketMapper.toEntity(request);
 
         // used toBuilder to build on same object
@@ -118,23 +118,18 @@ public class TicketServiceImpl implements TicketService {
                 .department(department)
                 .category(category)
                 .subCategory(subCategory)
+                .priority(subCategory.getPriority())
+                .status(OPEN)
+                .reopenCount(0)
                 .build();
 
-
-        // 6. Priority comes from SubCategory
-        ticket.setPriority(subCategory.getPriority());
-
-        // 7. Initial ticket status
-        ticket.setStatus(TicketStatus.OPEN);
-        ticket.setReopenCount(0);
-
-        // 8. Save Ticket first
+        // Save Ticket first
         ticket = ticketRepository.save(ticket);
 
-        // 9. Generate ticket number using generated Ticket ID
+        // Generate ticket number using generated Ticket ID
         ticket.setTicketNumber(generate(ticket.getId()));
 
-        // 11. Save optional attachments
+        // Save optional attachments
         ticketAttachmentValidator.validate(attachments);
 
         saveAttachments(
@@ -143,20 +138,20 @@ public class TicketServiceImpl implements TicketService {
                 requester
         );
 
-        // 12. Create history
+        // Create history
         ticketHistoryService.record(ticket, HistoryEventType.TICKET_CREATED, null, TicketStatus.OPEN);
 
         ticketRoutingService.routeTicket(ticket);
 
         SlaInstance slaInstance = slaService.startSla(ticket);
 
-        // 13. Convert Entity → Response DTO
+        // Convert Entity → Response DTO
         return ticketMapper.toCreateResponse(ticket, slaInstance);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public TicketResponse getTicket(Long ticketId) {
+    public TicketResponseDTO getTicket(Long ticketId) {
 
         Long currentEmployeeId = authService.getCurrentEmployeeId();
 
@@ -222,7 +217,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TicketResponse> getAllTickets(
+    public Page<TicketResponseDTO> getAllTickets(
             TicketView view,
             Long employeeId,
             Pageable pageable
@@ -262,21 +257,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TicketResponse> searchTickets(
-            TicketView view,
-            Long employeeId,
-            TicketStatus status,
-            LocalDate fromDate,
-            LocalDate toDate,
-            String search,
-            Pageable pageable
-    ) {
-        return searchTickets(view, employeeId, status, fromDate, toDate, search, null, null, pageable);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<TicketResponse> searchTickets(
+    public Page<TicketResponseDTO> searchTickets(
             TicketView view,
             Long employeeId,
             TicketStatus status,
@@ -354,7 +335,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AssignableAgentResponse> getAssignableAgents(Long ticketId) {
+    public List<AssignableAgentResponseDTO> getAssignableAgents(Long ticketId) {
         Long currentEmployeeId = authService.getCurrentEmployeeId();
         Employee currentEmployee = employeeRepository.findById(currentEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + currentEmployeeId));
@@ -424,7 +405,7 @@ public class TicketServiceImpl implements TicketService {
 
         // 5. Build responses
         final Set<Long> finalRequiredSkillIds = requiredSkillIds;
-        List<AssignableAgentResponse> responses = new java.util.ArrayList<>(eligibleAgents.stream()
+        List<AssignableAgentResponseDTO> responses = new java.util.ArrayList<>(eligibleAgents.stream()
                 .map(agent -> {
                     Set<Long> skills = agentSkillMap.getOrDefault(agent.getId(), Collections.emptySet());
                     int matchCount = 0;
@@ -441,7 +422,7 @@ public class TicketServiceImpl implements TicketService {
                     long activeTicketCount = activeCountMap.getOrDefault(agent.getId(), 0L);
 
                     Employee emp = agent.getEmployee();
-                    return AssignableAgentResponse.builder()
+                    return AssignableAgentResponseDTO.builder()
                             .agentId(agent.getId())
                             .employeeId(emp != null ? emp.getId() : null)
                             .employeeCode(emp != null ? emp.getEmployeeCode() : null)
@@ -463,17 +444,17 @@ public class TicketServiceImpl implements TicketService {
         responses.sort(
                 Comparator
                         // 1. Higher skill percentage first
-                        .comparingDouble(AssignableAgentResponse::getMatchPercentage)
+                        .comparingDouble(AssignableAgentResponseDTO::getMatchPercentage)
                         .reversed()
                         // 2. Lower active workload first
-                        .thenComparingLong(AssignableAgentResponse::getActiveTicketCount)
+                        .thenComparingLong(AssignableAgentResponseDTO::getActiveTicketCount)
                         // 3. Longest time since assignment (null first)
                         .thenComparing(
-                                AssignableAgentResponse::getLastAssignedAt,
+                                AssignableAgentResponseDTO::getLastAssignedAt,
                                 Comparator.nullsFirst(Comparator.naturalOrder())
                         )
                         // 4. Lower agent ID
-                        .thenComparing(AssignableAgentResponse::getAgentId)
+                        .thenComparing(AssignableAgentResponseDTO::getAgentId)
         );
 
         return responses;
@@ -657,7 +638,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public TicketUpdateResponse withdrawTicket(Long ticketId, WithdrawRequestDto withdrawRequest) {
+    public TicketUpdateResponseDTO withdrawTicket(Long ticketId, WithdrawRequestDTO withdrawRequest) {
 
         String reason = withdrawRequest.reason();
 
@@ -739,7 +720,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('AGENT')")
-    public TicketUpdateResponse startTicket(Long ticketId) {
+    public TicketUpdateResponseDTO startTicket(Long ticketId) {
 
         long currentAgentId = authService.getCurrentEmployeeId();
 
@@ -793,7 +774,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('AGENT')")
-    public TicketUpdateResponse holdTicket(Long ticketId, HoldTicketRequestDto request) {
+    public TicketUpdateResponseDTO holdTicket(Long ticketId, HoldTicketRequestDTO request) {
         long currentAgentId = authService.getCurrentEmployeeId();
 
         String reason = request != null ? request.reason() : null;
@@ -848,7 +829,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('AGENT')")
-    public TicketUpdateResponse resumeTicket(Long ticketId) {
+    public TicketUpdateResponseDTO resumeTicket(Long ticketId) {
         long currentAgentId = authService.getCurrentEmployeeId();
 
         Ticket ticket = ticketRepository.findById(ticketId)
@@ -898,7 +879,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('AGENT')")
-    public TicketUpdateResponse resolveTicket(Long ticketId, ResolveTicketRequestDto request) {
+    public TicketUpdateResponseDTO resolveTicket(Long ticketId, ResolveTicketRequestDTO request) {
         long currentAgentId = authService.getCurrentEmployeeId();
 
         String summary = request != null ? request.resolutionSummary() : null;
@@ -953,7 +934,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public TicketUpdateResponse reopenTicket(Long ticketId, ReopenRequestDto request) {
+    public TicketUpdateResponseDTO reopenTicket(Long ticketId, ReopenRequestDTO request) {
 
         Long employeeId = authService.getCurrentEmployeeId();
 
@@ -1034,7 +1015,7 @@ public class TicketServiceImpl implements TicketService {
     // Category Validation
 
     private Category findAndValidateCategory(
-            CreateTicketRequest request,
+            CreateTicketRequestDTO request,
             Department department
     ) {
 
@@ -1080,7 +1061,7 @@ public class TicketServiceImpl implements TicketService {
     // SubCategory Validation
 
     private SubCategory findAndValidateSubCategory(
-            CreateTicketRequest request,
+            CreateTicketRequestDTO request,
             Category category
     ) {
 
@@ -1172,7 +1153,7 @@ public class TicketServiceImpl implements TicketService {
         );
     }
 
-    private Page<TicketResponse> buildTicketResponse(Page<Ticket> tickets) {
+    private Page<TicketResponseDTO> buildTicketResponse(Page<Ticket> tickets) {
         // Get ticket IDs from current page
         List<Long> ticketIds = tickets.getContent()
                 .stream()
@@ -1209,7 +1190,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketFeedbackCreateResponse createFeedback(Long ticketId, TicketFeedbackRequestDto request) {
+    public TicketFeedbackCreateResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request) {
         long currentEmployeeId = authService.getCurrentEmployeeId();
 
         if (request == null || request.rating() == null) {
@@ -1230,18 +1211,20 @@ public class TicketServiceImpl implements TicketService {
             throw new InvalidStateException("Feedback can only be submitted for resolved tickets");
         }
 
-        if (ticketFeedbackRepository.existsByTicketId(ticketId)) {
+        if (Boolean.TRUE.equals(ticketFeedbackRepository.existsByTicketId(ticketId))) {
             throw new DuplicateResourceException("Feedback has already been submitted for this ticket");
         }
 
         Employee submitter = employeeRepository.findById(currentEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + currentEmployeeId));
 
-        TicketFeedback feedback = new TicketFeedback();
-        feedback.setTicket(ticket);
-        feedback.setSubmittedBy(submitter);
-        feedback.setRating(request.rating());
-        feedback.setComment(request.comment());
+
+        TicketFeedback feedback = TicketFeedback.builder()
+                .ticket(ticket)
+                .submittedBy(submitter)
+                .rating(request.rating())
+                .comment(request.comment())
+                .build();
 
         feedback = ticketFeedbackRepository.save(feedback);
 
@@ -1268,7 +1251,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public TicketFeedbackResponseDto getFeedback(Long ticketId) {
+    public TicketFeedbackResponseDTO getFeedback(Long ticketId) {
 
         long currentEmployeeId = authService.getCurrentEmployeeId();
 
@@ -1318,87 +1301,114 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketUpdateResponse assignTicketByManager(Long ticketId, Long agentId) {
+    public TicketUpdateResponseDTO assignTicketByManager(Long ticketId, Long agentId) {
+
         if (agentId == null) {
             throw new BadRequestException("Agent ID is required");
         }
 
         Long currentEmployeeId = authService.getCurrentEmployeeId();
+
         Employee currentEmployee = employeeRepository.findById(currentEmployeeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + currentEmployeeId));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee not found: " + currentEmployeeId));
 
-        if (currentEmployee.getRole() != UserRole.MANAGER && currentEmployee.getRole() != UserRole.ADMIN) {
-            throw new AccessDeniedException("Only managers and admins can assign tickets");
+        if (currentEmployee.getRole() != UserRole.MANAGER) {
+            throw new AccessDeniedException("Only managers can assign tickets");
         }
 
-        // Acquire pessimistic write lock on the ticket to prevent concurrent assignment race conditions
         Ticket ticket = ticketRepository.findByIdWithLock(ticketId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Ticket not found: " + ticketId));
 
-        if (ticket.getStatus() == TicketStatus.RESOLVED || ticket.getStatus() == TicketStatus.WITHDRAWN) {
-            throw new InvalidStateException("Cannot assign a " + ticket.getStatus() + " ticket");
-        }
-
-        if (ticket.getDepartment() == null) {
-            throw new BadRequestException("Ticket is not associated with any department");
+        if (ticket.getStatus() == TicketStatus.RESOLVED
+                || ticket.getStatus() == TicketStatus.WITHDRAWN) {
+            throw new InvalidStateException(
+                    "Cannot assign a " + ticket.getStatus() + " ticket");
         }
 
         Long ticketDeptId = ticket.getDepartment().getId();
 
-        if (currentEmployee.getRole() == UserRole.MANAGER) {
-            if (currentEmployee.getDepartment() == null
-                    || !ticketDeptId.equals(currentEmployee.getDepartment().getId())) {
-                throw new AccessDeniedException("You are not authorized to assign tickets for this department");
-            }
+        if (currentEmployee.getDepartment() == null
+                || !ticketDeptId.equals(currentEmployee.getDepartment().getId())) {
+            throw new AccessDeniedException(
+                    "You are not authorized to assign tickets for this department");
         }
 
-        // Find agent by DepartmentAgent.id or Employee.id
         DepartmentAgent agent = departmentAgentRepository.findById(agentId)
                 .or(() -> departmentAgentRepository.findByEmployeeId(agentId))
-                .orElseThrow(() -> new ResourceNotFoundException("Agent not found: " + agentId));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Agent not found: " + agentId));
 
         Employee agentEmployee = agent.getEmployee();
-        if (agentEmployee == null || agentEmployee.getDepartment() == null
+
+        if (agentEmployee.getDepartment() == null
                 || !ticketDeptId.equals(agentEmployee.getDepartment().getId())) {
-            throw new BadRequestException("Selected agent does not belong to the ticket's department");
+            throw new BadRequestException(
+                    "Selected agent does not belong to the ticket's department");
         }
 
         if (agentEmployee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
-            throw new BadRequestException("Selected agent is not active");
+            throw new BadRequestException(
+                    "Selected agent is not active");
         }
 
-        if (agentEmployee.getRole() != UserRole.AGENT) {
-            throw new BadRequestException("Selected employee does not have AGENT role");
-        }
+        SlaInstance latestSla =
+                slaInstanceRepository.findLatestByTicketId(ticket.getId());
 
-        SlaInstance latestSla = slaInstanceRepository.findLatestByTicketId(ticket.getId());
-        boolean isSlaBreached = latestSla != null && latestSla.getStatus() == SlaStatus.BREACHED;
+        boolean isSlaBreached =
+                latestSla != null
+                        && latestSla.getStatus() == SlaStatus.BREACHED;
 
         boolean isReassignment = ticket.getAssignedAgent() != null;
 
         if (isReassignment) {
+
             if (!isSlaBreached) {
-                throw new InvalidStateException("Ticket is already assigned to an agent and SLA is not breached");
+                throw new InvalidStateException(
+                        "Ticket is already assigned to an agent and SLA is not breached");
             }
+
             if (ticket.getAssignedAgent().getId().equals(agent.getId())) {
-                throw new BadRequestException("Ticket is already assigned to this agent");
+                throw new BadRequestException(
+                        "Ticket is already assigned to this agent");
             }
         }
 
         Instant now = Instant.now();
+
         ticket.setAssignedAgent(agent);
         ticket.setAssignedAt(now);
         ticket.setManagerId(currentEmployee.getId());
+
         agent.setLastAssignedAt(now);
 
-        ticketRepository.save(ticket);
+        HistoryEventType historyEvent = isReassignment
+                ? HistoryEventType.REASSIGNED
+                : HistoryEventType.ASSIGNED;
 
-        HistoryEventType historyEvent = isReassignment ? HistoryEventType.REASSIGNED : HistoryEventType.ASSIGNED;
-        ticketHistoryService.record(ticket, historyEvent, ticket.getStatus(), ticket.getStatus());
+        ticketHistoryService.record(
+                ticket,
+                historyEvent,
+                ticket.getStatus(),
+                ticket.getStatus()
+        );
 
-        NotificationType notifType = isReassignment ? NotificationType.TICKET_REASSIGNED : NotificationType.TICKET_ASSIGNED;
-        String ticketNumber = ticket.getTicketNumber() != null ? ticket.getTicketNumber() : ("#" + ticket.getId());
-        String title = isReassignment ? "Ticket Reassigned" : "Ticket Assigned";
+        NotificationType notificationType = isReassignment
+                ? NotificationType.TICKET_REASSIGNED
+                : NotificationType.TICKET_ASSIGNED;
+
+        String ticketNumber = ticket.getTicketNumber() != null
+                ? ticket.getTicketNumber()
+                : "#" + ticket.getId();
+
+        String title = isReassignment
+                ? "Ticket Reassigned"
+                : "Ticket Assigned";
+
         String message = isReassignment
                 ? "Ticket " + ticketNumber + " has been reassigned to you."
                 : "Ticket " + ticketNumber + " has been assigned to you.";
@@ -1406,7 +1416,7 @@ public class TicketServiceImpl implements TicketService {
         notificationService.sendNotification(
                 agentEmployee.getId(),
                 ticket.getId(),
-                notifType,
+                notificationType,
                 title,
                 message
         );
@@ -1416,9 +1426,9 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketUpdateResponse updateTicket(
+    public TicketUpdateResponseDTO updateTicket(
             Long ticketId,
-            UpdateTicketRequest request
+            UpdateTicketRequestDTO request
     ) {
 
         switch (request.status()) {
@@ -1429,25 +1439,25 @@ public class TicketServiceImpl implements TicketService {
             case ON_HOLD:
                 return holdTicket(
                         ticketId,
-                        new HoldTicketRequestDto(request.reason())
+                        new HoldTicketRequestDTO(request.reason())
                 );
 
             case RESOLVED:
                 return resolveTicket(
                         ticketId,
-                        new ResolveTicketRequestDto(request.resolution())
+                        new ResolveTicketRequestDTO(request.resolution())
                 );
 
             case WITHDRAWN:
                 return withdrawTicket(
                         ticketId,
-                        new WithdrawRequestDto(request.reason())
+                        new WithdrawRequestDTO(request.reason())
                 );
 
             case REOPENED:
                 return reopenTicket(
                         ticketId,
-                        new ReopenRequestDto(request.reason()));
+                        new ReopenRequestDTO(request.reason()));
 
             case RESUME:
                 return resumeTicket(ticketId);
@@ -1458,13 +1468,13 @@ public class TicketServiceImpl implements TicketService {
                 return assignTicketByManager(ticketId, request.agentId());
 
             default:
-                throw new IllegalArgumentException(
+                throw new BadRequestException(
                         "Unsupported ticket status: " + request.status()
                 );
         }
     }
 
-    private TicketResponse buildTicketResponse(Ticket ticket) {
+    private TicketResponseDTO buildTicketResponse(Ticket ticket) {
 
         SlaInstance slaInstance =
                 slaInstanceRepository.findLatestByTicketId(ticket.getId());

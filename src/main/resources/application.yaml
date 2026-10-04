@@ -5,7 +5,7 @@ spring:
     type: caffeine
     cache-names: errorCodeMappings
     caffeine:
-      spec: maximumSize=100,expireAfterWrite=30m
+      spec: maximumSize=500
   servlet:
     multipart:
       max-file-size: 25MB
@@ -19,7 +19,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
@@ -55,7 +55,7 @@ helpdesk:
     work-start: "08:30"
     work-end: "17:30"
     scheduler-interval-ms: 60000
-    batch-size: 50
+    batch-size: ${Scheduler_Batch_Size:50}
 
 security:
   jwt:

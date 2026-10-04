@@ -137,6 +137,14 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex, "The requested endpoint does not exist");
     }
 
+    // ── Domain Base Fallback ────────────────────────────────
+
+    @ExceptionHandler(HelpdeskException.class)
+    public ResponseEntity<ErrorResponse> handleHelpdeskException(HelpdeskException ex) {
+        log.error("Helpdesk exception occurred", ex);
+        return buildResponse(HttpStatus.BAD_REQUEST, ex, ex.getMessage());
+    }
+
     // ── Catch-all ───────────────────────────────────────────
 
     @ExceptionHandler(Exception.class)
