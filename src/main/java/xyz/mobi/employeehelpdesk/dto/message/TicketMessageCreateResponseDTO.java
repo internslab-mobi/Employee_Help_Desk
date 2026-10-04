@@ -3,7 +3,7 @@ package xyz.mobi.employeehelpdesk.dto.message;
 import java.time.Instant;
 import java.util.List;
 
-public record TicketMessageCreateResponse(
+public record TicketMessageCreateResponseDTO(
         Long id,
         Long ticketId,
         Long senderId,
@@ -11,6 +11,6 @@ public record TicketMessageCreateResponse(
         String content,
         Boolean seen,
         Instant createdAt,
-        List<TicketAttachmentResponse> attachments
+        List<TicketAttachmentResponseDTO> attachments
 ) {
 }

@@ -117,7 +117,7 @@ public interface SlaInstanceRepository
           AND s.warningAt <= :now
           AND s.currentDeadlineAt > :now
     """)
-    int updateStatusToWarningIfEligible(
+    Integer updateStatusToWarningIfEligible(
             @Param("id") Long id,
             @Param("newStatus") SlaStatus newStatus,
             @Param("expectedStatus") SlaStatus expectedStatus,
@@ -133,7 +133,7 @@ public interface SlaInstanceRepository
           AND s.status IN :expectedStatuses
           AND s.currentDeadlineAt <= :now
     """)
-    int updateStatusToBreachedIfEligible(
+    Integer updateStatusToBreachedIfEligible(
             @Param("id") Long id,
             @Param("newStatus") SlaStatus newStatus,
             @Param("expectedStatuses") Collection<SlaStatus> expectedStatuses,

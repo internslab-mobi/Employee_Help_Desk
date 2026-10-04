@@ -38,7 +38,7 @@ public interface DepartmentManagerRepository
         WHERE dm.employee.id = :employeeId
           AND dm.employee.department.id = :departmentId
     """)
-    boolean existsByEmployeeIdAndDepartmentId(
+    Boolean existsByEmployeeIdAndDepartmentId(
             @Param("employeeId") Long employeeId,
             @Param("departmentId") Long departmentId
     );

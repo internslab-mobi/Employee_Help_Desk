@@ -21,5 +21,5 @@ public interface NotificationRepository
             Pageable pageable
     );
 
-    long countByRecipientIdAndReadFalse(Long recipientId);
+    Long countByRecipientIdAndReadFalse(Long recipientId);
 }

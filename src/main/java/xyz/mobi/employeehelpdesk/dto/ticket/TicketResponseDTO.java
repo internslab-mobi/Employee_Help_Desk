@@ -10,15 +10,15 @@ import java.time.Instant;
 @Getter
 @Builder
 @AllArgsConstructor
-public class TicketCreateResponse {
+public class TicketResponseDTO {
 
     private Long id;
     private String ticketNumber;
 
-    private IdNameResponse requester;
-    private IdNameResponse department;
-    private IdNameResponse category;
-    private IdNameResponse subCategory;
+    private IdNameResponseDTO requester;
+    private IdNameResponseDTO department;
+    private IdNameResponseDTO category;
+    private IdNameResponseDTO subCategory;
 
     private String subject;
     private String description;
@@ -26,12 +26,11 @@ public class TicketCreateResponse {
     private String priority;
     private String status;
 
-    private IdNameResponse assignedAgent;
+    private IdNameResponseDTO assignedAgent;
     private Long managerId;
 
     private Integer reopenCount;
 
-    private Instant createdAt;
     private Instant resolvedAt;
     private Instant reopenedAt;
     private Instant assignedAt;

@@ -77,8 +77,5 @@ public class SlaInstance extends BaseEntity {
 
     private Instant pausedAt;
 
-    /*@Column(nullable = false)
-    private Integer totalPausedMinutes = 0;*/
-
     private Instant breachedAt;
 }

@@ -35,7 +35,7 @@ public interface TicketMapper {
     @Mapping(target = "reopenedAt", ignore = true)
     @Mapping(target = "withdrawnAt", ignore = true)
     @Mapping(target = "reopenReason", ignore = true)
-    Ticket toEntity(CreateTicketRequest request);
+    Ticket toEntity(CreateTicketRequestDTO request);
 
     @Mapping(source = "ticket.id", target = "id")
     @Mapping(source = "ticket.requester", target = "requester")
@@ -50,7 +50,7 @@ public interface TicketMapper {
     @Mapping(source = "ticket.createdAt", target = "createdAt")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
-    TicketCreateResponse toCreateResponse(Ticket ticket, SlaInstance slaInstance);
+    TicketCreateResponseDTO toCreateResponse(Ticket ticket, SlaInstance slaInstance);
 
     @Mapping(source = "ticket.id", target = "id")
     @Mapping(source = "ticket.requester", target = "requester")
@@ -65,7 +65,7 @@ public interface TicketMapper {
     @Mapping(source = "ticket.updatedAt", target = "updatedAt")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
-    TicketUpdateResponse toUpdateResponse(Ticket ticket, SlaInstance slaInstance);
+    TicketUpdateResponseDTO toUpdateResponse(Ticket ticket, SlaInstance slaInstance);
 
     @Mapping(source = "ticket.id", target = "id")
     @Mapping(source = "ticket.requester", target = "requester")
@@ -79,17 +79,17 @@ public interface TicketMapper {
     @Mapping(source = "ticket.status", target = "status")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
-    TicketResponse toResponse(Ticket ticket, SlaInstance slaInstance);
+    TicketResponseDTO toResponse(Ticket ticket, SlaInstance slaInstance);
 
     @Mapping(target = "id", source = "id")
     @Mapping(target = "name", expression = "java(mapEmployeeName(employee))")
-    IdNameResponse toIdNameResponse(Employee employee);
+    IdNameResponseDTO toIdNameResponse(Employee employee);
 
-    IdNameResponse toIdNameResponse(Department department);
+    IdNameResponseDTO toIdNameResponse(Department department);
 
-    IdNameResponse toIdNameResponse(Category category);
+    IdNameResponseDTO toIdNameResponse(Category category);
 
-    IdNameResponse toIdNameResponse(SubCategory subCategory);
+    IdNameResponseDTO toIdNameResponse(SubCategory subCategory);
 
     default String mapEmployeeName(Employee employee) {
         if (employee == null) {

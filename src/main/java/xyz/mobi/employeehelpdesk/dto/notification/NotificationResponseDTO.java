@@ -2,7 +2,7 @@ package xyz.mobi.employeehelpdesk.dto.notification;
 
 import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
 
-public record NotificationResponse(
+public record NotificationResponseDTO(
         Long id,
         Long recipientId,
         Long ticketId,

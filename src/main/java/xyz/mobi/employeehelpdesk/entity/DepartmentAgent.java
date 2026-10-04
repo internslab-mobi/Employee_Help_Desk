@@ -1,7 +1,11 @@
 package xyz.mobi.employeehelpdesk.entity;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.Instant;
 
 @Entity
@@ -29,7 +33,11 @@ public class DepartmentAgent extends BaseEntity {
     @Column(name = "last_assigned_at")
     private Instant lastAssignedAt;
 
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    /**
+     * Maintained by MySQL triggers.
+     * Hibernate only reads this field.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(
             name = "ticket_status_counts",
             columnDefinition = "JSON",
