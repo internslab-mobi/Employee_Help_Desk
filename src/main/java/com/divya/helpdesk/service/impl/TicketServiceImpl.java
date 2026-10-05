@@ -61,9 +61,7 @@ public class TicketServiceImpl implements TicketService {
 
         CreateTicketResponseDTO response = ticketMapper.mapToResponse(ticket);
 
-        String requesterTimezone = (ticket.getRequester() != null && ticket.getRequester().getTimezone() != null && !ticket.getRequester().getTimezone().isBlank())
-                ? ticket.getRequester().getTimezone()
-                : "UTC";
+        String requesterTimezone = (ticket.getRequester() != null && ticket.getRequester().getTimezone() != null && !ticket.getRequester().getTimezone().isBlank()) ? ticket.getRequester().getTimezone() : "UTC";
 
         response.setCreatedAt(TimezoneUtil.convertToEmployeeTimezone(ticket.getCreatedAt(), requesterTimezone));
         response.setWorkStartedAt(TimezoneUtil.convertToEmployeeTimezone(ticket.getWorkStartedAt(), requesterTimezone));
@@ -119,7 +117,6 @@ public class TicketServiceImpl implements TicketService {
         ticket.setStatus(TicketStatus.NEW);
         ticket.setSlaPolicy(slaPolicy);
         ticket.setReopenCount(0);
-        ticket.setWorkStartedAt(null);
 
         HDTicketEntity savedTicket = ticketRepository.save(ticket);
 
@@ -224,89 +221,94 @@ public class TicketServiceImpl implements TicketService {
         HDTicketEntity ticket = getTicketEntity(ticketId);
         HDEmployeeEntity current = currentUserService.getCurrentEmployee();
 
+        // 1. Authorization validation
         validateCanManageAssignedTicket(ticket, current);
 
-        // Update description if supplied
+        // 2. Resolve field values (if null in request, keep existing)
+        HDDepartmentEntity department = (request.getDepartmentId() != null)
+                ? departmentRepository.findById(request.getDepartmentId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()))
+                : ticket.getDepartment();
+
+        HDCategoryEntity category = (request.getCategoryId() != null)
+                ? categoryRepository.findById(request.getCategoryId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + request.getCategoryId()))
+                : ticket.getCategory();
+
+        HDSubCategoryEntity subCategory = (request.getSubCategoryId() != null)
+                ? subCategoryRepository.findById(request.getSubCategoryId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Sub-category not found with id: " + request.getSubCategoryId()))
+                : ticket.getSubCategory();
+
+        // 3. Validate classification relationships
+        validateClassification(department, category, subCategory);
+
+        // 4. Capture old values for change detection & history logging
+        HDDepartmentEntity oldDepartment = ticket.getDepartment();
+        HDCategoryEntity oldCategory = ticket.getCategory();
+        HDSubCategoryEntity oldSubCategory = ticket.getSubCategory();
+        TicketPriority oldPriority = ticket.getPriority();
+
+        boolean departmentChanged = (oldDepartment == null && department != null)
+                || (oldDepartment != null && department != null && !oldDepartment.getId().equals(department.getId()));
+
+        boolean categoryChanged = (oldCategory == null && category != null)
+                || (oldCategory != null && category != null && !oldCategory.getId().equals(category.getId()));
+
+        boolean subCategoryChanged = (oldSubCategory == null && subCategory != null)
+                || (oldSubCategory != null && subCategory != null && !oldSubCategory.getId().equals(subCategory.getId()));
+
+        boolean classificationChanged = departmentChanged || categoryChanged || subCategoryChanged;
+
+        // 5. Handle Description update
         if (request.getDescription() != null && !request.getDescription().isBlank()) {
-            ticket.setDescription(request.getDescription().trim());
-            ticketHistoryService.log(ticket, current, TicketEventType.STATUS_CHANGED, null, "Description updated via PATCH");
-        }
-
-        // Update priority if supplied
-        if (request.getPriority() != null && request.getPriority() != ticket.getPriority()) {
-            TicketPriority oldPriority = ticket.getPriority();
-            ticket.setPriority(request.getPriority());
-            ticketHistoryService.log(ticket, current, TicketEventType.STATUS_CHANGED,
-                    oldPriority != null ? oldPriority.name() : null, request.getPriority().name());
-        }
-
-        // Update status if supplied
-        if (request.getStatus() != null && request.getStatus() != ticket.getStatus()) {
-            TicketStatus oldStatus = ticket.getStatus();
-            TicketStatus newStatus = request.getStatus();
-
-            ticket.setStatus(newStatus);
-            if (newStatus == TicketStatus.RESOLVED) {
-                ticket.setResolvedAt(Instant.now());
-                slaInstanceService.resolveSlaInstance(ticket);
-            } else if (newStatus == TicketStatus.WITHDRAWN) {
-                ticket.setWithdrawnAt(Instant.now());
-                slaInstanceService.resolveSlaInstance(ticket);
-            } else if (newStatus == TicketStatus.WAITING_FOR_EMPLOYEE) {
-                ticket.setHoldStartedAt(Instant.now());
-                slaInstanceService.pauseSlaInstance(ticket);
-            } else if (newStatus == TicketStatus.IN_PROGRESS && oldStatus == TicketStatus.WAITING_FOR_EMPLOYEE) {
-                slaInstanceService.resumeSlaInstance(ticket);
-                ticket.setHoldReason(null);
-                ticket.setHoldStartedAt(null);
-            }
-
-            ticketHistoryService.log(ticket, current, TicketEventType.STATUS_CHANGED, oldStatus.name(), newStatus.name());
-            emailService.sendTicketStatusChangedEmail(ticket, oldStatus, newStatus);
-            notificationService.createNotification(
-                    ticket.getRequester(),
-                    "Ticket " + ticket.getTicketNumber() + " Status: " + newStatus,
-                    "Your ticket status changed from " + oldStatus + " to " + newStatus,
-                    NotificationType.STATUS_CHANGED,
-                    ticket
-            );
-        }
-
-        // Update assigned agent if supplied (Manager / Admin only)
-        if (request.getAssignedAgentId() != null) {
-            if (current.getRole() != EmployeeRole.MANAGER && current.getRole() != EmployeeRole.ADMIN) {
-                throw new AccessDeniedException("Only managers or administrators can reassign tickets");
-            }
-            HDEmployeeEntity newAgent = employeeRepository.findById(request.getAssignedAgentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Agent not found with id: " + request.getAssignedAgentId()));
-            ticket.setAssignedAgent(newAgent);
-            ticketHistoryService.log(ticket, current, TicketEventType.ASSIGNED, null, newAgent.getId().toString());
-            emailService.sendTicketAssignedEmail(ticket, newAgent);
-            notificationService.createNotification(
-                    newAgent,
-                    "Assigned Ticket: " + ticket.getTicketNumber(),
-                    "You have been assigned ticket " + ticket.getTicketNumber(),
-                    NotificationType.TICKET_ASSIGNED,
-                    ticket
-            );
-        }
-
-        if (request.getAssignedManagerId() != null) {
-            if (current.getRole() == EmployeeRole.ADMIN) {
-                HDEmployeeEntity newManager = employeeRepository.findById(request.getAssignedManagerId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Manager not found with id: " + request.getAssignedManagerId()));
-                ticket.setAssignedManager(newManager);
+            String newDescription = request.getDescription().trim();
+            String oldDescription = ticket.getDescription();
+            if (!newDescription.equals(oldDescription)) {
+                ticket.setDescription(newDescription);
+                ticketHistoryService.log(ticket, current, TicketEventType.STATUS_CHANGED, oldDescription, newDescription);
             }
         }
 
-        if (request.getResolutionSummary() != null && !request.getResolutionSummary().isBlank()) {
-            ticket.setResolutionSummary(request.getResolutionSummary().trim());
-        }
-        if (request.getHoldReason() != null && !request.getHoldReason().isBlank()) {
-            ticket.setHoldReason(request.getHoldReason().trim());
-        }
-        if (request.getWithdrawalReason() != null && !request.getWithdrawalReason().isBlank()) {
-            ticket.setWithdrawalReason(request.getWithdrawalReason().trim());
+        // 6. Handle Classification Change (SLA derivation, priority derivation, SLA recalculation, Reassignment)
+        if (classificationChanged) {
+            ticket.setDepartment(department);
+            ticket.setCategory(category);
+            ticket.setSubCategory(subCategory);
+
+            // Resolve SLA Policy
+            HDSlaPolicyEntity newPolicy = resolveSlaPolicy(department.getId(), subCategory.getId());
+            TicketPriority newPriority = newPolicy.getPriority() != null ? newPolicy.getPriority() : TicketPriority.MEDIUM;
+            ticket.setPriority(newPriority);
+            ticket.setSlaPolicy(newPolicy);
+
+            // Recalculate SLA instance using business calendar if work has started
+            recalculateTicketSla(ticket, newPolicy);
+
+            // Re-evaluate Agent Assignment
+            reassignIfRequired(ticket, current);
+
+            // Record history only for fields that actually changed
+            if (departmentChanged) {
+                ticketHistoryService.log(ticket, current, TicketEventType.STATUS_CHANGED,
+                        oldDepartment != null ? oldDepartment.getName() : null,
+                        department.getName());
+            }
+            if (categoryChanged) {
+                ticketHistoryService.log(ticket, current, TicketEventType.STATUS_CHANGED,
+                        oldCategory != null ? oldCategory.getName() : null,
+                        category.getName());
+            }
+            if (subCategoryChanged) {
+                ticketHistoryService.log(ticket, current, TicketEventType.STATUS_CHANGED,
+                        oldSubCategory != null ? oldSubCategory.getName() : null,
+                        subCategory.getName());
+            }
+            if (oldPriority != newPriority) {
+                ticketHistoryService.log(ticket, current, TicketEventType.PRIORITY_CHANGED,
+                        oldPriority != null ? oldPriority.name() : null,
+                        newPriority.name());
+            }
         }
 
         HDTicketEntity saved = ticketRepository.save(ticket);
@@ -797,8 +799,58 @@ public class TicketServiceImpl implements TicketService {
                 .build();
     }
 
-    private MessageSenderDTO mapToSender(HDEmployeeEntity employee){
-        if(employee == null) return null;
+    private void validateClassification(HDDepartmentEntity department, HDCategoryEntity category, HDSubCategoryEntity subCategory) {
+        if (department == null) {
+            throw new BadRequestException("Department is required");
+        }
+        if (category == null) {
+            throw new BadRequestException("Category is required");
+        }
+        if (subCategory == null) {
+            throw new BadRequestException("Sub-category is required");
+        }
+        if (category.getDepartment() == null || !category.getDepartment().getId().equals(department.getId())) {
+            throw new BadRequestException("Category '" + category.getName() + "' does not belong to department '" + department.getName() + "'");
+        }
+        if (subCategory.getCategory() == null || !subCategory.getCategory().getId().equals(category.getId())) {
+            throw new BadRequestException("Sub-category '" + subCategory.getName() + "' does not belong to category '" + category.getName() + "'");
+        }
+    }
+
+    private void recalculateTicketSla(HDTicketEntity ticket, HDSlaPolicyEntity newPolicy) {
+        if (ticket.getWorkStartedAt() != null) {
+            slaInstanceService.createSlaInstance(ticket, newPolicy);
+        }
+    }
+
+    private void reassignIfRequired(HDTicketEntity ticket, HDEmployeeEntity current) {
+        HDEmployeeEntity oldAgent = ticket.getAssignedAgent();
+        HDEmployeeEntity newAgent = ticketAssignmentService.assignAgent(ticket);
+
+        if (newAgent != null) {
+            if (oldAgent == null || !oldAgent.getId().equals(newAgent.getId())) {
+                ticket.setAssignedAgent(newAgent);
+                TicketEventType eventType = (oldAgent == null) ? TicketEventType.ASSIGNED : TicketEventType.REASSIGNED;
+                String oldAgentVal = (oldAgent != null) ? oldAgent.getId().toString() : null;
+                ticketHistoryService.log(ticket, current, eventType, oldAgentVal, newAgent.getId().toString());
+
+                emailService.sendTicketAssignedEmail(ticket, newAgent);
+                notificationService.createNotification(
+                        newAgent,
+                        "Assigned Ticket: " + ticket.getTicketNumber(),
+                        "You have been assigned ticket " + ticket.getTicketNumber() + " (" + ticket.getPriority() + ")",
+                        NotificationType.TICKET_ASSIGNED,
+                        ticket
+                );
+            }
+        } else if (oldAgent != null) {
+            ticket.setAssignedAgent(null);
+            ticketHistoryService.log(ticket, current, TicketEventType.REASSIGNED, oldAgent.getId().toString(), null);
+        }
+    }
+
+    private MessageSenderDTO mapToSender(HDEmployeeEntity employee) {
+        if (employee == null) return null;
 
         return MessageSenderDTO.builder()
                 .id(employee.getId())

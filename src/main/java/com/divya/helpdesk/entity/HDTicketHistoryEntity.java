@@ -12,18 +12,11 @@ import lombok.Setter;
 public class HDTicketHistoryEntity extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "ticket_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_history_ticket")
-    )
+    @JoinColumn(name = "ticket_id", nullable = false, foreignKey = @ForeignKey(name = "fk_history_ticket"))
     private HDTicketEntity ticket;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-            name = "actor_id",
-            foreignKey = @ForeignKey(name = "fk_history_actor")
-    )
+    @JoinColumn(name = "actor_id", foreignKey = @ForeignKey(name = "fk_history_actor"))
     private HDEmployeeEntity actor;
 
     @Enumerated(EnumType.STRING)

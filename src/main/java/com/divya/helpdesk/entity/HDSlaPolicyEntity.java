@@ -15,19 +15,11 @@ public class HDSlaPolicyEntity extends BaseEntity {
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "department_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_sla_policy_department")
-    )
+    @JoinColumn(name = "department_id", nullable = false, foreignKey = @ForeignKey(name = "fk_sla_policy_department"))
     private HDDepartmentEntity department;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "sub_category_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_sla_policy_sub_category")
-    )
+    @JoinColumn(name = "sub_category_id", nullable = false, foreignKey = @ForeignKey(name = "fk_sla_policy_sub_category"))
     private HDSubCategoryEntity subCategory;
 
     @Enumerated(EnumType.STRING)
@@ -41,11 +33,7 @@ public class HDSlaPolicyEntity extends BaseEntity {
     private Integer warningTimeMinutes;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "calendar_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_sla_policy_calendar")
-    )
+    @JoinColumn(name = "calendar_id", nullable = false, foreignKey = @ForeignKey(name = "fk_sla_policy_calendar"))
     private HDBusinessCalendarEntity calendar;
 
     @Column(name = "is_active", nullable = false)
