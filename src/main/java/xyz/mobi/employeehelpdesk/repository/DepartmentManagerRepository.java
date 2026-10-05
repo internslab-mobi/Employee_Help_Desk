@@ -42,4 +42,6 @@ public interface DepartmentManagerRepository
             @Param("employeeId") Long employeeId,
             @Param("departmentId") Long departmentId
     );
+
+    Optional<DepartmentManager> findByEmployeeId(Long employeeId);
 }

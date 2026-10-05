@@ -2,11 +2,8 @@ package xyz.mobi.employeehelpdesk.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
@@ -14,6 +11,7 @@ import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.SlaPolicy;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
 import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
+import xyz.mobi.employeehelpdesk.entity.enums.SlaEventType;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import xyz.mobi.employeehelpdesk.exception.BadRequestException;
@@ -22,6 +20,7 @@ import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
 import xyz.mobi.employeehelpdesk.repository.DepartmentManagerRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaInstanceRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaPolicyRepository;
+import xyz.mobi.employeehelpdesk.scheduler.SlaDynamicScheduler;
 import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.service.NotificationService;
 import xyz.mobi.employeehelpdesk.service.SlaService;
@@ -29,7 +28,6 @@ import xyz.mobi.employeehelpdesk.service.WorkingCalendarService;
 
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -42,8 +40,7 @@ public class SlaServiceImpl implements SlaService {
     private final AuthService authService;
     private final DepartmentManagerRepository departmentManagerRepository;
     private final NotificationService notificationService;
-    @Value("${helpdesk.sla.batch-size}")
-    private  int batchSize;
+    private final SlaDynamicScheduler slaDynamicScheduler;
 
     /**
      * Starts the INITIAL SLA cycle for a newly created ticket.
@@ -110,7 +107,19 @@ public class SlaServiceImpl implements SlaService {
                 departmentId, departmentZone
         );
 
-        // 7. Create SLA instance
+        // 7. Determine initial event
+        SlaEventType nextEventType;
+        Instant nextEventAt;
+
+        if (warningAt != null && warningAt.isBefore(deadline)) {
+            nextEventType = SlaEventType.WARNING;
+            nextEventAt = warningAt;
+        } else {
+            nextEventType = SlaEventType.BREACH;
+            nextEventAt = deadline;
+        }
+
+        // 8. Create SLA instance
         SlaInstance slaInstance = SlaInstance.builder()
                 .ticket(ticket)
                 .slaPolicy(policy)
@@ -121,11 +130,19 @@ public class SlaServiceImpl implements SlaService {
                 .currentDeadlineAt(deadline)
                 .warningAt(warningAt)
                 .status(SlaStatus.ACTIVE)
+                .nextEventType(nextEventType)
+                .nextEventAt(nextEventAt)
                 .pausedAt(null)
                 .breachedAt(null)
                 .build();
 
-        return slaInstanceRepository.save(slaInstance);
+        SlaInstance savedSla = slaInstanceRepository.save(slaInstance);
+        slaDynamicScheduler.scheduleSlaEvent(savedSla.getId(), savedSla.getNextEventAt());
+
+        log.info("SLA started: ticketId={}, slaInstanceId={}, allocatedMinutes={}, deadline={}, nextEventType={}, nextEventAt={}",
+                ticket.getId(), savedSla.getId(), allocatedMinutes, deadline, nextEventType, nextEventAt);
+
+        return savedSla;
     }
 
     /**
@@ -194,7 +211,19 @@ public class SlaServiceImpl implements SlaService {
         // 7. Fetch the SLA policy (for reference association, not for duration)
         SlaPolicy policy = previousSla.getSlaPolicy();
 
-        // 8. Create new SLA instance
+        // 8. Determine initial event
+        SlaEventType nextEventType;
+        Instant nextEventAt;
+
+        if (warningAt != null && warningAt.isBefore(deadline)) {
+            nextEventType = SlaEventType.WARNING;
+            nextEventAt = warningAt;
+        } else {
+            nextEventType = SlaEventType.BREACH;
+            nextEventAt = deadline;
+        }
+
+        // 9. Create new SLA instance
         SlaInstance slaInstance = SlaInstance.builder()
                 .ticket(ticket)
                 .slaPolicy(policy)
@@ -205,11 +234,19 @@ public class SlaServiceImpl implements SlaService {
                 .currentDeadlineAt(deadline)
                 .warningAt(warningAt)
                 .status(SlaStatus.ACTIVE)
+                .nextEventType(nextEventType)
+                .nextEventAt(nextEventAt)
                 .pausedAt(null)
                 .breachedAt(null)
                 .build();
 
-        return slaInstanceRepository.save(slaInstance);
+        SlaInstance savedSla = slaInstanceRepository.save(slaInstance);
+        slaDynamicScheduler.scheduleSlaEvent(savedSla.getId(), savedSla.getNextEventAt());
+
+        log.info("Reopened SLA cycle {} started: ticketId={}, slaInstanceId={}, allocatedMinutes={}, deadline={}, nextEventType={}, nextEventAt={}",
+                cycleNumber, ticket.getId(), savedSla.getId(), newAllocatedMinutes, deadline, nextEventType, nextEventAt);
+
+        return savedSla;
     }
 
     @Override
@@ -224,7 +261,11 @@ public class SlaServiceImpl implements SlaService {
         if (slaInstance.getStatus() == SlaStatus.ACTIVE || slaInstance.getStatus() == SlaStatus.WARNING) {
             slaInstance.setStatus(SlaStatus.PAUSED);
             slaInstance.setPausedAt(Instant.now());
-            return slaInstanceRepository.save(slaInstance);
+            slaInstance.setNextEventType(null);
+            slaInstance.setNextEventAt(null);
+            SlaInstance saved = slaInstanceRepository.save(slaInstance);
+            log.info("SLA paused: ticketId={}, slaInstanceId={}", ticket.getId(), saved.getId());
+            return saved;
         }
 
         return slaInstance;
@@ -281,13 +322,30 @@ public class SlaServiceImpl implements SlaService {
                 }
             }
 
-            if (slaInstance.getWarningAt() != null && !now.isBefore(slaInstance.getWarningAt())) {
-                slaInstance.setStatus(SlaStatus.WARNING);
+            if (slaInstance.getWarningAt() != null) {
+                if (now.isBefore(slaInstance.getWarningAt())) {
+                    slaInstance.setStatus(SlaStatus.ACTIVE);
+                    slaInstance.setNextEventType(SlaEventType.WARNING);
+                    slaInstance.setNextEventAt(slaInstance.getWarningAt());
+                } else {
+                    slaInstance.setStatus(SlaStatus.WARNING);
+                    slaInstance.setNextEventType(SlaEventType.BREACH);
+                    slaInstance.setNextEventAt(slaInstance.getCurrentDeadlineAt());
+                }
             } else {
                 slaInstance.setStatus(SlaStatus.ACTIVE);
+                slaInstance.setNextEventType(SlaEventType.BREACH);
+                slaInstance.setNextEventAt(slaInstance.getCurrentDeadlineAt());
             }
+
             slaInstance.setPausedAt(null);
-            return slaInstanceRepository.save(slaInstance);
+            SlaInstance savedSla = slaInstanceRepository.save(slaInstance);
+            slaDynamicScheduler.scheduleSlaEvent(savedSla.getId(), savedSla.getNextEventAt());
+
+            log.info("SLA resumed: ticketId={}, slaInstanceId={}, newDeadline={}, nextEventType={}, nextEventAt={}",
+                    ticket.getId(), savedSla.getId(), savedSla.getCurrentDeadlineAt(), savedSla.getNextEventType(), savedSla.getNextEventAt());
+
+            return savedSla;
         }
 
         return slaInstance;
@@ -306,10 +364,86 @@ public class SlaServiceImpl implements SlaService {
                 && slaInstance.getStatus() != SlaStatus.WITHDRAWN
                 && slaInstance.getStatus() != SlaStatus.CANCELLED) {
             slaInstance.setStatus(SlaStatus.COMPLETED);
-            return slaInstanceRepository.save(slaInstance);
+            slaInstance.setNextEventType(null);
+            slaInstance.setNextEventAt(null);
+            SlaInstance saved = slaInstanceRepository.save(slaInstance);
+            log.info("SLA completed: ticketId={}, slaInstanceId={}", ticket.getId(), saved.getId());
+            return saved;
         }
 
         return slaInstance;
+    }
+
+    /**
+     * Event-driven processing for an SLA instance.
+     * Validates eligibility, current nextEventType, and updates atomic state.
+     */
+    @Override
+    @Transactional
+    public void processSlaEvent(Long slaInstanceId) {
+        if (slaInstanceId == null) {
+            return;
+        }
+
+        SlaInstance sla = slaInstanceRepository.findByIdWithLock(slaInstanceId).orElse(null);
+        if (sla == null) {
+            log.warn("SLA instance not found for processing: id={}", slaInstanceId);
+            return;
+        }
+
+        // Validate ticket and SLA eligibility
+        if (sla.getStatus() != SlaStatus.ACTIVE && sla.getStatus() != SlaStatus.WARNING) {
+            log.debug("Ignoring SLA event for id={}: current status is {}", slaInstanceId, sla.getStatus());
+            return;
+        }
+
+        SlaEventType eventType = sla.getNextEventType();
+        Instant eventAt = sla.getNextEventAt();
+
+        if (eventType == null || eventAt == null) {
+            log.debug("Ignoring SLA event for id={}: no next event configured", slaInstanceId);
+            return;
+        }
+
+        Instant now = Instant.now();
+
+        // Stale event check: if the recorded nextEventAt is in the future, this execution was from an obsolete schedule
+        if (eventAt.isAfter(now.plusSeconds(1))) {
+            log.debug("Ignoring stale SLA event for id={}: eventAt {} is in the future", slaInstanceId, eventAt);
+            return;
+        }
+
+        if (eventType == SlaEventType.WARNING) {
+            if (sla.getStatus() != SlaStatus.ACTIVE) {
+                log.debug("Ignoring WARNING event for SLA id={}: status is {}", slaInstanceId, sla.getStatus());
+                return;
+            }
+
+            log.info("Processing SLA WARNING event for id={}", slaInstanceId);
+            sendWarningNotifications(sla);
+
+            sla.setStatus(SlaStatus.WARNING);
+            sla.setNextEventType(SlaEventType.BREACH);
+            sla.setNextEventAt(sla.getCurrentDeadlineAt());
+
+            SlaInstance updatedSla = slaInstanceRepository.save(sla);
+            log.info("SLA warning processed for id={}, next event scheduled for BREACH at {}",
+                    updatedSla.getId(), updatedSla.getNextEventAt());
+
+            slaDynamicScheduler.scheduleSlaEvent(updatedSla.getId(), updatedSla.getNextEventAt());
+
+        } else if (eventType == SlaEventType.BREACH) {
+            log.info("Processing SLA BREACH event for id={}", slaInstanceId);
+            sendBreachNotifications(sla);
+
+            sla.setStatus(SlaStatus.BREACHED);
+            sla.setBreachedAt(now);
+            sla.setNextEventType(null);
+            sla.setNextEventAt(null);
+
+            slaInstanceRepository.save(sla);
+            log.info("SLA breached successfully for id={}", slaInstanceId);
+        }
     }
 
     /**
@@ -396,11 +530,7 @@ public class SlaServiceImpl implements SlaService {
         }
     }
 
-
-
-
     //crud sla
-
 
     @Override
     @Transactional(readOnly = true)
@@ -409,7 +539,6 @@ public class SlaServiceImpl implements SlaService {
                 .orElseThrow(() -> new ResourceNotFoundException("SlaPolicy not found with id: " + id));
         return toResponse(policy);
     }
-
 
     private void validateTiming(Integer durationMinutes, Integer warningMinutes) {
         if (durationMinutes == null || durationMinutes <= 0) {
@@ -453,12 +582,10 @@ public class SlaServiceImpl implements SlaService {
                 .build();
     }
 
-
     private boolean isManagerOfDepartment(
             Long employeeId,
             Long departmentId
     ) {
-
         if (employeeId == null || departmentId == null) {
             return false;
         }
@@ -470,150 +597,6 @@ public class SlaServiceImpl implements SlaService {
                                 departmentId
                         )
         );
-    }
-
-
-
-    //sla evaluation
-
-    /**
-     * Sweeps ALL eligible SLA instances for breaches using keyset pagination.
-     * Loops until no more candidates remain.
-     */
-    @Override
-    @Transactional
-    public void processSlaBreaches() {
-        Instant now = Instant.now();
-        List<SlaStatus> eligibleStatuses = List.of(SlaStatus.ACTIVE, SlaStatus.WARNING);
-        long lastProcessedId = 0L;
-        int totalProcessed = 0;
-
-        while (true) {
-            List<SlaInstance> batch = slaInstanceRepository.findBreachCandidatesAfter(
-                    eligibleStatuses,
-                    now,
-                    lastProcessedId,
-                    PageRequest.of(0, batchSize)
-            );
-
-            if (batch.isEmpty()) {
-                break;
-            }
-
-            for (SlaInstance sla : batch) {
-                try {
-                    evaluateBreach(sla.getId());
-                    totalProcessed++;
-                } catch (Exception ex) {
-                    log.error("Failed to evaluate breach for SLA id={}: {}", sla.getId(), ex.getMessage(), ex);
-                }
-                lastProcessedId = sla.getId();
-            }
-
-            if (batch.size() < batchSize) {
-                break;
-            }
-        }
-
-        if (totalProcessed > 0) {
-            log.info("SLA breach sweep complete: processed {} instance(s)", totalProcessed);
-        }
-    }
-
-    /**
-     * Sweeps ALL eligible SLA instances for warnings using keyset pagination.
-     * Loops until no more candidates remain.
-     */
-    @Override
-    @Transactional
-    public void processSlaWarnings() {
-        Instant now = Instant.now();
-        long lastProcessedId = 0L;
-        int totalProcessed = 0;
-
-        while (true) {
-            List<SlaInstance> batch = slaInstanceRepository.findWarningCandidatesAfter(
-                    SlaStatus.ACTIVE,
-                    now,
-                    lastProcessedId,
-                    PageRequest.of(0, batchSize)
-            );
-
-            if (batch.isEmpty()) {
-                break;
-            }
-
-            for (SlaInstance sla : batch) {
-                try {
-                    evaluateWarning(sla.getId());
-                    totalProcessed++;
-                } catch (Exception ex) {
-                    log.error("Failed to evaluate warning for SLA id={}: {}", sla.getId(), ex.getMessage(), ex);
-                }
-                lastProcessedId = sla.getId();
-            }
-
-            if (batch.size() < batchSize) {
-                break;
-            }
-        }
-
-        if (totalProcessed > 0) {
-            log.info("SLA warning sweep complete: processed {} instance(s)", totalProcessed);
-        }
-    }
-
-    /**
-     * Atomically transitions a single SLA to BREACHED if still eligible.
-     * Runs in its own transaction to ensure individual failures don't roll back the sweep.
-     */
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void evaluateBreach(Long slaInstanceId) {
-        Instant now = Instant.now();
-        List<SlaStatus> expectedStatuses = List.of(SlaStatus.ACTIVE, SlaStatus.WARNING);
-
-        Integer updated = slaInstanceRepository.updateStatusToBreachedIfEligible(
-                slaInstanceId,
-                SlaStatus.BREACHED,
-                expectedStatuses,
-                now
-        );
-
-        if (updated != null && updated > 0) {
-            log.info("SLA breached: id={}", slaInstanceId);
-
-            SlaInstance sla = slaInstanceRepository.findById(slaInstanceId).orElse(null);
-            if (sla != null) {
-                sendBreachNotifications(sla);
-            }
-        }
-    }
-
-    /**
-     * Atomically transitions a single SLA to WARNING if still eligible.
-     * Runs in its own transaction to ensure individual failures don't roll back the sweep.
-     */
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void evaluateWarning(Long slaInstanceId) {
-        Instant now = Instant.now();
-
-        Integer updated = slaInstanceRepository.updateStatusToWarningIfEligible(
-                slaInstanceId,
-                SlaStatus.WARNING,
-                SlaStatus.ACTIVE,
-                now
-        );
-
-        if (updated != null && updated > 0) {
-            log.info("SLA warning triggered: id={}", slaInstanceId);
-
-            SlaInstance sla = slaInstanceRepository.findById(slaInstanceId).orElse(null);
-            if (sla != null) {
-                sendWarningNotifications(sla);
-            }
-        }
     }
 
     private void sendBreachNotifications(SlaInstance sla) {

@@ -15,6 +15,7 @@ import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.DepartmentAgent;
+import xyz.mobi.employeehelpdesk.entity.DepartmentManager;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
@@ -23,6 +24,7 @@ import xyz.mobi.employeehelpdesk.exception.DuplicateResourceException;
 import xyz.mobi.employeehelpdesk.exception.InvalidStateException;
 import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
 import xyz.mobi.employeehelpdesk.repository.DepartmentAgentRepository;
+import xyz.mobi.employeehelpdesk.repository.DepartmentManagerRepository;
 import xyz.mobi.employeehelpdesk.repository.DepartmentRepository;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
 import xyz.mobi.employeehelpdesk.service.AuthService;
@@ -47,6 +49,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private final DepartmentAgentRepository departmentAgentRepository;
+    private final DepartmentManagerRepository departmentManagerRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
     private final ObjectMapper objectMapper;
@@ -82,6 +85,40 @@ public class EmployeeServiceImpl implements EmployeeService {
             department = departmentRepository.findById(request.departmentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));
         }
+
+        UserRole role = request.role() != null ? request.role() : UserRole.EMPLOYEE;
+
+        if (role == UserRole.AGENT || role == UserRole.EMPLOYEE) {
+            if (request.departmentId() == null) {
+                log.warn("Employee creation rejected: departmentId is required for role={}", role);
+                throw new BadRequestException("Department is required for " + role + " role");
+            }
+            if (request.managerId() == null) {
+                log.warn("Employee creation rejected: managerId is required for role={}", role);
+                throw new BadRequestException("Manager is required for " + role + " role");
+            }
+        }
+
+        DepartmentManager manager = null;
+        if (request.managerId() != null) {
+            manager = departmentManagerRepository.findById(request.managerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Department manager not found with id: " + request.managerId()));
+
+            Long managerDepartmentId = (manager.getEmployee() != null && manager.getEmployee().getDepartment() != null)
+                    ? manager.getEmployee().getDepartment().getId()
+                    : null;
+
+            if (request.departmentId() == null || managerDepartmentId == null || !request.departmentId().equals(managerDepartmentId)) {
+                log.warn("Employee creation rejected: managerId={} does not belong to departmentId={}", request.managerId(), request.departmentId());
+                throw new BadRequestException("Selected manager does not belong to the employee's department");
+            }
+
+            if (manager.getEmployee() != null && manager.getEmployee().getEmail() != null && manager.getEmployee().getEmail().equalsIgnoreCase(email)) {
+                log.warn("Employee creation rejected: manager cannot be assigned to themselves for email={}", email);
+                throw new BadRequestException("Manager cannot be assigned to themselves as their own manager");
+            }
+        }
+
         String rawPassword = generateSecurePassword();
         String passwordHash = passwordEncoder.encode(rawPassword);
 
@@ -93,16 +130,24 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setDesignation(request.designation() != null ? request.designation().trim() : null);
         employee.setDepartment(department);
         employee.setEmploymentStatus(EmploymentStatus.ACTIVE);
-        employee.setRole(request.role() != null ? request.role() : UserRole.EMPLOYEE);
+        employee.setRole(role);
         employee.setPasswordHash(passwordHash);
         employee.setDateOfJoining(request.dateOfJoining() != null ? request.dateOfJoining() : LocalDate.now());
         employee.setTimezone(request.timezone() != null && !request.timezone().isBlank() ? request.timezone().trim() : "UTC");
+        employee.setManager(manager);
 
         // 1. Save Employee first so MySQL/JPA generates the primary-key ID
         Employee savedEmployee = employeeRepository.save(employee);
 
         // 2. Generate employeeCode using generated Employee ID
         savedEmployee.setEmployeeCode(generateEmployeeCode(savedEmployee.getId()));
+
+        log.info("Employee created successfully: employeeId={}, employeeCode={}, role={}, departmentId={}, managerId={}",
+                savedEmployee.getId(),
+                savedEmployee.getEmployeeCode(),
+                savedEmployee.getRole(),
+                department != null ? department.getId() : null,
+                manager != null ? manager.getId() : null);
 
         String subject = "Welcome to Employee Helpdesk - Account Created";
         String message = String.format(
@@ -311,6 +356,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                             .orElse(null);
 
             if (agent != null && hasActiveTickets(agent)) {
+                log.warn("Employee deactivation rejected: agent employeeId={} has active tickets", id);
                 throw new InvalidStateException(
                         "Cannot deactivate agent because the agent has active tickets."
                 );
@@ -318,6 +364,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         employee.setEmploymentStatus(EmploymentStatus.INACTIVE);
+        log.info("Employee deactivated successfully: employeeId={}", id);
     }
 
     private EmployeeResponseDTO toResponse(Employee employee) {

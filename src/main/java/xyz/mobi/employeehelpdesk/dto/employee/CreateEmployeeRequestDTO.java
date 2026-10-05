@@ -31,6 +31,8 @@ public record CreateEmployeeRequestDTO(
 
         Long departmentId,
 
+        Long managerId,
+
         UserRole role,
 
         LocalDate dateOfJoining,

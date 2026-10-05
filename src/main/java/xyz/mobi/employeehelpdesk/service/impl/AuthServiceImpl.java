@@ -47,17 +47,23 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public LoginResponseDTO login(LoginRequestDTO request) {
         if (request == null || request.email() == null || request.password() == null) {
+            log.warn("Login failed: missing email or password");
             throw new UnauthorizedException("Invalid email or password");
         }
 
         Employee employee = employeeRepository.findByEmail(request.email().trim())
-                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+                .orElseThrow(() -> {
+                    log.warn("Login failed for email={}: invalid email or password", request.email());
+                    return new UnauthorizedException("Invalid email or password");
+                });
 
         if (employee.getPasswordHash() == null || !passwordEncoder.matches(request.password(), employee.getPasswordHash())) {
+            log.warn("Login failed for email={}: invalid email or password", request.email());
             throw new UnauthorizedException("Invalid email or password");
         }
 
         if (employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
+            log.warn("Login failed for email={}, employeeId={}: account is not active", employee.getEmail(), employee.getId());
             throw new UnauthorizedException("Employee account is not active");
         }
 
@@ -82,6 +88,8 @@ public class AuthServiceImpl implements AuthService {
 
         refreshTokenRepository.save(refreshToken);
 
+        log.info("Login successful: employeeId={}, role={}", employee.getId(), role);
+
         return new LoginResponseDTO(
                 accessToken,
                 refreshTokenStr,
@@ -96,6 +104,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public TokenRefreshResponseDTO refreshToken(RefreshTokenRequestDTO request) {
         if (request == null || request.refreshToken() == null || request.refreshToken().isBlank()) {
+            log.warn("Token refresh rejected: missing refresh token");
             throw new UnauthorizedException("Refresh token is required");
         }
 
@@ -105,6 +114,7 @@ public class AuthServiceImpl implements AuthService {
         // Atomically increment usage count and revoke if limit reached
         Integer updated = refreshTokenRepository.incrementUsageIfValid(tokenStr, now);
         if (updated == null || updated == 0) {
+            log.warn("Token refresh failed: invalid, expired, or over-used token");
             throw new UnauthorizedException("Invalid or expired refresh token");
         }
 
@@ -113,12 +123,15 @@ public class AuthServiceImpl implements AuthService {
 
         Employee employee = refreshToken.getEmployee();
         if (employee == null || employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
+            log.warn("Token refresh failed for employeeId={}: account is not active", employee != null ? employee.getId() : null);
             throw new UnauthorizedException("Employee account is not active");
         }
 
         UserRole role = employee.getRole() != null ? employee.getRole() : UserRole.EMPLOYEE;
         String timezone = employee.getTimezone() != null ? employee.getTimezone() : "UTC";
         String newAccessToken = jwtTokenProvider.generateToken(employee.getId(), role, timezone);
+
+        log.info("Token refreshed successfully: employeeId={}, role={}", employee.getId(), role);
 
         return new TokenRefreshResponseDTO(
                 newAccessToken,
@@ -148,6 +161,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + currentEmployeeId));
 
         if (!passwordEncoder.matches(request.currentPassword(), employee.getPasswordHash())) {
+            log.warn("Password change failed for employeeId={}: current password incorrect", currentEmployeeId);
             throw new BadRequestException("Current password is incorrect");
         }
 
@@ -160,6 +174,8 @@ public class AuthServiceImpl implements AuthService {
 
         // Invalidate all active refresh tokens on password change
         refreshTokenRepository.deleteByEmployeeId(employee.getId());
+
+        log.info("Password changed successfully: employeeId={}", employee.getId());
     }
 
     @Override
@@ -171,9 +187,13 @@ public class AuthServiceImpl implements AuthService {
 
         String email = request.email().trim();
         Employee employee = employeeRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("No active employee found with email: " + email));
+                .orElseThrow(() -> {
+                    log.warn("Password reset OTP request failed: no active employee found for email={}", email);
+                    return new ResourceNotFoundException("No active employee found with email: " + email);
+                });
 
         if (employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
+            log.warn("Password reset OTP request failed for email={}, employeeId={}: account not active", email, employee.getId());
             throw new BadRequestException("Employee account is not active");
         }
 
@@ -202,6 +222,8 @@ public class AuthServiceImpl implements AuthService {
                 "Password Reset OTP",
                 "Your OTP for password reset is: " + otp + ". This OTP is valid for 10 minutes."
         );
+
+        log.info("Password reset OTP generated and sent to email={}", email);
     }
 
     @Override
@@ -230,10 +252,12 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (resetOtp.getOtpExpiresAt().isBefore(Instant.now())) {
+            log.warn("OTP verification rejected for email={}: OTP expired", email);
             throw new BadRequestException("OTP has expired. Please request a new OTP.");
         }
 
         if (resetOtp.getOtpAttemptCount() >= 3) {
+            log.warn("OTP verification rejected for email={}: maximum attempts exceeded", email);
             throw new BadRequestException("Maximum OTP attempts exceeded. Please request a new OTP.");
         }
 
@@ -241,6 +265,8 @@ public class AuthServiceImpl implements AuthService {
             int newAttemptCount = resetOtp.getOtpAttemptCount() + 1;
             resetOtp.setOtpAttemptCount(newAttemptCount);
             passwordResetOtpRepository.save(resetOtp);
+
+            log.warn("OTP verification attempt failed for email={}, attempts={}", email, newAttemptCount);
 
             if (newAttemptCount >= 3) {
                 throw new BadRequestException("Maximum OTP attempts exceeded. Please request a new OTP.");
@@ -262,6 +288,8 @@ public class AuthServiceImpl implements AuthService {
         resetOtp.setResetTokenExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
         resetOtp.setResetTokenUsed(false);
         passwordResetOtpRepository.save(resetOtp);
+
+        log.info("Password reset OTP verified successfully for email={}, employeeId={}", email, employee.getId());
 
         return new VerifyOtpResponseDTO(resetToken);
     }
@@ -297,18 +325,22 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new BadRequestException("Invalid or expired password reset token"));
 
         if (!resetOtp.isOtpVerified()) {
+            log.warn("Password reset rejected for email={}: OTP was not verified", email);
             throw new BadRequestException("OTP verification required before resetting password");
         }
 
         if (resetOtp.isResetTokenUsed()) {
+            log.warn("Password reset rejected for email={}: reset token already used", email);
             throw new BadRequestException("Reset token has already been used");
         }
 
         if (resetOtp.getResetTokenExpiresAt() == null || resetOtp.getResetTokenExpiresAt().isBefore(Instant.now())) {
+            log.warn("Password reset rejected for email={}: reset token expired", email);
             throw new BadRequestException("Reset token has expired");
         }
 
         if (resetOtp.getResetTokenHash() == null || !passwordEncoder.matches(resetToken, resetOtp.getResetTokenHash())) {
+            log.warn("Password reset rejected for email={}: invalid reset token", email);
             throw new BadRequestException("Invalid password reset token");
         }
 
@@ -325,6 +357,8 @@ public class AuthServiceImpl implements AuthService {
 
         // Invalidate active refresh tokens
         refreshTokenRepository.deleteByEmployeeId(employee.getId());
+
+        log.info("Password reset completed successfully for email={}, employeeId={}", email, employee.getId());
     }
 
     @Override
