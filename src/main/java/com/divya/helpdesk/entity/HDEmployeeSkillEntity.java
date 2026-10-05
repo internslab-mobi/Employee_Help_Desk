@@ -7,10 +7,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(
-        name = "hd_employee_skills",
-        uniqueConstraints = {
-                @UniqueConstraint(
+@Table(name = "hd_employee_skills",
+        uniqueConstraints = {@UniqueConstraint(
                         name = "uk_employee_skill",
                         columnNames = {"employee_id", "skill_id"}
                 )
@@ -19,16 +17,10 @@ import lombok.Setter;
 public class HDEmployeeSkillEntity extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "employee_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_employee_skill_employee")
-    )
+    @JoinColumn(name = "employee_id", nullable = false, foreignKey = @ForeignKey(name = "fk_employee_skill_employee"))
     private HDEmployeeEntity employee;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "skill_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_employee_skill_skill")
-    )
+    @JoinColumn(name = "skill_id", nullable = false, foreignKey = @ForeignKey(name = "fk_employee_skill_skill"))
     private HDSkillEntity skill;
 }

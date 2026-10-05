@@ -6,6 +6,7 @@ import com.divya.helpdesk.enums.EmploymentStatus;
 import com.divya.helpdesk.enums.NotificationType;
 import com.divya.helpdesk.enums.SlaInstanceStatus;
 import com.divya.helpdesk.enums.TicketEventType;
+import com.divya.helpdesk.enums.TicketStatus;
 import com.divya.helpdesk.repository.HDEmployeeRepository;
 import com.divya.helpdesk.repository.HDSlaInstanceRepository;
 import com.divya.helpdesk.repository.HDTicketRepository;
@@ -49,7 +50,9 @@ public class SlaInstanceServiceImpl implements SlaInstanceService {
 
         instance.setTicket(ticket);
         instance.setSlaPolicy(policy);
-        instance.setStatus(SlaInstanceStatus.IN_PROGRESS);
+        instance.setStatus(ticket.getStatus() == TicketStatus.WAITING_FOR_EMPLOYEE || instance.getStatus() == SlaInstanceStatus.PAUSED
+                ? SlaInstanceStatus.PAUSED
+                : SlaInstanceStatus.IN_PROGRESS);
         instance.setAllocatedMinutes(policy.getResolutionTimeMinutes());
         instance.setStartedAt(startTime);
         instance.setOriginalDeadlineAt(deadline);
@@ -128,25 +131,17 @@ public class SlaInstanceServiceImpl implements SlaInstanceService {
                     if (pausedWorkingMinutes > 0) {
                         if (calendarId != null) {
                             if (instance.getCurrentDeadlineAt() != null) {
-                                instance.setCurrentDeadlineAt(
-                                        slaCalculationService.addWorkingMinutes(calendarId, instance.getCurrentDeadlineAt(), pausedWorkingMinutes)
-                                );
+                                instance.setCurrentDeadlineAt(slaCalculationService.addWorkingMinutes(calendarId, instance.getCurrentDeadlineAt(), pausedWorkingMinutes));
                             }
                             if (instance.getWarningAt() != null) {
-                                instance.setWarningAt(
-                                        slaCalculationService.addWorkingMinutes(calendarId, instance.getWarningAt(), pausedWorkingMinutes)
-                                );
+                                instance.setWarningAt(slaCalculationService.addWorkingMinutes(calendarId, instance.getWarningAt(), pausedWorkingMinutes));
                             }
                         } else {
                             if (instance.getCurrentDeadlineAt() != null) {
-                                instance.setCurrentDeadlineAt(
-                                        instance.getCurrentDeadlineAt().plus(Duration.ofMinutes(pausedWorkingMinutes))
-                                );
+                                instance.setCurrentDeadlineAt(instance.getCurrentDeadlineAt().plus(Duration.ofMinutes(pausedWorkingMinutes)));
                             }
                             if (instance.getWarningAt() != null) {
-                                instance.setWarningAt(
-                                        instance.getWarningAt().plus(Duration.ofMinutes(pausedWorkingMinutes))
-                                );
+                                instance.setWarningAt(instance.getWarningAt().plus(Duration.ofMinutes(pausedWorkingMinutes)));
                             }
                         }
                     }
@@ -154,8 +149,7 @@ public class SlaInstanceServiceImpl implements SlaInstanceService {
 
                 instance.setStatus(SlaInstanceStatus.IN_PROGRESS);
                 slaInstanceRepository.save(instance);
-                log.info("SLA instance resumed for ticket {} with updated deadline {}",
-                        ticket.getTicketNumber(), instance.getCurrentDeadlineAt());
+                log.info("SLA instance resumed for ticket {} with updated deadline {}", ticket.getTicketNumber(), instance.getCurrentDeadlineAt());
             }
         });
     }
