@@ -11,19 +11,11 @@ import lombok.Setter;
 public class HDTicketAttachment extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "ticket_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_attachment_ticket")
-    )
+    @JoinColumn(name = "ticket_id", nullable = false, foreignKey = @ForeignKey(name = "fk_attachment_ticket"))
     private HDTicketEntity ticket;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "uploaded_by",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_attachment_uploaded_by")
-    )
+    @JoinColumn(name = "uploaded_by", nullable = false, foreignKey = @ForeignKey(name = "fk_attachment_uploaded_by"))
     private HDEmployeeEntity uploadedBy;
 
     @Column(name = "original_filename", nullable = false, length = 255)
@@ -40,9 +32,6 @@ public class HDTicketAttachment extends BaseEntity {
     private byte[] fileData;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-            name = "message_id",
-            foreignKey = @ForeignKey(name = "fk_attachment_message")
-    )
+    @JoinColumn(name = "message_id", foreignKey = @ForeignKey(name = "fk_attachment_message"))
     private HDTicketMessageEntity message;
 }

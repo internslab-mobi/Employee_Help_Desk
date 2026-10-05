@@ -10,10 +10,8 @@ import java.time.LocalTime;
 @Getter
 @Setter
 @Entity
-@Table(
-        name = "hd_business_hours",
-        uniqueConstraints = {
-                @UniqueConstraint(
+@Table(name = "hd_business_hours",
+        uniqueConstraints = {@UniqueConstraint(
                         name = "uk_calendar_day",
                         columnNames = {"calendar_id", "day_of_week"}
                 )

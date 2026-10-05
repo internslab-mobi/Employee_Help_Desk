@@ -7,10 +7,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(
-        name = "hd_sub_categories",
-        uniqueConstraints = {
-                @UniqueConstraint(
+@Table(name = "hd_sub_categories",
+        uniqueConstraints = {@UniqueConstraint(
                         name = "uk_category_sub_category_name",
                         columnNames = {"category_id", "name"}
                 )

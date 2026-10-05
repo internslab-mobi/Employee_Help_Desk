@@ -10,10 +10,8 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(
-        name = "hd_sla_instances",
-        uniqueConstraints = {
-                @UniqueConstraint(
+@Table(name = "hd_sla_instances",
+        uniqueConstraints = {@UniqueConstraint(
                         name = "uk_sla_instance_ticket",
                         columnNames = "ticket_id"
                 )
@@ -22,19 +20,11 @@ import java.time.Instant;
 public class HDSlaInstanceEntity extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "ticket_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_sla_instance_ticket")
-    )
+    @JoinColumn(name = "ticket_id", nullable = false, foreignKey = @ForeignKey(name = "fk_sla_instance_ticket"))
     private HDTicketEntity ticket;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "sla_policy_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_sla_instance_policy")
-    )
+    @JoinColumn(name = "sla_policy_id", nullable = false, foreignKey = @ForeignKey(name = "fk_sla_instance_policy"))
     private HDSlaPolicyEntity slaPolicy;
 
     @Enumerated(EnumType.STRING)
