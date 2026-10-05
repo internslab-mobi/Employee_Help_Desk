@@ -11,13 +11,8 @@ public interface SlaService {
     SlaInstance resumeSla(Ticket ticket);
     SlaInstance completeSla(Ticket ticket);
 
-
     SlaPolicyResponseDTO getSlaPolicyById(Long id);
 
-
-    //evaluation
-    void processSlaBreaches();
-    void processSlaWarnings();
-    void evaluateBreach(Long slaInstanceId);
-    void evaluateWarning(Long slaInstanceId);
+    // Event-driven SLA processing
+    void processSlaEvent(Long slaInstanceId);
 }

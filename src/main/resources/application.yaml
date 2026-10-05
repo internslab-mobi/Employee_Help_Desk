@@ -19,7 +19,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
@@ -62,3 +62,12 @@ security:
     secret: ${JWT_SECRET:this-is-my-superkey-for-employee-helpdesk}
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2700000}
+
+logging:
+  level:
+    root: INFO
+    xyz.mobi.employeehelpdesk: INFO
+    xyz.mobi.employeehelpdesk.strategy.routing: DEBUG
+    xyz.mobi.employeehelpdesk.scheduler: DEBUG
+    xyz.mobi.employeehelpdesk.security: DEBUG
+    org.springframework.security: WARN

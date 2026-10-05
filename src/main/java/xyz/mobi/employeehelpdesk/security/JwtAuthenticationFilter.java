@@ -90,8 +90,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.debug("JWT authentication successful: employeeId={}, role={}", employeeId, role);
             } catch (Exception ex) {
-                log.error("Failed to extract user details from JWT: {}", ex.getMessage());
+                log.warn("Failed to extract user details from JWT: {}", ex.getMessage());
                 writeUnauthorizedResponse(response, "Invalid token");
                 return;
             }
