@@ -22,9 +22,9 @@ import xyz.mobi.employeehelpdesk.service.EmployeeService;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/employees")
+@RequestMapping("/user")
 @RequiredArgsConstructor
-public class EmployeeController {
+public class UserController {
 
     private final EmployeeService employeeService;
     private final AuthService authService;
@@ -87,7 +87,9 @@ public class EmployeeController {
             @PathVariable Long id
     ) {
         employeeService.deactivateEmployee(id);
-        return ResponseEntity.ok(Map.of("message", "Employee deactivated successfully"));
+        return ResponseEntity
+                .status(HttpStatus.NO_CONTENT)
+                .body(Map.of("message", "Employee deactivated successfully"));
     }
 
     @Operation(security = {})

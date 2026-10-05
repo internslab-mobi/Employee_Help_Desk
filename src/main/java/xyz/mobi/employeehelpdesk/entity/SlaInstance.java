@@ -2,6 +2,7 @@ package xyz.mobi.employeehelpdesk.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import xyz.mobi.employeehelpdesk.entity.enums.SlaEventType;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 
 import java.time.Instant;
@@ -29,12 +30,8 @@ import java.time.Instant;
                         columnList = "status"
                 ),
                 @Index(
-                        name = "idx_sla_breach_candidates",
-                        columnList = "status, current_deadline_at"
-                ),
-                @Index(
-                        name = "idx_sla_warning_candidates",
-                        columnList = "status, warning_at, current_deadline_at"
+                        name = "idx_sla_pending_events",
+                        columnList = "status, next_event_type, next_event_at"
                 )
         }
 )
@@ -74,6 +71,12 @@ public class SlaInstance extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private SlaStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private SlaEventType nextEventType;
+
+    private Instant nextEventAt;
 
     private Instant pausedAt;
 

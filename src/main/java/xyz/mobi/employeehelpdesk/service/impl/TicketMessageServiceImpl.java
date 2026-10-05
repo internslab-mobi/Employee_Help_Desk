@@ -156,6 +156,9 @@ public class TicketMessageServiceImpl implements TicketMessageService {
             );
         }
 
+        log.info("Ticket message created: messageId={}, ticketId={}, senderId={}, attachmentCount={}",
+                message.getId(), ticketId, currentEmployeeId, attachmentResponses.size());
+
         return ticketMessageMapper.toCreateResponse(message, attachmentResponses);
     }
 

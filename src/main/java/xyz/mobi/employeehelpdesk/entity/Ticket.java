@@ -67,8 +67,9 @@ public class Ticket extends BaseEntity {
     @JoinColumn(name = "assigned_agent_id")
     private DepartmentAgent assignedAgent;
 
-    @Column(name = "manager_id")
-    private Long managerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    private DepartmentManager assignedManager;
 
     private Instant assignedAt;
 

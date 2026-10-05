@@ -21,12 +21,12 @@ public interface TicketRepository
         extends JpaRepository<Ticket, Long> {
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     Optional<Ticket> findById(Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     @Query("SELECT t FROM Ticket t WHERE t.id = :id")
     Optional<Ticket> findByIdWithLock(@Param("id") Long id);
 
@@ -49,28 +49,28 @@ public interface TicketRepository
     // --- GET ALL Queries ---
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     Page<Ticket> findByRequesterId(
             Long requesterId,
             Pageable pageable
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     Page<Ticket> findByAssignedAgentId(
             Long agentId,
             Pageable pageable
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     Page<Ticket> findByDepartmentId(
             Long departmentId,
             Pageable pageable
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     @Query("SELECT t FROM Ticket t")
     Page<Ticket> findAllTickets(
             Pageable pageable
@@ -79,7 +79,7 @@ public interface TicketRepository
     // --- SEARCH Queries with combined filters ---
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     @Query(value = """
     SELECT t
     FROM Ticket t
@@ -155,7 +155,7 @@ public interface TicketRepository
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     @Query(value = """
     SELECT t
     FROM Ticket t
@@ -231,7 +231,7 @@ public interface TicketRepository
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     @Query(value = """
     SELECT t
     FROM Ticket t
