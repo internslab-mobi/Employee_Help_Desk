@@ -35,9 +35,7 @@ public final class TimezoneUtil {
             return null;
         }
 
-        ZoneId zoneId = (timezone != null && !timezone.isBlank())
-                ? ZoneId.of(timezone)
-                : ZoneOffset.UTC;
+        ZoneId zoneId = (timezone != null && !timezone.isBlank()) ? ZoneId.of(timezone) : ZoneOffset.UTC;
 
         return instant.atZone(zoneId).toOffsetDateTime();
     }

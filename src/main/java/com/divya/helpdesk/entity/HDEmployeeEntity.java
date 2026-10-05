@@ -36,10 +36,7 @@ public class HDEmployeeEntity extends BaseEntity {
     private String designation;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-            name = "department_id",
-            foreignKey = @ForeignKey(name = "fk_employee_department")
-    )
+    @JoinColumn(name = "department_id", foreignKey = @ForeignKey(name = "fk_employee_department"))
     private HDDepartmentEntity department;
 
     @Enumerated(EnumType.STRING)

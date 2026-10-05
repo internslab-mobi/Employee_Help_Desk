@@ -234,6 +234,7 @@ public class SlaCalculationServiceImpl implements SlaCalculationService {
     }
 
     private boolean isHoliday(Long calendarId, LocalDate date) {
+
         return holidayRepository.existsByCalendarIdAndHolidayDate(calendarId, date);
     }
 
