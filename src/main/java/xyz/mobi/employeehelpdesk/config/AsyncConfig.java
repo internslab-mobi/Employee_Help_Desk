@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.util.concurrent.Executor;
 
@@ -29,11 +30,22 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    @Bean(name = "slaTaskScheduler")
+    public ThreadPoolTaskScheduler slaTaskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(5);
+        scheduler.setThreadNamePrefix("sla-scheduler-");
+        scheduler.setWaitForTasksToCompleteOnShutdown(true);
+        scheduler.setAwaitTerminationSeconds(30);
+        scheduler.initialize();
+        return scheduler;
+    }
+
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (throwable, method, params) -> {
-            log.error("Unhandled exception in async method '{}' with parameters {}: {}",
-                    method.getName(), params, throwable.getMessage(), throwable);
+            log.error("Unhandled exception in async method '{}': {}",
+                    method.getName(), throwable.getMessage(), throwable);
         };
     }
 }

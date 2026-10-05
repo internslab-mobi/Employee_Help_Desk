@@ -141,7 +141,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HelpdeskException.class)
     public ResponseEntity<ErrorResponse> handleHelpdeskException(HelpdeskException ex) {
-        log.error("Helpdesk exception occurred", ex);
+        log.warn("Helpdesk domain exception occurred [{}]: {}", ex.getClass().getSimpleName(), ex.getMessage());
         return buildResponse(HttpStatus.BAD_REQUEST, ex, ex.getMessage());
     }
 
@@ -149,7 +149,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
-        log.error("Unexpected error occurred", ex);
+        log.error("Unexpected unhandled exception occurred: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex,
                 "An unexpected error occurred. Please try again later.");
     }
@@ -171,6 +171,9 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, Exception ex, String message) {
         String errorCode = resolveErrorCode(ex);
+        if (status.is4xxClientError()) {
+            log.warn("Client/validation error [{} - {}]: {}", ex != null ? ex.getClass().getSimpleName() : "Unknown", errorCode, message);
+        }
         ErrorResponse response = ErrorResponse.of(errorCode, status.value(), message);
         return ResponseEntity.status(status).body(response);
     }

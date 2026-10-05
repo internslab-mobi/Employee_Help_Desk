@@ -80,6 +80,8 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setRead(false);
 
         notificationRepository.save(notification);
+        log.info("Notification created: notificationId={}, recipientId={}, ticketId={}, type={}",
+                notification.getId(), recipientId, ticketId, type);
 
         String recipientEmail = recipient.getEmail();
 
@@ -137,6 +139,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         notification.setRead(true);
         notificationRepository.save(notification);
+        log.info("Notification marked as read: notificationId={}, recipientId={}", notificationId, currentEmployeeId);
 
         return notificationMapper.toUpdateResponse(notification);
     }
