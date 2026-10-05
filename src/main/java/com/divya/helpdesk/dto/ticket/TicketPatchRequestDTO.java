@@ -1,7 +1,5 @@
 package com.divya.helpdesk.dto.ticket;
 
-import com.divya.helpdesk.enums.TicketPriority;
-import com.divya.helpdesk.enums.TicketStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,12 +19,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class TicketPatchRequestDTO {
 
-    private TicketStatus status;
-    private TicketPriority priority;
+    private Long departmentId;
+    private Long categoryId;
+    private Long subCategoryId;
     private String description;
-    private Long assignedAgentId;
-    private Long assignedManagerId;
-    private String resolutionSummary;
-    private String holdReason;
-    private String withdrawalReason;
 }
