@@ -1,6 +1,7 @@
 package xyz.mobi.employeehelpdesk.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
 
 import static xyz.mobi.employeehelpdesk.entity.enums.TicketStatus.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TicketServiceImpl implements TicketService {
@@ -63,6 +65,7 @@ public class TicketServiceImpl implements TicketService {
     private final TicketFeedbackMapper ticketFeedbackMapper;
     private final SubCategorySkillRepository subCategorySkillRepository;
     private final AgentSkillRepository agentSkillRepository;
+    private final DepartmentManagerRepository departmentManagerRepository;
 
 
     @Override
@@ -144,6 +147,9 @@ public class TicketServiceImpl implements TicketService {
         ticketRoutingService.routeTicket(ticket);
 
         SlaInstance slaInstance = slaService.startSla(ticket);
+
+        log.info("Ticket created successfully: ticketId={}, ticketNumber={}, requesterId={}, departmentId={}, categoryId={}, subCategoryId={}",
+                ticket.getId(), ticket.getTicketNumber(), requesterId, department.getId(), category.getId(), subCategory.getId());
 
         // Convert Entity → Response DTO
         return ticketMapper.toCreateResponse(ticket, slaInstance);
@@ -660,12 +666,14 @@ public class TicketServiceImpl implements TicketService {
 
         // Validate current ticket status
         if (ticket.getStatus() == TicketStatus.RESOLVED) {
+            log.warn("Withdraw ticket rejected: ticketId={} is already RESOLVED", ticketId);
             throw new InvalidStateException(
                     "Resolved ticket cannot be withdrawn"
             );
         }
 
         if (ticket.getStatus() == TicketStatus.WITHDRAWN) {
+            log.warn("Withdraw ticket rejected: ticketId={} is already WITHDRAWN", ticketId);
             throw new InvalidStateException(
                     "Ticket is already withdrawn"
             );
@@ -697,6 +705,8 @@ public class TicketServiceImpl implements TicketService {
 
         if (slaInstance != null) {
             slaInstance.setStatus(SlaStatus.WITHDRAWN);
+            slaInstance.setNextEventType(null);
+            slaInstance.setNextEventAt(null);
             slaInstanceRepository.save(slaInstance);
         }
 
@@ -710,6 +720,9 @@ public class TicketServiceImpl implements TicketService {
                     "Ticket " + ticketNumber + " has been withdrawn."
             );
         }
+
+        log.info("Ticket withdrawn successfully: ticketId={}, ticketNumber={}, requesterId={}",
+                ticket.getId(), ticket.getTicketNumber(), employeeId);
 
         return ticketMapper.toUpdateResponse(
                 ticket,
@@ -728,6 +741,7 @@ public class TicketServiceImpl implements TicketService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
 
         if (ticket.getAssignedAgent() == null) {
+            log.warn("Start ticket rejected: ticketId={} is not assigned to any agent", ticketId);
             throw new InvalidStateException("Ticket is not assigned to any agent");
         }
 
@@ -739,6 +753,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if (ticket.getStatus() != TicketStatus.OPEN && ticket.getStatus() != TicketStatus.REOPENED) {
+            log.warn("Start ticket rejected: ticketId={} is in status {}", ticketId, ticket.getStatus());
             throw new InvalidStateException("Ticket is not in OPEN or REOPENED status");
         }
 
@@ -768,6 +783,9 @@ public class TicketServiceImpl implements TicketService {
                 "Ticket " + ticketNumber + " has been started by agent " + agentName
         );
 
+        log.info("Ticket started (IN_PROGRESS): ticketId={}, ticketNumber={}, agentId={}",
+                ticket.getId(), ticket.getTicketNumber(), currentAgentId);
+
         return ticketMapper.toUpdateResponse(ticket, slaInstance);
     }
 
@@ -786,6 +804,7 @@ public class TicketServiceImpl implements TicketService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
 
         if (ticket.getAssignedAgent() == null) {
+            log.warn("Hold ticket rejected: ticketId={} is not assigned to any agent", ticketId);
             throw new InvalidStateException("Ticket is not assigned to any agent");
         }
 
@@ -797,6 +816,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if (ticket.getStatus() != IN_PROGRESS) {
+            log.warn("Hold ticket rejected: ticketId={} is in status {}", ticketId, ticket.getStatus());
             throw new InvalidStateException("Ticket is not in IN_PROGRESS status");
         }
 
@@ -823,6 +843,9 @@ public class TicketServiceImpl implements TicketService {
                 "Ticket " + ticketNumber + " has been put on hold."
         );
 
+        log.info("Ticket put ON_HOLD: ticketId={}, ticketNumber={}, agentId={}",
+                ticket.getId(), ticket.getTicketNumber(), currentAgentId);
+
         return ticketMapper.toUpdateResponse(ticket, slaInstance);
     }
 
@@ -836,6 +859,7 @@ public class TicketServiceImpl implements TicketService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
 
         if (ticket.getAssignedAgent() == null) {
+            log.warn("Resume ticket rejected: ticketId={} is not assigned to any agent", ticketId);
             throw new InvalidStateException("Ticket is not assigned to any agent");
         }
 
@@ -847,6 +871,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if (ticket.getStatus() != ON_HOLD) {
+            log.warn("Resume ticket rejected: ticketId={} is in status {}", ticketId, ticket.getStatus());
             throw new InvalidStateException("Ticket is not in ON_HOLD status");
         }
 
@@ -873,6 +898,9 @@ public class TicketServiceImpl implements TicketService {
                 "Ticket " + ticketNumber + " has been resumed."
         );
 
+        log.info("Ticket resumed (IN_PROGRESS): ticketId={}, ticketNumber={}, agentId={}",
+                ticket.getId(), ticket.getTicketNumber(), currentAgentId);
+
         return ticketMapper.toUpdateResponse(ticket, slaInstance);
     }
 
@@ -891,6 +919,7 @@ public class TicketServiceImpl implements TicketService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
 
         if (ticket.getAssignedAgent() == null) {
+            log.warn("Resolve ticket rejected: ticketId={} is not assigned to any agent", ticketId);
             throw new InvalidStateException("Ticket is not assigned to any agent");
         }
 
@@ -902,6 +931,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if (ticket.getStatus() != IN_PROGRESS) {
+            log.warn("Resolve ticket rejected: ticketId={} is in status {}", ticketId, ticket.getStatus());
             throw new InvalidStateException("Ticket is not in IN_PROGRESS status");
         }
 
@@ -927,6 +957,9 @@ public class TicketServiceImpl implements TicketService {
                 "Ticket Resolved",
                 "Ticket " + ticketNumber + " has been resolved."
         );
+
+        log.info("Ticket resolved: ticketId={}, ticketNumber={}, agentId={}",
+                ticket.getId(), ticket.getTicketNumber(), currentAgentId);
 
         return ticketMapper.toUpdateResponse(ticket, slaInstance);
     }
@@ -957,18 +990,21 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if (ticket.getStatus() != TicketStatus.RESOLVED) {
+            log.warn("Reopen ticket rejected: ticketId={} is not in RESOLVED status (status={})", ticketId, ticket.getStatus());
             throw new InvalidStateException(
                     "Only resolved tickets can be reopened"
             );
         }
 
         if (ticket.getReopenCount() >= 2) {
+            log.warn("Reopen ticket rejected: ticketId={} already reopened {} times", ticketId, ticket.getReopenCount());
             throw new InvalidStateException(
                     "Ticket can only be reopened twice"
             );
         }
 
         if (ticket.getAssignedAgent() == null) {
+            log.warn("Reopen ticket rejected: ticketId={} has no previous assigned agent", ticketId);
             throw new InvalidStateException(
                     "Cannot reopen ticket because no previous agent is assigned"
             );
@@ -1008,6 +1044,9 @@ public class TicketServiceImpl implements TicketService {
                     "Ticket " + ticketNumber + " has been reopened."
             );
         }
+
+        log.info("Ticket reopened: ticketId={}, ticketNumber={}, requesterId={}, newReopenCount={}",
+                ticket.getId(), ticket.getTicketNumber(), employeeId, ticket.getReopenCount());
 
         return ticketMapper.toUpdateResponse(ticket, slaInstance);
     }
@@ -1246,6 +1285,9 @@ public class TicketServiceImpl implements TicketService {
             );
         }
 
+        log.info("Feedback submitted successfully: ticketId={}, ticketNumber={}, rating={}, submittedBy={}",
+                ticket.getId(), ticket.getTicketNumber(), request.rating(), currentEmployeeId);
+
         return ticketFeedbackMapper.toCreateResponse(feedback);
     }
 
@@ -1299,6 +1341,7 @@ public class TicketServiceImpl implements TicketService {
         return ticketFeedbackMapper.toResponse(feedback);
     }
 
+    @PreAuthorize("hasRole('MANAGER')")
     @Override
     @Transactional
     public TicketUpdateResponseDTO assignTicketByManager(Long ticketId, Long agentId) {
@@ -1314,29 +1357,31 @@ public class TicketServiceImpl implements TicketService {
                         new ResourceNotFoundException(
                                 "Employee not found: " + currentEmployeeId));
 
-        if (currentEmployee.getRole() != UserRole.MANAGER) {
-            throw new AccessDeniedException("Only managers can assign tickets");
-        }
-
         Ticket ticket = ticketRepository.findByIdWithLock(ticketId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Ticket not found: " + ticketId));
 
+        // Cannot assign resolved or withdrawn tickets
         if (ticket.getStatus() == TicketStatus.RESOLVED
                 || ticket.getStatus() == TicketStatus.WITHDRAWN) {
+            log.warn("Ticket assignment rejected: ticketId={} is in status {}", ticketId, ticket.getStatus());
             throw new InvalidStateException(
                     "Cannot assign a " + ticket.getStatus() + " ticket");
         }
 
         Long ticketDeptId = ticket.getDepartment().getId();
 
+        // Manager can only assign tickets belonging to their department
         if (currentEmployee.getDepartment() == null
                 || !ticketDeptId.equals(currentEmployee.getDepartment().getId())) {
+            log.warn("Ticket assignment rejected: manager employeeId={} from departmentId={} cannot assign ticketId={} in departmentId={}",
+                    currentEmployeeId, currentEmployee.getDepartment() != null ? currentEmployee.getDepartment().getId() : null, ticketId, ticketDeptId);
             throw new AccessDeniedException(
                     "You are not authorized to assign tickets for this department");
         }
 
+        // Find the selected agent
         DepartmentAgent agent = departmentAgentRepository.findById(agentId)
                 .or(() -> departmentAgentRepository.findByEmployeeId(agentId))
                 .orElseThrow(() ->
@@ -1345,17 +1390,23 @@ public class TicketServiceImpl implements TicketService {
 
         Employee agentEmployee = agent.getEmployee();
 
+        // Agent must belong to the same department as the ticket
         if (agentEmployee.getDepartment() == null
                 || !ticketDeptId.equals(agentEmployee.getDepartment().getId())) {
+            log.warn("Ticket assignment rejected: agent employeeId={} from departmentId={} cannot be assigned to ticketId={} in departmentId={}",
+                    agentEmployee.getId(), agentEmployee.getDepartment() != null ? agentEmployee.getDepartment().getId() : null, ticketId, ticketDeptId);
             throw new BadRequestException(
                     "Selected agent does not belong to the ticket's department");
         }
 
+        // Agent must be active
         if (agentEmployee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
+            log.warn("Ticket assignment rejected: agent employeeId={} is inactive", agentEmployee.getId());
             throw new BadRequestException(
                     "Selected agent is not active");
         }
 
+        // Get latest SLA
         SlaInstance latestSla =
                 slaInstanceRepository.findLatestByTicketId(ticket.getId());
 
@@ -1363,16 +1414,21 @@ public class TicketServiceImpl implements TicketService {
                 latestSla != null
                         && latestSla.getStatus() == SlaStatus.BREACHED;
 
+        // Check whether this is a reassignment
         boolean isReassignment = ticket.getAssignedAgent() != null;
 
         if (isReassignment) {
 
+            // Reassignment is allowed only after SLA breach
             if (!isSlaBreached) {
+                log.warn("Ticket reassignment rejected: ticketId={} SLA is not breached", ticketId);
                 throw new InvalidStateException(
                         "Ticket is already assigned to an agent and SLA is not breached");
             }
 
+            // Cannot assign to the same agent
             if (ticket.getAssignedAgent().getId().equals(agent.getId())) {
+                log.warn("Ticket reassignment rejected: ticketId={} is already assigned to agentId={}", ticketId, agent.getId());
                 throw new BadRequestException(
                         "Ticket is already assigned to this agent");
             }
@@ -1380,12 +1436,32 @@ public class TicketServiceImpl implements TicketService {
 
         Instant now = Instant.now();
 
+        // Assign ticket
         ticket.setAssignedAgent(agent);
         ticket.setAssignedAt(now);
-        ticket.setManagerId(currentEmployee.getId());
 
+        // Determine assigned manager
+        DepartmentManager assignedManager = null;
+
+        if (agent.getEmployee() != null
+                && agent.getEmployee().getManager() != null) {
+
+            assignedManager = agent.getEmployee().getManager();
+        }
+
+        if (assignedManager == null) {
+
+            assignedManager = departmentManagerRepository
+                    .findByEmployeeId(currentEmployee.getId())
+                    .orElse(null);
+        }
+
+        ticket.setAssignedManager(assignedManager);
+
+        // Update agent's last assignment time
         agent.setLastAssignedAt(now);
 
+        // Create history event
         HistoryEventType historyEvent = isReassignment
                 ? HistoryEventType.REASSIGNED
                 : HistoryEventType.ASSIGNED;
@@ -1397,6 +1473,7 @@ public class TicketServiceImpl implements TicketService {
                 ticket.getStatus()
         );
 
+        // Create notification
         NotificationType notificationType = isReassignment
                 ? NotificationType.TICKET_REASSIGNED
                 : NotificationType.TICKET_ASSIGNED;
@@ -1420,6 +1497,10 @@ public class TicketServiceImpl implements TicketService {
                 title,
                 message
         );
+
+        log.info("Ticket {} by manager: ticketId={}, ticketNumber={}, agentId={}, managerId={}",
+                isReassignment ? "reassigned" : "assigned", ticket.getId(), ticket.getTicketNumber(), agent.getId(),
+                assignedManager != null ? assignedManager.getId() : null);
 
         return ticketMapper.toUpdateResponse(ticket, latestSla);
     }

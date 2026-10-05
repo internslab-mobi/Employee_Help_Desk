@@ -17,11 +17,12 @@ public interface DepartmentAgentRepository
         FROM DepartmentAgent da
         JOIN FETCH da.employee e
         LEFT JOIN FETCH e.department
+        LEFT JOIN FETCH e.manager
         WHERE e.department.id = :departmentId
     """)
     List<DepartmentAgent> findByDepartmentId(@Param("departmentId") Long departmentId);
 
-    @EntityGraph(attributePaths = {"employee", "employee.department"})
+    @EntityGraph(attributePaths = {"employee", "employee.department", "employee.manager"})
     Optional<DepartmentAgent> findByEmployeeId(Long employeeId);
 
     @Query("""
@@ -29,6 +30,7 @@ public interface DepartmentAgentRepository
         FROM DepartmentAgent da
         JOIN FETCH da.employee e
         LEFT JOIN FETCH e.department
+        LEFT JOIN FETCH e.manager
         WHERE e.department.id = :departmentId
           AND e.id = :employeeId
     """)
@@ -54,6 +56,7 @@ public interface DepartmentAgentRepository
         FROM DepartmentAgent da
         JOIN FETCH da.employee e
         LEFT JOIN FETCH e.department
+        LEFT JOIN FETCH e.manager
         WHERE e.department.id = :departmentId
           AND e.employmentStatus = xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus.ACTIVE
           AND e.role = xyz.mobi.employeehelpdesk.entity.enums.UserRole.AGENT

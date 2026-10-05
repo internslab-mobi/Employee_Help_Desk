@@ -1,13 +1,13 @@
 package xyz.mobi.employeehelpdesk.repository;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -47,97 +47,20 @@ public interface SlaInstanceRepository
             @Param("ticketId") Long ticketId
     );
 
-    /**
-     * Keyset-based query for breach candidates.
-     * Fetches SLA instances that are past their deadline, ordered by ID for stable cursor pagination.
-     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM SlaInstance s WHERE s.id = :id")
+    Optional<SlaInstance> findByIdWithLock(@Param("id") Long id);
+
     @Query("""
         SELECT s
         FROM SlaInstance s
-        JOIN FETCH s.ticket t
         WHERE s.status IN :statuses
-          AND s.currentDeadlineAt <= :now
-          AND s.id > :lastProcessedId
-        ORDER BY s.id ASC
+          AND s.nextEventType IS NOT NULL
+          AND s.nextEventAt IS NOT NULL
+        ORDER BY s.nextEventAt ASC
     """)
-    List<SlaInstance> findSlasDueForBreach(
-            @Param("statuses") Collection<SlaStatus> statuses,
-            @Param("now") Instant now,
-            @Param("lastProcessedId") Long lastProcessedId,
-            @Param("batchSize") int batchSize
-    );
-
-    /**
-     * Spring Data compatible version using Pageable for breach candidates with keyset.
-     */
-    @Query("""
-        SELECT s
-        FROM SlaInstance s
-        JOIN FETCH s.ticket t
-        WHERE s.status IN :statuses
-          AND s.currentDeadlineAt <= :now
-          AND s.id > :lastProcessedId
-        ORDER BY s.id ASC
-    """)
-    List<SlaInstance> findBreachCandidatesAfter(
-            @Param("statuses") Collection<SlaStatus> statuses,
-            @Param("now") Instant now,
-            @Param("lastProcessedId") Long lastProcessedId,
-            org.springframework.data.domain.Pageable pageable
-    );
-
-    /**
-     * Keyset-based query for warning candidates.
-     */
-    @Query("""
-        SELECT s
-        FROM SlaInstance s
-        JOIN FETCH s.ticket t
-        WHERE s.status = :status
-          AND s.warningAt IS NOT NULL
-          AND s.warningAt <= :now
-          AND s.currentDeadlineAt > :now
-          AND s.id > :lastProcessedId
-        ORDER BY s.id ASC
-    """)
-    List<SlaInstance> findWarningCandidatesAfter(
-            @Param("status") SlaStatus status,
-            @Param("now") Instant now,
-            @Param("lastProcessedId") Long lastProcessedId,
-            org.springframework.data.domain.Pageable pageable
-    );
-
-    @Modifying(clearAutomatically = true)
-    @Query("""
-        UPDATE SlaInstance s
-        SET s.status = :newStatus
-        WHERE s.id = :id
-          AND s.status = :expectedStatus
-          AND s.warningAt IS NOT NULL
-          AND s.warningAt <= :now
-          AND s.currentDeadlineAt > :now
-    """)
-    Integer updateStatusToWarningIfEligible(
-            @Param("id") Long id,
-            @Param("newStatus") SlaStatus newStatus,
-            @Param("expectedStatus") SlaStatus expectedStatus,
-            @Param("now") Instant now
-    );
-
-    @Modifying(clearAutomatically = true)
-    @Query("""
-        UPDATE SlaInstance s
-        SET s.status = :newStatus,
-            s.breachedAt = :now
-        WHERE s.id = :id
-          AND s.status IN :expectedStatuses
-          AND s.currentDeadlineAt <= :now
-    """)
-    Integer updateStatusToBreachedIfEligible(
-            @Param("id") Long id,
-            @Param("newStatus") SlaStatus newStatus,
-            @Param("expectedStatuses") Collection<SlaStatus> expectedStatuses,
-            @Param("now") Instant now
+    List<SlaInstance> findPendingSlaEvents(
+            @Param("statuses") Collection<SlaStatus> statuses
     );
 
 }

@@ -1,6 +1,7 @@
 package xyz.mobi.employeehelpdesk.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.mobi.employeehelpdesk.entity.*;
@@ -17,6 +18,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TicketRoutingServiceImpl implements TicketRoutingService {
@@ -26,9 +28,9 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
     private final RoutingStrategy routingStrategy;
     private final TicketHistoryService ticketHistoryService;
     private final NotificationService notificationService;
-    private final DepartmentManagerRepository departmentManagerRepository;
     private final SubCategorySkillRepository subCategorySkillRepository;
     private final AgentSkillRepository agentSkillRepository;
+    private final DepartmentManagerRepository departmentManagerRepository;
 
     @Override
     @Transactional
@@ -39,6 +41,9 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
             return;
         }
 
+        log.debug("Routing ticketId={}, ticketNumber={}, departmentId={}",
+                ticket.getId(), ticket.getTicketNumber(), ticket.getDepartment() != null ? ticket.getDepartment().getId() : null);
+
         // Find eligible agents in the ticket's department
         List<DepartmentAgent> eligibleAgents =
                 departmentAgentRepository.findEligibleAgents(
@@ -48,6 +53,8 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         // Nobody available -> leave ticket OPEN and unassigned
         // then it should route and notify to department manager
         if (eligibleAgents.isEmpty()) {
+            log.info("No eligible agents available in departmentId={} for ticketId={}; ticket left unassigned",
+                    ticket.getDepartment().getId(), ticket.getId());
             return;
         }
 
@@ -55,9 +62,13 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         List<RoutingCandidate> candidates =
                 buildCandidates(ticket, eligibleAgents);
 
+        log.debug("Built {} candidate(s) for routing ticketId={}", candidates.size(), ticket.getId());
+
         // Select the best candidate using routing strategy
         RoutingCandidate selectedCandidate =
                 routingStrategy.selectCandidate(candidates);
+
+        log.debug("Selected agentId={} for routing ticketId={}", selectedCandidate.getAgent().getId(), ticket.getId());
 
         // Assign ticket
         assignTicket(ticket, selectedCandidate.getAgent());
@@ -158,14 +169,18 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         Instant now = Instant.now();
 
         ticket.setAssignedAgent(agent);
-        ticket.setManagerId(resolveManagerId(agent));
+        ticket.setAssignedManager(resolveDepartmentManager(agent));
         agent.setLastAssignedAt(now);
 
         ticket.setAssignedAt(now);
 
         ticketRepository.save(ticket);
 
-        ticketHistoryService.record(ticket,HistoryEventType.ASSIGNED,TicketStatus.OPEN,TicketStatus.OPEN);
+        ticketHistoryService.record(ticket, HistoryEventType.ASSIGNED, TicketStatus.OPEN, TicketStatus.OPEN);
+
+        log.info("Ticket routed and assigned: ticketId={}, ticketNumber={}, agentId={}, managerId={}",
+                ticket.getId(), ticket.getTicketNumber(), agent.getId(),
+                ticket.getAssignedManager() != null ? ticket.getAssignedManager().getId() : null);
 
         String ticketNumber = ticket.getTicketNumber() != null ? ticket.getTicketNumber() : ("#" + ticket.getId());
         if (agent.getEmployee() != null) {
@@ -179,18 +194,12 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         }
     }
 
-    private Long resolveManagerId(DepartmentAgent agent) {
-
+    private DepartmentManager resolveDepartmentManager(DepartmentAgent agent) {
         if (agent == null || agent.getEmployee() == null) {
             return null;
         }
 
-        DepartmentManager manager = agent.getEmployee().getManager();
-
-        if (manager == null || manager.getEmployee() == null) {
-            return null;
-        }
-
-        return manager.getEmployee().getId();
+        Employee agentEmployee = agent.getEmployee();
+        return agentEmployee.getManager();
     }
 }

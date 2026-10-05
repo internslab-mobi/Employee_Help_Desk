@@ -1,6 +1,7 @@
 package xyz.mobi.employeehelpdesk.service.helperservice;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
 import xyz.mobi.employeehelpdesk.entity.TicketHistory;
@@ -8,6 +9,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.HistoryEventType;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.repository.TicketHistoryRepository;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TicketHistoryService {
@@ -28,5 +30,7 @@ public class TicketHistoryService {
         history.setNewValue(newValue);
 
         ticketHistoryRepository.save(history);
+        log.debug("Ticket history recorded: ticketId={}, eventType={}, oldValue={}, newValue={}",
+                ticket != null ? ticket.getId() : null, eventType, oldValue, newValue);
     }
 }
