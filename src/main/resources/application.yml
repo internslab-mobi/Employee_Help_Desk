@@ -10,7 +10,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/project_employee_helpdesk}
     username: ${DB_USERNAME:root}
-    password: ${Mohdshahrose@24}
+    password: ${DB_PASSWORD:Mohdshahrose@24}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # JPA & Hibernate Configuration
@@ -35,8 +35,8 @@ spring:
     enabled: ${EMAIL_ENABLED:true}
     host: ${MAIL_HOST:${SMTP_HOST:smtp.gmail.com}}
     port: ${MAIL_PORT:${SMTP_PORT:587}}
-    username: ${MAIL_USERNAME:${roshiniiizahra2004@gmail.com}}
-    password: ${MAIL_PASSWORD:${ufca pmek myqa gmmy}}
+    username: ${MAIL_USERNAME:roshiniiizahraaa2004@gmail.com}
+    password: ${MAIL_PASSWORD:ufca pmek myqa gmmy}
     default-encoding: UTF-8
     properties:
       mail:

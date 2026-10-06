@@ -10,6 +10,7 @@ public enum TicketPatchOperation {
     RESUME,
     RESOLVE,
     REOPEN,
-    WITHDRAW
+    WITHDRAW,
+    REROUTE
 }
 

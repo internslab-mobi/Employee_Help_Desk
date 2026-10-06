@@ -45,6 +45,7 @@ public class NotificationController {
         notificationService.markAllAsReadForEmployee(employeeId);
         return ResponseEntity.ok().build();
     }
+
 }
 
 
