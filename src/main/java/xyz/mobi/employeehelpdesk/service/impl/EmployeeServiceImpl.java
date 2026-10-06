@@ -12,6 +12,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.EmployeePatchRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.DepartmentAgent;
@@ -365,6 +366,161 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         employee.setEmploymentStatus(EmploymentStatus.INACTIVE);
         log.info("Employee deactivated successfully: employeeId={}", id);
+    }
+
+    @Override
+    @Transactional
+    public EmployeeResponseDTO patchEmployee(Long id, EmployeePatchRequestDTO request) {
+        if (request == null) {
+            throw new BadRequestException("Request body cannot be null");
+        }
+
+        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        Employee currentEmployee = employeeRepository.findById(currentEmployeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + currentEmployeeId));
+
+        Employee targetEmployee = employeeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+
+        boolean isAdmin = currentEmployee.getRole() == UserRole.ADMIN;
+
+        // Authorization checks
+        if (!isAdmin) {
+            // Non-admin can only edit their own profile
+            if (!id.equals(currentEmployeeId)) {
+                log.warn("Unauthorized profile update attempt: employeeId={} tried to edit targetId={}", currentEmployeeId, id);
+                throw new AccessDeniedException("You are not authorized to update another employee's profile");
+            }
+
+            // Non-admin cannot provide admin-only fields
+            if (request.getEmail() != null
+                    || request.getDepartmentId() != null
+                    || request.getEmploymentStatus() != null
+                    || request.getRole() != null
+                    || request.getDateOfExit() != null
+                    || request.getTimezone() != null
+                    || request.getManagerId() != null) {
+                log.warn("Restricted field update attempt by non-admin employeeId={}", currentEmployeeId);
+                throw new AccessDeniedException("You do not have permission to update restricted employee fields");
+            }
+        }
+
+        // 1. First Name (Employee & Admin)
+        if (request.getFirstName() != null) {
+            String firstName = request.getFirstName().trim();
+            if (firstName.isBlank()) {
+                throw new BadRequestException("First name cannot be blank");
+            }
+            targetEmployee.setFirstName(firstName);
+        }
+
+        // 2. Last Name (Employee & Admin)
+        if (request.getLastName() != null) {
+            String lastName = request.getLastName().trim();
+            targetEmployee.setLastName(lastName.isEmpty() ? null : lastName);
+        }
+
+        // 3. Designation (Employee & Admin)
+        if (request.getDesignation() != null) {
+            String designation = request.getDesignation().trim();
+            targetEmployee.setDesignation(designation.isEmpty() ? null : designation);
+        }
+
+        // 4. Phone (Employee & Admin)
+        if (request.getPhone() != null) {
+            String phone = request.getPhone().trim();
+            targetEmployee.setPhone(phone.isEmpty() ? null : phone);
+        }
+
+        // Admin-only fields:
+        if (isAdmin) {
+            // 5. Email (Admin only)
+            if (request.getEmail() != null) {
+                String email = request.getEmail().trim().toLowerCase();
+                if (email.isBlank()) {
+                    throw new BadRequestException("Email cannot be blank");
+                }
+                if (!email.equalsIgnoreCase(targetEmployee.getEmail())) {
+                    if (Boolean.TRUE.equals(employeeRepository.existsByEmail(email))) {
+                        throw new DuplicateResourceException("Employee with email '" + email + "' already exists");
+                    }
+                    targetEmployee.setEmail(email);
+                }
+            }
+
+            // 6. Department (Admin only)
+            if (request.getDepartmentId() != null) {
+                Department department = departmentRepository.findById(request.getDepartmentId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.getDepartmentId()));
+                if (Boolean.FALSE.equals(department.getIsActive())) {
+                    throw new BadRequestException("Department is inactive");
+                }
+                targetEmployee.setDepartment(department);
+            }
+
+            // 7. Employment Status (Admin only)
+            if (request.getEmploymentStatus() != null) {
+                targetEmployee.setEmploymentStatus(request.getEmploymentStatus());
+            }
+
+            // 8. Role (Admin only)
+            if (request.getRole() != null) {
+                targetEmployee.setRole(request.getRole());
+            }
+
+            // 9. Date of Exit (Admin only)
+            if (request.getDateOfExit() != null) {
+                if (targetEmployee.getDateOfJoining() != null && request.getDateOfExit().isBefore(targetEmployee.getDateOfJoining())) {
+                    throw new BadRequestException("Date of exit cannot be before date of joining");
+                }
+                targetEmployee.setDateOfExit(request.getDateOfExit());
+            }
+
+            // 10. Timezone (Admin only)
+            if (request.getTimezone() != null) {
+                String tz = request.getTimezone().trim();
+                if (tz.isBlank()) {
+                    throw new BadRequestException("Timezone cannot be blank");
+                }
+                try {
+                    java.time.ZoneId zoneId = java.time.ZoneId.of(tz);
+                    targetEmployee.setTimezone(zoneId.getId());
+                } catch (Exception e) {
+                    throw new BadRequestException("Invalid timezone: " + tz);
+                }
+            }
+
+            // 11. Manager (Admin only)
+            if (request.getManagerId() != null) {
+                DepartmentManager manager = departmentManagerRepository.findById(request.getManagerId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Department manager not found with id: " + request.getManagerId()));
+
+                if (manager.getEmployee() != null && manager.getEmployee().getId().equals(targetEmployee.getId())) {
+                    log.warn("Manager assignment rejected: employee cannot be their own manager: employeeId={}", targetEmployee.getId());
+                    throw new BadRequestException("Manager cannot be assigned to themselves as their own manager");
+                }
+
+                Long employeeDepartmentId = targetEmployee.getDepartment() != null
+                        ? targetEmployee.getDepartment().getId()
+                        : null;
+
+                Long managerDepartmentId = (manager.getEmployee() != null && manager.getEmployee().getDepartment() != null)
+                        ? manager.getEmployee().getDepartment().getId()
+                        : null;
+
+                if (employeeDepartmentId != null && managerDepartmentId != null && !employeeDepartmentId.equals(managerDepartmentId)) {
+                    log.warn("Manager assignment rejected: managerId={} does not belong to departmentId={}", request.getManagerId(), employeeDepartmentId);
+                    throw new BadRequestException("Selected manager does not belong to the employee's department");
+                }
+
+                targetEmployee.setManager(manager);
+            }
+        }
+
+        Employee savedEmployee = employeeRepository.save(targetEmployee);
+        log.info("Employee patched successfully: employeeId={}, updatedBy={}", savedEmployee.getId(), currentEmployeeId);
+
+        return toResponse(savedEmployee);
     }
 
     private EmployeeResponseDTO toResponse(Employee employee) {
