@@ -8,12 +8,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.json.GsonBuilderUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import xyz.mobi.employeehelpdesk.dto.auth.*;
 import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.EmployeePatchRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
@@ -36,6 +36,7 @@ public class UserController {
             @Valid @RequestBody CreateEmployeeRequestDTO request
     ) {
         EmployeeCreateResponseDTO response = employeeService.createEmployee(request);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -44,8 +45,7 @@ public class UserController {
     public ResponseEntity<Page<EmployeeResponseDTO>> getAllEmployees(
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        Page<EmployeeResponseDTO> response =
-                employeeService.getAllEmployees(pageable);
+        Page<EmployeeResponseDTO> response = employeeService.getAllEmployees(pageable);
 
         return ResponseEntity.ok(response);
     }
@@ -59,14 +59,7 @@ public class UserController {
             @RequestParam(required = false) UserRole role,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        Page<EmployeeResponseDTO> response =
-                employeeService.searchEmployees(
-                        search,
-                        departmentId,
-                        status,
-                        role,
-                        pageable
-                );
+        Page<EmployeeResponseDTO> response = employeeService.searchEmployees(search, departmentId, status, role, pageable);
 
         return ResponseEntity.ok(response);
     }
@@ -76,8 +69,18 @@ public class UserController {
     public ResponseEntity<EmployeeResponseDTO> getEmployeeById(
             @PathVariable Long id
     ) {
-        EmployeeResponseDTO response =
-                employeeService.getEmployeeById(id);
+        EmployeeResponseDTO response = employeeService.getEmployeeById(id);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN', 'MANAGER', 'AGENT')")
+    @PatchMapping("/{id}")
+    public ResponseEntity<EmployeeResponseDTO> patchEmployee(
+            @PathVariable Long id,
+            @Valid @RequestBody EmployeePatchRequestDTO request
+    ) {
+        EmployeeResponseDTO response = employeeService.patchEmployee(id, request);
 
         return ResponseEntity.ok(response);
     }
@@ -88,6 +91,7 @@ public class UserController {
             @PathVariable Long id
     ) {
         employeeService.deactivateEmployee(id);
+
         return ResponseEntity
                 .status(HttpStatus.NO_CONTENT)
                 .body(Map.of("message", "Employee deactivated successfully"));
@@ -99,18 +103,18 @@ public class UserController {
             @Valid @RequestBody LoginRequestDTO request
     ) {
         LoginResponseDTO response = authService.login(request);
+
         return ResponseEntity.ok(response);
     }
 
     @Operation(security = {})
     @PostMapping("/refresh-token")
-
     public ResponseEntity<TokenRefreshResponseDTO> refreshToken(
             @Valid @RequestBody RefreshTokenRequestDTO request
     ) {
         TokenRefreshResponseDTO response = authService.refreshToken(request);
+
         return ResponseEntity.ok(response);
-        System.out.println("done");
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -119,6 +123,7 @@ public class UserController {
             @Valid @RequestBody ChangePasswordRequestDTO request
     ) {
         authService.changePassword(request);
+
         return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
     }
 
@@ -128,6 +133,7 @@ public class UserController {
             @Valid @RequestBody ForgotPasswordOtpRequestDTO request
     ) {
         authService.requestForgotPasswordOtp(request);
+
         return ResponseEntity.ok(Map.of("message", "OTP sent successfully"));
     }
 
@@ -137,6 +143,7 @@ public class UserController {
             @Valid @RequestBody VerifyOtpRequestDTO request
     ) {
         VerifyOtpResponseDTO response = authService.verifyOtp(request);
+
         return ResponseEntity.ok(response);
     }
 
@@ -146,6 +153,7 @@ public class UserController {
             @Valid @RequestBody ResetPasswordRequestDTO request
     ) {
         authService.resetPassword(request);
+
         return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
     }
 }
