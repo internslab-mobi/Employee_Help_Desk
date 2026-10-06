@@ -34,7 +34,7 @@ import java.time.Instant;
 @AllArgsConstructor
 public class Ticket extends BaseEntity {
 
-    @Column(nullable = true, unique = true, length = 50)
+    @Column(unique = true, length = 50)
     private String ticketNumber;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
