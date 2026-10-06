@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.json.GsonBuilderUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import xyz.mobi.employeehelpdesk.dto.auth.*;
@@ -103,11 +104,13 @@ public class UserController {
 
     @Operation(security = {})
     @PostMapping("/refresh-token")
+
     public ResponseEntity<TokenRefreshResponseDTO> refreshToken(
             @Valid @RequestBody RefreshTokenRequestDTO request
     ) {
         TokenRefreshResponseDTO response = authService.refreshToken(request);
         return ResponseEntity.ok(response);
+        System.out.println("done");
     }
 
     @PreAuthorize("isAuthenticated()")
