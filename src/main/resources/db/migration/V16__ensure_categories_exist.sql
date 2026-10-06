@@ -1,6 +1,6 @@
 -- Ensure category reference data exists
 -- This migration is idempotent and safe to run even if V12 was partially applied
--- It uses INSERT IGNORE to avoid duplicate key errors
+-- It uses INSERT IGNORE and NOT EXISTS to avoid duplicate key errors and duplicate rows
 
 -- Ensure Departments exist first (idempotent)
 INSERT IGNORE INTO hd_departments (code, name, description, is_active, timezone, created_at, updated_at) VALUES
@@ -21,7 +21,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'IT');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'IT')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'IT' LIMIT 1) AND name = 'Hardware');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -31,7 +32,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'IT');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'IT')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'IT' LIMIT 1) AND name = 'Software');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -41,7 +43,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'IT');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'IT')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'IT' LIMIT 1) AND name = 'Network');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -51,7 +54,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'IT');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'IT')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'IT' LIMIT 1) AND name = 'Access');
 
 -- Ensure Categories exist for HR Department
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
@@ -62,7 +66,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'HR');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'HR')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'HR' LIMIT 1) AND name = 'Leave');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -72,7 +77,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'HR');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'HR')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'HR' LIMIT 1) AND name = 'Payroll');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -82,7 +88,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'HR');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'HR')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'HR' LIMIT 1) AND name = 'Benefits');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -92,7 +99,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'HR');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'HR')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'HR' LIMIT 1) AND name = 'Policy');
 
 -- Ensure Categories exist for Finance Department
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
@@ -103,7 +111,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FIN');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FIN')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'FIN' LIMIT 1) AND name = 'Expense');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -113,7 +122,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FIN');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FIN')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'FIN' LIMIT 1) AND name = 'Invoice');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -123,7 +133,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FIN');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FIN')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'FIN' LIMIT 1) AND name = 'Budget');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -133,7 +144,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FIN');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FIN')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'FIN' LIMIT 1) AND name = 'Tax');
 
 -- Ensure Categories exist for Operations Department
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
@@ -144,7 +156,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'OPS');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'OPS')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'OPS' LIMIT 1) AND name = 'Logistics');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -154,7 +167,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'OPS');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'OPS')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'OPS' LIMIT 1) AND name = 'Inventory');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -164,7 +178,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'OPS');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'OPS')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'OPS' LIMIT 1) AND name = 'Procurement');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -174,7 +189,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'OPS');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'OPS')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'OPS' LIMIT 1) AND name = 'Quality');
 
 -- Ensure Categories exist for Marketing Department
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
@@ -185,7 +201,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'MKT');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'MKT')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'MKT' LIMIT 1) AND name = 'Campaign');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -195,7 +212,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'MKT');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'MKT')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'MKT' LIMIT 1) AND name = 'Content');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -205,7 +223,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'MKT');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'MKT')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'MKT' LIMIT 1) AND name = 'Social Media');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -215,7 +234,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'MKT');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'MKT')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'MKT' LIMIT 1) AND name = 'Events');
 
 -- Ensure Categories exist for Legal Department
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
@@ -226,7 +246,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'LEG');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'LEG')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'LEG' LIMIT 1) AND name = 'Contracts');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -236,7 +257,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'LEG');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'LEG')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'LEG' LIMIT 1) AND name = 'Compliance');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -246,7 +268,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'LEG');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'LEG')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'LEG' LIMIT 1) AND name = 'IP');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -256,7 +279,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'LEG');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'LEG')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'LEG' LIMIT 1) AND name = 'Dispute');
 
 -- Ensure Categories exist for Facilities Department
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
@@ -267,7 +291,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FAC');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FAC')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'FAC' LIMIT 1) AND name = 'Maintenance');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -277,7 +302,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FAC');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FAC')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'FAC' LIMIT 1) AND name = 'Security');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -287,7 +313,8 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FAC');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FAC')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'FAC' LIMIT 1) AND name = 'Space');
 
 INSERT IGNORE INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
 SELECT 
@@ -297,4 +324,5 @@ SELECT
     TRUE,
     NOW(),
     NOW()
-WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FAC');
+WHERE EXISTS (SELECT 1 FROM hd_departments WHERE code = 'FAC')
+  AND NOT EXISTS (SELECT 1 FROM hd_categories WHERE department_id = (SELECT id FROM hd_departments WHERE code = 'FAC' LIMIT 1) AND name = 'Utilities');

@@ -49,6 +49,7 @@ import com.example.helpdesk.enums.NotificationType;
 import com.example.helpdesk.enums.Priority;
 import com.example.helpdesk.enums.SlaStatus;
 import com.example.helpdesk.enums.TicketEventType;
+import com.example.helpdesk.enums.TicketPatchOperation;
 import com.example.helpdesk.enums.TicketStatus;
 import com.example.helpdesk.mapper.TicketMapper;
 import com.example.helpdesk.repository.AgentSkillRepository;
@@ -656,7 +657,7 @@ public class TicketServiceImpl implements TicketService {
             throw new IllegalArgumentException("Operation is required");
         }
 
-        if (request.getData() == null) {
+        if (request.getData() == null && request.getOperation() != TicketPatchOperation.REROUTE) {
             throw new IllegalArgumentException("Data is required");
         }
 
@@ -692,6 +693,9 @@ public class TicketServiceImpl implements TicketService {
             case WITHDRAW:
                 log.info("Dispatching to WITHDRAW handler");
                 return handleWithdraw(ticketId, request.getData());
+            case REROUTE:
+                log.info("Dispatching to REROUTE handler");
+                return handleReroute(ticketId);
             default:
                 throw new IllegalArgumentException("Unsupported operation: " + request.getOperation());
         }
@@ -825,6 +829,71 @@ public class TicketServiceImpl implements TicketService {
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid data for WITHDRAW operation: " + e.getMessage());
         }
+    }
+
+    private TicketResponseDTO handleReroute(Long ticketId) {
+        log.info("handleReroute called - ticketId={}", ticketId);
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
+
+        if (!TicketStatus.OPEN.name().equalsIgnoreCase(ticket.getStatus())) {
+            throw new IllegalStateException("Ticket is not eligible for automatic routing: status must be OPEN (current status: " + ticket.getStatus() + ")");
+        }
+
+        if (ticket.getAssignedAgent() != null) {
+            throw new IllegalStateException("Ticket already has an assigned agent");
+        }
+
+        DepartmentAgent assignedAgent = performRoutingAndAssignment(ticket);
+
+        if (assignedAgent == null) {
+            throw new IllegalStateException("Routing failed to assign an agent");
+        }
+
+        assignDepartmentManager(ticket);
+
+        TicketSla slaInstance = slaService.createSlaInstance(ticket);
+
+        if (slaInstance != null) {
+            ticketHistoryService.recordHistory(
+                    ticket,
+                    ticket.getRequester(),
+                    TicketEventType.SLA_STARTED,
+                    null,
+                    null,
+                    null
+            );
+        }
+
+        notificationService.sendNotification(
+                assignedAgent.getEmployee(),
+                ticket,
+                NotificationType.TICKET_CREATED,
+                "New Ticket Created",
+                "Ticket " + ticket.getTicketNumber() + " has been created and assigned to you."
+        );
+
+        notificationService.sendNotification(
+                assignedAgent.getEmployee(),
+                ticket,
+                NotificationType.AGENT_ASSIGNED,
+                "Agent Assigned",
+                "You have been assigned to ticket " + ticket.getTicketNumber() + "."
+        );
+
+        ticketHistoryService.recordHistory(
+                ticket,
+                ticket.getRequester(),
+                TicketEventType.ASSIGNMENT_CONFIRMED,
+                null,
+                String.valueOf(assignedAgent.getId()),
+                null
+        );
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+        log.info("Reroute completed successfully for ticket {}", ticketId);
+        return buildNestedTicketResponseDTO(savedTicket, true);
     }
 
     @Override

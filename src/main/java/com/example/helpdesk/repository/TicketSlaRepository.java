@@ -10,7 +10,11 @@ import java.util.List;
 @Repository
 public interface TicketSlaRepository extends JpaRepository<TicketSla, Long> {
 
-    TicketSla findByTicketId(Long ticketId);
+    TicketSla findTopByTicketIdOrderByCycleNumberDesc(Long ticketId);
+
+    default TicketSla findByTicketId(Long ticketId) {
+        return findTopByTicketIdOrderByCycleNumberDesc(ticketId);
+    }
 
     List<TicketSla> findByStatusAndCurrentDeadlineAtBefore(String status, Instant deadline);
 

@@ -1,8 +1,9 @@
 -- Seed reference data for departments, categories, sub-categories, and skills
 -- This migration populates the required reference tables for an empty database
+-- Made idempotent to safely handle existing reference data without duplicates
 
--- Insert Departments
-INSERT INTO hd_departments (code, name, description, is_active, timezone, created_at, updated_at) VALUES
+-- Insert Departments (idempotent: skips if department code already exists)
+INSERT IGNORE INTO hd_departments (code, name, description, is_active, timezone, created_at, updated_at) VALUES
 ('IT', 'Information Technology', 'IT support and infrastructure', TRUE, 'UTC', NOW(), NOW()),
 ('HR', 'Human Resources', 'HR and personnel management', TRUE, 'UTC', NOW(), NOW()),
 ('FIN', 'Finance', 'Finance and accounting', TRUE, 'UTC', NOW(), NOW()),
@@ -11,129 +12,113 @@ INSERT INTO hd_departments (code, name, description, is_active, timezone, create
 ('LEG', 'Legal', 'Legal and compliance', TRUE, 'UTC', NOW(), NOW()),
 ('FAC', 'Facilities', 'Facilities management', TRUE, 'UTC', NOW(), NOW());
 
--- Insert Categories (IT Department)
-INSERT INTO hd_categories (department_id, name, description, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_departments WHERE code = 'IT'), 'Hardware', 'Hardware-related issues', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'IT'), 'Software', 'Software and application issues', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'IT'), 'Network', 'Network and connectivity issues', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'IT'), 'Access', 'Access and authentication issues', TRUE, NOW(), NOW());
+-- Insert Categories (idempotent: skips if category already exists in department)
+INSERT INTO hd_categories (department_id, name, description, is_active, created_at, updated_at)
+SELECT dept.id, c.name, c.description, TRUE, NOW(), NOW()
+FROM (
+    SELECT 'IT' as dept_code, 'Hardware' as name, 'Hardware-related issues' as description UNION ALL
+    SELECT 'IT', 'Software', 'Software and application issues' UNION ALL
+    SELECT 'IT', 'Network', 'Network and connectivity issues' UNION ALL
+    SELECT 'IT', 'Access', 'Access and authentication issues' UNION ALL
+    SELECT 'HR', 'Leave', 'Leave and time-off requests' UNION ALL
+    SELECT 'HR', 'Payroll', 'Payroll and compensation' UNION ALL
+    SELECT 'HR', 'Benefits', 'Employee benefits and insurance' UNION ALL
+    SELECT 'HR', 'Policy', 'HR policies and procedures' UNION ALL
+    SELECT 'FIN', 'Expense', 'Expense reports and reimbursements' UNION ALL
+    SELECT 'FIN', 'Invoice', 'Invoice and billing' UNION ALL
+    SELECT 'FIN', 'Budget', 'Budget and financial planning' UNION ALL
+    SELECT 'FIN', 'Tax', 'Tax-related issues' UNION ALL
+    SELECT 'OPS', 'Logistics', 'Logistics and supply chain' UNION ALL
+    SELECT 'OPS', 'Inventory', 'Inventory management' UNION ALL
+    SELECT 'OPS', 'Procurement', 'Procurement and purchasing' UNION ALL
+    SELECT 'OPS', 'Quality', 'Quality assurance' UNION ALL
+    SELECT 'MKT', 'Campaign', 'Marketing campaigns' UNION ALL
+    SELECT 'MKT', 'Content', 'Content creation and management' UNION ALL
+    SELECT 'MKT', 'Social Media', 'Social media management' UNION ALL
+    SELECT 'MKT', 'Events', 'Event planning and coordination' UNION ALL
+    SELECT 'LEG', 'Contracts', 'Contract review and management' UNION ALL
+    SELECT 'LEG', 'Compliance', 'Regulatory compliance' UNION ALL
+    SELECT 'LEG', 'IP', 'Intellectual property' UNION ALL
+    SELECT 'LEG', 'Dispute', 'Legal disputes and litigation' UNION ALL
+    SELECT 'FAC', 'Maintenance', 'Facility maintenance' UNION ALL
+    SELECT 'FAC', 'Security', 'Building security' UNION ALL
+    SELECT 'FAC', 'Space', 'Space allocation and management' UNION ALL
+    SELECT 'FAC', 'Utilities', 'Utilities and services'
+) c
+JOIN hd_departments dept ON dept.code = c.dept_code
+WHERE NOT EXISTS (
+    SELECT 1 FROM hd_categories existing 
+    WHERE existing.department_id = dept.id AND existing.name = c.name
+);
 
--- Insert Categories (HR Department)
-INSERT INTO hd_categories (department_id, name, description, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_departments WHERE code = 'HR'), 'Leave', 'Leave and time-off requests', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'HR'), 'Payroll', 'Payroll and compensation', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'HR'), 'Benefits', 'Employee benefits and insurance', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'HR'), 'Policy', 'HR policies and procedures', TRUE, NOW(), NOW());
+-- Insert Sub-Categories (idempotent: skips if subcategory already exists in category)
+INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at)
+SELECT cat.id, s.name, s.description, s.priority, TRUE, NOW(), NOW()
+FROM (
+    -- Hardware (IT)
+    SELECT 'IT' as dept_code, 'Hardware' as cat_name, 'Laptop' as name, 'Laptop hardware issues' as description, 'MEDIUM' as priority UNION ALL
+    SELECT 'IT', 'Hardware', 'Desktop', 'Desktop computer issues', 'MEDIUM' UNION ALL
+    SELECT 'IT', 'Hardware', 'Printer', 'Printer and scanner issues', 'LOW' UNION ALL
+    SELECT 'IT', 'Hardware', 'Monitor', 'Monitor and display issues', 'LOW' UNION ALL
+    SELECT 'IT', 'Hardware', 'Peripheral', 'Keyboards, mice, and other peripherals', 'LOW' UNION ALL
+    -- Software (IT)
+    SELECT 'IT', 'Software', 'OS', 'Operating system issues', 'HIGH' UNION ALL
+    SELECT 'IT', 'Software', 'Office', 'Microsoft Office and productivity tools', 'MEDIUM' UNION ALL
+    SELECT 'IT', 'Software', 'Custom App', 'Custom application issues', 'HIGH' UNION ALL
+    SELECT 'IT', 'Software', 'Installation', 'Software installation and upgrades', 'MEDIUM' UNION ALL
+    SELECT 'IT', 'Software', 'License', 'Software licensing issues', 'MEDIUM' UNION ALL
+    -- Network (IT)
+    SELECT 'IT', 'Network', 'WiFi', 'Wireless connectivity issues', 'HIGH' UNION ALL
+    SELECT 'IT', 'Network', 'VPN', 'VPN access issues', 'HIGH' UNION ALL
+    SELECT 'IT', 'Network', 'Internet', 'Internet connectivity', 'HIGH' UNION ALL
+    SELECT 'IT', 'Network', 'Intranet', 'Internal network issues', 'MEDIUM' UNION ALL
+    SELECT 'IT', 'Network', 'Firewall', 'Firewall and security rules', 'HIGH' UNION ALL
+    -- Access (IT)
+    SELECT 'IT', 'Access', 'Password Reset', 'Password reset assistance', 'MEDIUM' UNION ALL
+    SELECT 'IT', 'Access', 'Account Lock', 'Account unlock requests', 'HIGH' UNION ALL
+    SELECT 'IT', 'Access', 'New User', 'New user account creation', 'MEDIUM' UNION ALL
+    SELECT 'IT', 'Access', 'Permissions', 'Access permission changes', 'MEDIUM' UNION ALL
+    SELECT 'IT', 'Access', 'MFA', 'Multi-factor authentication issues', 'HIGH' UNION ALL
+    -- Leave (HR)
+    SELECT 'HR', 'Leave', 'Sick Leave', 'Sick leave requests', 'HIGH' UNION ALL
+    SELECT 'HR', 'Leave', 'Vacation', 'Vacation and annual leave', 'MEDIUM' UNION ALL
+    SELECT 'HR', 'Leave', 'Personal', 'Personal leave requests', 'MEDIUM' UNION ALL
+    SELECT 'HR', 'Leave', 'Emergency', 'Emergency leave', 'HIGH' UNION ALL
+    SELECT 'HR', 'Leave', 'Comp Time', 'Compensatory time off', 'LOW' UNION ALL
+    -- Payroll (HR)
+    SELECT 'HR', 'Payroll', 'Salary', 'Salary and payment issues', 'HIGH' UNION ALL
+    SELECT 'HR', 'Payroll', 'Deduction', 'Payroll deduction inquiries', 'MEDIUM' UNION ALL
+    SELECT 'HR', 'Payroll', 'Bonus', 'Bonus and commission payments', 'MEDIUM' UNION ALL
+    SELECT 'HR', 'Payroll', 'Timesheet', 'Timesheet and attendance issues', 'MEDIUM' UNION ALL
+    SELECT 'HR', 'Payroll', 'Tax', 'Payroll tax questions', 'LOW' UNION ALL
+    -- Benefits (HR)
+    SELECT 'HR', 'Benefits', 'Health Insurance', 'Health insurance enrollment and claims', 'HIGH' UNION ALL
+    SELECT 'HR', 'Benefits', 'Retirement', '401k and retirement plans', 'MEDIUM' UNION ALL
+    SELECT 'HR', 'Benefits', 'Life Insurance', 'Life insurance benefits', 'MEDIUM' UNION ALL
+    SELECT 'HR', 'Benefits', 'Dental', 'Dental and vision benefits', 'LOW' UNION ALL
+    SELECT 'HR', 'Benefits', 'Dependents', 'Dependent coverage and changes', 'MEDIUM' UNION ALL
+    -- Expense (Finance)
+    SELECT 'FIN', 'Expense', 'Travel', 'Travel expense reports', 'MEDIUM' UNION ALL
+    SELECT 'FIN', 'Expense', 'Meals', 'Meal and entertainment expenses', 'LOW' UNION ALL
+    SELECT 'FIN', 'Expense', 'Equipment', 'Equipment and supply expenses', 'MEDIUM' UNION ALL
+    SELECT 'FIN', 'Expense', 'Training', 'Training and education expenses', 'MEDIUM' UNION ALL
+    SELECT 'FIN', 'Expense', 'Reimbursement', 'General reimbursement requests', 'MEDIUM' UNION ALL
+    -- Invoice (Finance)
+    SELECT 'FIN', 'Invoice', 'Vendor Invoice', 'Vendor invoice processing', 'MEDIUM' UNION ALL
+    SELECT 'FIN', 'Invoice', 'Client Invoice', 'Client invoice inquiries', 'MEDIUM' UNION ALL
+    SELECT 'FIN', 'Invoice', 'Payment', 'Payment status and tracking', 'HIGH' UNION ALL
+    SELECT 'FIN', 'Invoice', 'Dispute', 'Invoice disputes', 'HIGH' UNION ALL
+    SELECT 'FIN', 'Invoice', 'Credit', 'Credit notes and adjustments', 'LOW'
+) s
+JOIN hd_departments dept ON dept.code = s.dept_code
+JOIN hd_categories cat ON cat.department_id = dept.id AND cat.name = s.cat_name
+WHERE NOT EXISTS (
+    SELECT 1 FROM hd_sub_categories existing
+    WHERE existing.category_id = cat.id AND existing.name = s.name
+);
 
--- Insert Categories (Finance Department)
-INSERT INTO hd_categories (department_id, name, description, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_departments WHERE code = 'FIN'), 'Expense', 'Expense reports and reimbursements', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'FIN'), 'Invoice', 'Invoice and billing', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'FIN'), 'Budget', 'Budget and financial planning', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'FIN'), 'Tax', 'Tax-related issues', TRUE, NOW(), NOW());
-
--- Insert Categories (Operations Department)
-INSERT INTO hd_categories (department_id, name, description, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_departments WHERE code = 'OPS'), 'Logistics', 'Logistics and supply chain', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'OPS'), 'Inventory', 'Inventory management', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'OPS'), 'Procurement', 'Procurement and purchasing', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'OPS'), 'Quality', 'Quality assurance', TRUE, NOW(), NOW());
-
--- Insert Categories (Marketing Department)
-INSERT INTO hd_categories (department_id, name, description, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_departments WHERE code = 'MKT'), 'Campaign', 'Marketing campaigns', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'MKT'), 'Content', 'Content creation and management', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'MKT'), 'Social Media', 'Social media management', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'MKT'), 'Events', 'Event planning and coordination', TRUE, NOW(), NOW());
-
--- Insert Categories (Legal Department)
-INSERT INTO hd_categories (department_id, name, description, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_departments WHERE code = 'LEG'), 'Contracts', 'Contract review and management', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'LEG'), 'Compliance', 'Regulatory compliance', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'LEG'), 'IP', 'Intellectual property', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'LEG'), 'Dispute', 'Legal disputes and litigation', TRUE, NOW(), NOW());
-
--- Insert Categories (Facilities Department)
-INSERT INTO hd_categories (department_id, name, description, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_departments WHERE code = 'FAC'), 'Maintenance', 'Facility maintenance', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'FAC'), 'Security', 'Building security', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'FAC'), 'Space', 'Space allocation and management', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_departments WHERE code = 'FAC'), 'Utilities', 'Utilities and services', TRUE, NOW(), NOW());
-
--- Insert Sub-Categories (Hardware - IT)
-INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_categories WHERE name = 'Hardware' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Laptop', 'Laptop hardware issues', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Hardware' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Desktop', 'Desktop computer issues', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Hardware' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Printer', 'Printer and scanner issues', 'LOW', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Hardware' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Monitor', 'Monitor and display issues', 'LOW', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Hardware' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Peripheral', 'Keyboards, mice, and other peripherals', 'LOW', TRUE, NOW(), NOW());
-
--- Insert Sub-Categories (Software - IT)
-INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_categories WHERE name = 'Software' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'OS', 'Operating system issues', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Software' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Office', 'Microsoft Office and productivity tools', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Software' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Custom App', 'Custom application issues', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Software' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Installation', 'Software installation and upgrades', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Software' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'License', 'Software licensing issues', 'MEDIUM', TRUE, NOW(), NOW());
-
--- Insert Sub-Categories (Network - IT)
-INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_categories WHERE name = 'Network' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'WiFi', 'Wireless connectivity issues', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Network' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'VPN', 'VPN access issues', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Network' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Internet', 'Internet connectivity', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Network' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Intranet', 'Internal network issues', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Network' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Firewall', 'Firewall and security rules', 'HIGH', TRUE, NOW(), NOW());
-
--- Insert Sub-Categories (Access - IT)
-INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_categories WHERE name = 'Access' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Password Reset', 'Password reset assistance', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Access' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Account Lock', 'Account unlock requests', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Access' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'New User', 'New user account creation', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Access' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'Permissions', 'Access permission changes', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Access' AND department_id = (SELECT id FROM hd_departments WHERE code = 'IT')), 'MFA', 'Multi-factor authentication issues', 'HIGH', TRUE, NOW(), NOW());
-
--- Insert Sub-Categories (Leave - HR)
-INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_categories WHERE name = 'Leave' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Sick Leave', 'Sick leave requests', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Leave' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Vacation', 'Vacation and annual leave', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Leave' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Personal', 'Personal leave requests', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Leave' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Emergency', 'Emergency leave', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Leave' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Comp Time', 'Compensatory time off', 'LOW', TRUE, NOW(), NOW());
-
--- Insert Sub-Categories (Payroll - HR)
-INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_categories WHERE name = 'Payroll' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Salary', 'Salary and payment issues', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Payroll' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Deduction', 'Payroll deduction inquiries', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Payroll' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Bonus', 'Bonus and commission payments', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Payroll' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Timesheet', 'Timesheet and attendance issues', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Payroll' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Tax', 'Payroll tax questions', 'LOW', TRUE, NOW(), NOW());
-
--- Insert Sub-Categories (Benefits - HR)
-INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_categories WHERE name = 'Benefits' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Health Insurance', 'Health insurance enrollment and claims', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Benefits' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Retirement', '401k and retirement plans', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Benefits' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Life Insurance', 'Life insurance benefits', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Benefits' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Dental', 'Dental and vision benefits', 'LOW', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Benefits' AND department_id = (SELECT id FROM hd_departments WHERE code = 'HR')), 'Dependents', 'Dependent coverage and changes', 'MEDIUM', TRUE, NOW(), NOW());
-
--- Insert Sub-Categories (Expense - Finance)
-INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_categories WHERE name = 'Expense' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Travel', 'Travel expense reports', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Expense' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Meals', 'Meal and entertainment expenses', 'LOW', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Expense' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Equipment', 'Equipment and supply expenses', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Expense' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Training', 'Training and education expenses', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Expense' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Reimbursement', 'General reimbursement requests', 'MEDIUM', TRUE, NOW(), NOW());
-
--- Insert Sub-Categories (Invoice - Finance)
-INSERT INTO hd_sub_categories (category_id, name, description, priority, is_active, created_at, updated_at) VALUES
-((SELECT id FROM hd_categories WHERE name = 'Invoice' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Vendor Invoice', 'Vendor invoice processing', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Invoice' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Client Invoice', 'Client invoice inquiries', 'MEDIUM', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Invoice' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Payment', 'Payment status and tracking', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Invoice' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Dispute', 'Invoice disputes', 'HIGH', TRUE, NOW(), NOW()),
-((SELECT id FROM hd_categories WHERE name = 'Invoice' AND department_id = (SELECT id FROM hd_departments WHERE code = 'FIN')), 'Credit', 'Credit notes and adjustments', 'LOW', TRUE, NOW(), NOW());
-
--- Insert Skills
-INSERT INTO hd_skills (name, description, is_active, created_at, updated_at) VALUES
+-- Insert Skills (idempotent: skips if skill name already exists)
+INSERT IGNORE INTO hd_skills (name, description, is_active, created_at, updated_at) VALUES
 ('Hardware Troubleshooting', 'Diagnose and resolve hardware issues', TRUE, NOW(), NOW()),
 ('Software Installation', 'Install and configure software applications', TRUE, NOW(), NOW()),
 ('Network Configuration', 'Configure and troubleshoot network settings', TRUE, NOW(), NOW()),

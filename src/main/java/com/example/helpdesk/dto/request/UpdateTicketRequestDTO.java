@@ -20,9 +20,9 @@ public class UpdateTicketRequestDTO {
 
     @NotNull(message = "Operation is required")
     @Schema(
-            description = "Select the ticket update operation: STATUS, PRIORITY, CATEGORY, ASSIGN_AGENT, ASSIGN_MANAGER, HOLD, RESUME, RESOLVE, REOPEN, WITHDRAW",
+            description = "Select the ticket update operation: STATUS, PRIORITY, CATEGORY, ASSIGN_AGENT, ASSIGN_MANAGER, HOLD, RESUME, RESOLVE, REOPEN, WITHDRAW, REROUTE",
             required = true,
-            allowableValues = {"STATUS", "PRIORITY", "CATEGORY", "ASSIGN_AGENT", "ASSIGN_MANAGER", "HOLD", "RESUME", "RESOLVE", "REOPEN", "WITHDRAW"}
+            allowableValues = {"STATUS", "PRIORITY", "CATEGORY", "ASSIGN_AGENT", "ASSIGN_MANAGER", "HOLD", "RESUME", "RESOLVE", "REOPEN", "WITHDRAW", "REROUTE"}
     )
     private TicketPatchOperation operation;
 
