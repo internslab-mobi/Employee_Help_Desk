@@ -69,7 +69,7 @@ public class TicketController {
 
     @PatchMapping("/{ticketId}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
-    @Operation(description = "🔐 Access: ADMIN, MANAGER, AGENT, EMPLOYEE — Consolidated ticket update endpoint. Authorization checked per operation based on role and ticket ownership/assignment. Use 'operation' field to specify: STATUS, PRIORITY, CATEGORY, ASSIGN_AGENT, ASSIGN_MANAGER, HOLD, RESUME, RESOLVE, REOPEN, WITHDRAW. Each operation has specific required data in the 'data' field.")
+    @Operation(description = "🔐 Access: ADMIN, MANAGER, AGENT, EMPLOYEE — Consolidated ticket update endpoint. Authorization checked per operation based on role and ticket ownership/assignment. Use 'operation' field to specify: STATUS, PRIORITY, CATEGORY, ASSIGN_AGENT, ASSIGN_MANAGER, HOLD, RESUME, RESOLVE, REOPEN, WITHDRAW, REROUTE. Each operation has specific required data in the 'data' field.")
     public ResponseEntity<TicketResponseDTO> updateTicket(
             @PathVariable Long ticketId,
             @Valid @RequestBody UpdateTicketRequestDTO request) {
