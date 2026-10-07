@@ -3,12 +3,12 @@ package xyz.mobi.employeehelpdesk.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
-import xyz.mobi.employeehelpdesk.dto.ticket.CreateTicketRequest;
-import xyz.mobi.employeehelpdesk.dto.ticket.HoldTicketRequestDto;
-import xyz.mobi.employeehelpdesk.dto.ticket.ResolveTicketRequestDto;
-import xyz.mobi.employeehelpdesk.dto.ticket.TicketResponse;
-import xyz.mobi.employeehelpdesk.dto.ticket.WithdrawRequestDto;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
+import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.ticket.*;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
+import xyz.mobi.employeehelpdesk.entity.enums.TicketView;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -17,38 +17,61 @@ import java.util.Map;
 
 public interface TicketService {
 
-    public TicketResponse createTicket(
-            CreateTicketRequest request,
-            List<MultipartFile> attachments,
-            Long requesterId) throws IOException;
+    TicketCreateResponseDTO createTicket(
+            CreateTicketRequestDTO request,
+            List<MultipartFile> attachments)
+            throws IOException;
 
-    Map<String,Integer> getEmployeeTicketStatus();
+    TicketResponseDTO getTicket(Long ticketId);
 
-    Map<String,Integer> getAgentTicketStatus();
+    Page<TicketResponseDTO> getAllTickets(
+            TicketView view,
+            Long employeeId,
+            Pageable pageable
+    );
 
-    public Page<TicketResponse> getMyTickets(
+    Page<TicketResponseDTO> searchTickets(
+            TicketView view,
+            Long employeeId,
             TicketStatus status,
             LocalDate fromDate,
             LocalDate toDate,
             String search,
+            Boolean unassigned,
+            xyz.mobi.employeehelpdesk.entity.enums.SlaStatus slaStatus,
             Pageable pageable
     );
 
-    Page<TicketResponse> getAgentTickets(
-            TicketStatus status,
-            LocalDate fromDate,
-            LocalDate toDate,
-            String search,
-            Pageable pageable
+    List<AssignableAgentResponseDTO> getAssignableAgents(Long ticketId);
+
+    Map<String, Integer> getTicketSummary(
+            TicketView view,
+            Long employeeId,
+            Long departmentId
     );
 
-    TicketResponse withdrawTicket(Long ticketId, WithdrawRequestDto withdrawRequest);
+    TicketUpdateResponseDTO updateTicket(
+            Long ticketId,
+            UpdateTicketRequestDTO request
+    );
 
-    TicketResponse startTicket(Long ticketId);
+    TicketUpdateResponseDTO assignTicketByManager(Long ticketId, Long agentId);
 
-    TicketResponse holdTicket(Long ticketId, HoldTicketRequestDto request);
+    TicketUpdateResponseDTO withdrawTicket(Long ticketId, WithdrawRequestDTO withdrawRequest);
 
-    TicketResponse resumeTicket(Long ticketId);
+    TicketUpdateResponseDTO startTicket(Long ticketId);
 
-    TicketResponse resolveTicket(Long ticketId, ResolveTicketRequestDto request);
+    TicketUpdateResponseDTO holdTicket(Long ticketId, HoldTicketRequestDTO request);
+
+    TicketUpdateResponseDTO resumeTicket(Long ticketId);
+
+    TicketUpdateResponseDTO resolveTicket(Long ticketId, ResolveTicketRequestDTO request);
+
+    TicketUpdateResponseDTO reopenTicket(Long ticketId, ReopenRequestDTO request);
+
+    // feedback
+
+    TicketFeedbackCreateResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request);
+
+    TicketFeedbackResponseDTO getFeedback(Long ticketId);
 }

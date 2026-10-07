@@ -7,19 +7,23 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.auth.*;
 import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeePatchRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.UpdateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.service.EmployeeService;
 
+import java.io.IOException;
 import java.util.Map;
 
 @RestController
@@ -155,5 +159,20 @@ public class UserController {
         authService.resetPassword(request);
 
         return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
+    }
+
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
+    @PatchMapping(value = "/{employeeId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<EmployeeResponseDTO> updateEmployee(
+            @PathVariable Long employeeId,
+            @Valid @RequestPart(value = "request", required = false) UpdateEmployeeRequestDTO request,
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
+    ) throws IOException {
+        EmployeeResponseDTO response = employeeService.updateEmployee(
+                employeeId,
+                request,
+                profileImage
+        );
+        return ResponseEntity.ok(response);
     }
 }
