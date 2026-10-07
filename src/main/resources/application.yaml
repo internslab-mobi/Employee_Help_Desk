@@ -12,14 +12,14 @@ spring:
       max-request-size: 30MB
 
   datasource:
-    url: ${db_url}
+    url: jdbc:mysql://localhost:3306/Interns_db?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&preserveInstants=true
     username: ${db_uname}
     password: ${db_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
@@ -29,8 +29,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: vikramraajak@gmail.com
-    password: qerqbrhqewreqjiw
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -56,7 +56,7 @@ management:
 
 helpdesk:
   mail:
-    from: vikramraajak@gmail.com
+    from: ${MAIL_FROM}
   sla:
     work-start: "08:30"
     work-end: "17:30"
