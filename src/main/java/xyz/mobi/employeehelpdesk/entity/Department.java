@@ -25,4 +25,7 @@ public class Department extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean isActive = true;
+
+    @Column(nullable = false, length = 50)
+    private String timezone = "UTC";
 }
