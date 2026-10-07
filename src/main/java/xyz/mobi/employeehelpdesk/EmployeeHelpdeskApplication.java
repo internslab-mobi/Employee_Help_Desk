@@ -6,10 +6,10 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@EnableCaching
 @EnableAsync
 @EnableScheduling
 @SpringBootApplication
+@EnableCaching
 public class EmployeeHelpdeskApplication {
 
     public static void main(String[] args) {
