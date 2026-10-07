@@ -1,14 +1,11 @@
 package xyz.mobi.employeehelpdesk.dto.feedback;
 
-import java.time.LocalDateTime;
-
-public record TicketFeedbackResponseDto(
+public record TicketFeedbackResponseDTO(
         Long id,
         Long ticketId,
         Long submittedById,
         String submittedByName,
         Integer rating,
-        String comment,
-        LocalDateTime createdAt
+        String comment
 ) {
 }

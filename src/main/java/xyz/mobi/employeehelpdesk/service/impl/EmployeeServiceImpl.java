@@ -316,7 +316,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             if (currentEmployee.getDepartment() == null
                     || employee.getDepartment() == null
                     || !currentEmployee.getDepartment().getId()
-                    .equals(employee.getDepartment().getId())) {
+                            .equals(employee.getDepartment().getId())) {
 
                 throw new AccessDeniedException(
                         "You are not authorized to view this employee");

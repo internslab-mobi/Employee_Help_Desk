@@ -1,5 +1,6 @@
 package xyz.mobi.employeehelpdesk.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import xyz.mobi.employeehelpdesk.entity.TicketFeedback;
 
@@ -8,7 +9,8 @@ import java.util.Optional;
 public interface TicketFeedbackRepository
         extends JpaRepository<TicketFeedback, Long> {
 
+    @EntityGraph(attributePaths = {"submittedBy", "ticket"})
     Optional<TicketFeedback> findByTicketId(Long ticketId);
 
-    boolean existsByTicketId(Long ticketId);
+    Boolean existsByTicketId(Long ticketId);
 }

@@ -2,9 +2,10 @@ package xyz.mobi.employeehelpdesk.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import xyz.mobi.employeehelpdesk.entity.enums.SlaEventType;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(
@@ -29,12 +30,8 @@ import java.time.LocalDateTime;
                         columnList = "status"
                 ),
                 @Index(
-                        name = "idx_sla_breach_candidates",
-                        columnList = "status, current_deadline_at"
-                ),
-                @Index(
-                        name = "idx_sla_warning_candidates",
-                        columnList = "status, warning_at, current_deadline_at"
+                        name = "idx_sla_pending_events",
+                        columnList = "status, next_event_type, next_event_at"
                 )
         }
 )
@@ -53,6 +50,7 @@ public class SlaInstance extends BaseEntity {
     @JoinColumn(name = "sla_policy_id", nullable = false)
     private SlaPolicy slaPolicy;
 
+    @Builder.Default
     @Column(nullable = false)
     private Integer cycleNumber = 0;
 
@@ -60,24 +58,27 @@ public class SlaInstance extends BaseEntity {
     private Integer allocatedMinutes;
 
     @Column(nullable = false)
-    private LocalDateTime slaStartAt;
+    private Instant slaStartAt;
 
     @Column(nullable = false)
-    private LocalDateTime originalDeadlineAt;
+    private Instant originalDeadlineAt;
 
     @Column(nullable = false)
-    private LocalDateTime currentDeadlineAt;
+    private Instant currentDeadlineAt;
 
-    private LocalDateTime warningAt;
+    private Instant warningAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private SlaStatus status;
 
-    private LocalDateTime pausedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private SlaEventType nextEventType;
 
-    /*@Column(nullable = false)
-    private Integer totalPausedMinutes = 0;*/
+    private Instant nextEventAt;
 
-    private LocalDateTime breachedAt;
+    private Instant pausedAt;
+
+    private Instant breachedAt;
 }
