@@ -14,24 +14,24 @@ import java.io.IOException;
 
 public interface EmployeeService {
 
-    EmployeeCreateResponseDTO createEmployee(CreateEmployeeRequestDTO request);
+        EmployeeCreateResponseDTO createEmployee(CreateEmployeeRequestDTO request);
 
-    Page<EmployeeResponseDTO> getAllEmployees(Pageable pageable);
+        Page<EmployeeResponseDTO> getAllEmployees(Pageable pageable);
 
-    Page<EmployeeResponseDTO> searchEmployees(
-            String search,
-            Long departmentId,
-            EmploymentStatus status,
-            UserRole role,
-            Pageable pageable);
+        Page<EmployeeResponseDTO> searchEmployees(
+                        String search,
+                        Long departmentId,
+                        EmploymentStatus status,
+                        UserRole role,
+                        Pageable pageable);
 
-    EmployeeResponseDTO getEmployeeById(Long id);
+        EmployeeResponseDTO getEmployeeById(Long id);
 
         void deactivateEmployee(Long id);
 
-    EmployeeResponseDTO updateEmployee(
-            Long employeeId,
-            UpdateEmployeeRequestDTO request,
-            MultipartFile profileImage
-    ) throws IOException;
+        EmployeeResponseDTO updateEmployee(
+                Long employeeId,
+                UpdateEmployeeRequestDTO request,
+                MultipartFile profileImage
+        ) throws IOException;
 }

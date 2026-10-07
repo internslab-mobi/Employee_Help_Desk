@@ -1,32 +1,34 @@
 package xyz.mobi.employeehelpdesk.repository;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
+import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
+import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface TicketRepository
         extends JpaRepository<Ticket, Long> {
 
-    // Count active tickets for a particular DepartmentAgent.id
-    @Query("""
-    SELECT COUNT(t)
-    FROM Ticket t
-    WHERE t.assignedAgent.id = :agentId
-      AND t.status IN :statuses
-    """)
-    long countActiveTicketsForAgent(
-            @Param("agentId") Long agentId,
-            @Param("statuses") Collection<TicketStatus> statuses
-    );
+    @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
+    Optional<Ticket> findById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
+    @Query("SELECT t FROM Ticket t WHERE t.id = :id")
+    Optional<Ticket> findByIdWithLock(@Param("id") Long id);
 
     /**
      * Batch count active tickets for multiple agents in one query.
@@ -44,125 +46,279 @@ public interface TicketRepository
             @Param("statuses") Collection<TicketStatus> statuses
     );
 
-    // --- Requester-based ticket queries ---
+    // --- GET ALL Queries ---
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee", "assignedManager", "assignedManager.employee"})
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
     Page<Ticket> findByRequesterId(
             Long requesterId,
             Pageable pageable
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee", "assignedManager", "assignedManager.employee"})
-    Page<Ticket> findByRequesterIdAndStatus(
-            Long requesterId,
-            TicketStatus status,
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
+    Page<Ticket> findByAssignedAgentId(
+            Long agentId,
             Pageable pageable
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee", "assignedManager", "assignedManager.employee"})
-    Page<Ticket> findByRequesterIdAndCreatedAtBetween(
-            Long requesterId,
-            LocalDateTime from,
-            LocalDateTime to,
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
+    Page<Ticket> findByDepartmentId(
+            Long departmentId,
             Pageable pageable
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee", "assignedManager", "assignedManager.employee"})
-    Page<Ticket> findByRequesterIdAndStatusAndCreatedAtBetween(
-            Long requesterId,
-            TicketStatus status,
-            LocalDateTime from,
-            LocalDateTime to,
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
+    @Query("SELECT t FROM Ticket t")
+    Page<Ticket> findAllTickets(
             Pageable pageable
     );
 
-    @Query("""
+    // --- SEARCH Queries with combined filters ---
+
+    @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
+    @Query(value = """
     SELECT t
     FROM Ticket t
-    LEFT JOIN FETCH t.requester
-    LEFT JOIN FETCH t.department
-    LEFT JOIN FETCH t.category
-    LEFT JOIN FETCH t.subCategory
-    LEFT JOIN FETCH t.assignedAgent aa
-    LEFT JOIN FETCH aa.employee
-    LEFT JOIN FETCH t.assignedManager am
-    LEFT JOIN FETCH am.employee
     WHERE t.requester.id = :requesterId
+      AND (:status IS NULL OR t.status = :status)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
       AND (
-          LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+          :search IS NULL OR :search = ''
+          OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
       )
+      AND (
+          :unassigned IS NULL
+          OR (:unassigned = true AND t.assignedAgent IS NULL)
+          OR (:unassigned = false AND t.assignedAgent IS NOT NULL)
+      )
+      AND (
+          :slaStatus IS NULL
+          OR EXISTS (
+              SELECT s
+              FROM SlaInstance s
+              WHERE s.ticket.id = t.id
+                AND s.status = :slaStatus
+                AND s.cycleNumber = (
+                    SELECT MAX(s2.cycleNumber)
+                    FROM SlaInstance s2
+                    WHERE s2.ticket.id = t.id
+                )
+          )
+      )
+    """, countQuery = """
+    SELECT COUNT(t)
+    FROM Ticket t
+    WHERE t.requester.id = :requesterId
+      AND (:status IS NULL OR t.status = :status)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+      AND (
+          :search IS NULL OR :search = ''
+          OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+      AND (
+          :unassigned IS NULL
+          OR (:unassigned = true AND t.assignedAgent IS NULL)
+          OR (:unassigned = false AND t.assignedAgent IS NOT NULL)
+      )
+      AND (
+          :slaStatus IS NULL
+          OR EXISTS (
+              SELECT s
+              FROM SlaInstance s
+              WHERE s.ticket.id = t.id
+                AND s.status = :slaStatus
+                AND s.cycleNumber = (
+                    SELECT MAX(s2.cycleNumber)
+                    FROM SlaInstance s2
+                    WHERE s2.ticket.id = t.id
+                )
+          )
+      )
     """)
-    Page<Ticket> searchMyTickets(
+    Page<Ticket> findCreatedTicketsWithFilters(
             @Param("requesterId") Long requesterId,
+            @Param("status") TicketStatus status,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
             @Param("search") String search,
-            Pageable pageable
-    );
-
-    // --- Agent-based ticket queries (using DepartmentAgent.id resolved from Employee) ---
-
-    @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee", "assignedManager", "assignedManager.employee"})
-    Page<Ticket> findByAssignedAgentIdIn(
-            Collection<Long> agentIds,
+            @Param("unassigned") Boolean unassigned,
+            @Param("slaStatus") SlaStatus slaStatus,
             Pageable pageable
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee", "assignedManager", "assignedManager.employee"})
-    Page<Ticket> findByAssignedAgentIdInAndStatus(
-            Collection<Long> agentIds,
-            TicketStatus status,
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
+    @Query(value = """
+    SELECT t
+    FROM Ticket t
+    WHERE t.assignedAgent.id = :agentId
+      AND (:status IS NULL OR t.status = :status)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+      AND (
+          :search IS NULL OR :search = ''
+          OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+      AND (
+          :unassigned IS NULL
+          OR (:unassigned = true AND t.assignedAgent IS NULL)
+          OR (:unassigned = false AND t.assignedAgent IS NOT NULL)
+      )
+      AND (
+          :slaStatus IS NULL
+          OR EXISTS (
+              SELECT s
+              FROM SlaInstance s
+              WHERE s.ticket.id = t.id
+                AND s.status = :slaStatus
+                AND s.cycleNumber = (
+                    SELECT MAX(s2.cycleNumber)
+                    FROM SlaInstance s2
+                    WHERE s2.ticket.id = t.id
+                )
+          )
+      )
+    """, countQuery = """
+    SELECT COUNT(t)
+    FROM Ticket t
+    WHERE t.assignedAgent.id = :agentId
+      AND (:status IS NULL OR t.status = :status)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+      AND (
+          :search IS NULL OR :search = ''
+          OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+      AND (
+          :unassigned IS NULL
+          OR (:unassigned = true AND t.assignedAgent IS NULL)
+          OR (:unassigned = false AND t.assignedAgent IS NOT NULL)
+      )
+      AND (
+          :slaStatus IS NULL
+          OR EXISTS (
+              SELECT s
+              FROM SlaInstance s
+              WHERE s.ticket.id = t.id
+                AND s.status = :slaStatus
+                AND s.cycleNumber = (
+                    SELECT MAX(s2.cycleNumber)
+                    FROM SlaInstance s2
+                    WHERE s2.ticket.id = t.id
+                )
+          )
+      )
+    """)
+    Page<Ticket> findAssignedTicketsWithFilters(
+            @Param("agentId") Long agentId,
+            @Param("status") TicketStatus status,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("search") String search,
+            @Param("unassigned") Boolean unassigned,
+            @Param("slaStatus") SlaStatus slaStatus,
             Pageable pageable
     );
 
     @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee", "assignedManager", "assignedManager.employee"})
-    Page<Ticket> findByAssignedAgentIdInAndCreatedAtBetween(
-            Collection<Long> agentIds,
-            LocalDateTime from,
-            LocalDateTime to,
-            Pageable pageable
-    );
-
-    @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
-            "assignedAgent", "assignedAgent.employee", "assignedManager", "assignedManager.employee"})
-    Page<Ticket> findByAssignedAgentIdInAndStatusAndCreatedAtBetween(
-            Collection<Long> agentIds,
-            TicketStatus status,
-            LocalDateTime from,
-            LocalDateTime to,
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
+    @Query(value = """
+    SELECT t
+    FROM Ticket t
+    WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (:status IS NULL OR t.status = :status)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+      AND (
+          :search IS NULL OR :search = ''
+          OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+      AND (
+          :unassigned IS NULL
+          OR (:unassigned = true AND t.assignedAgent IS NULL)
+          OR (:unassigned = false AND t.assignedAgent IS NOT NULL)
+      )
+      AND (
+          :slaStatus IS NULL
+          OR EXISTS (
+              SELECT s
+              FROM SlaInstance s
+              WHERE s.ticket.id = t.id
+                AND s.status = :slaStatus
+                AND s.cycleNumber = (
+                    SELECT MAX(s2.cycleNumber)
+                    FROM SlaInstance s2
+                    WHERE s2.ticket.id = t.id
+                )
+          )
+      )
+    """, countQuery = """
+    SELECT COUNT(t)
+    FROM Ticket t
+    WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (:status IS NULL OR t.status = :status)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+      AND (
+          :search IS NULL OR :search = ''
+          OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+      AND (
+          :unassigned IS NULL
+          OR (:unassigned = true AND t.assignedAgent IS NULL)
+          OR (:unassigned = false AND t.assignedAgent IS NOT NULL)
+      )
+      AND (
+          :slaStatus IS NULL
+          OR EXISTS (
+              SELECT s
+              FROM SlaInstance s
+              WHERE s.ticket.id = t.id
+                AND s.status = :slaStatus
+                AND s.cycleNumber = (
+                    SELECT MAX(s2.cycleNumber)
+                    FROM SlaInstance s2
+                    WHERE s2.ticket.id = t.id
+                )
+          )
+      )
+    """)
+    Page<Ticket> findDepartmentTicketsWithFilters(
+            @Param("departmentId") Long departmentId,
+            @Param("status") TicketStatus status,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("search") String search,
+            @Param("unassigned") Boolean unassigned,
+            @Param("slaStatus") SlaStatus slaStatus,
             Pageable pageable
     );
 
     @Query("""
-    SELECT t
+    SELECT t.status, COUNT(t)
     FROM Ticket t
-    LEFT JOIN FETCH t.requester
-    LEFT JOIN FETCH t.department
-    LEFT JOIN FETCH t.category
-    LEFT JOIN FETCH t.subCategory
-    LEFT JOIN FETCH t.assignedAgent aa
-    LEFT JOIN FETCH aa.employee
-    LEFT JOIN FETCH t.assignedManager am
-    LEFT JOIN FETCH am.employee
-    WHERE t.assignedAgent.id IN :agentIds
-      AND (
-          LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
-          OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
-      )
+    WHERE t.department.id = :departmentId
+    GROUP BY t.status
     """)
-    Page<Ticket> searchMyAssignedTickets(
-            @Param("agentIds") Collection<Long> agentIds,
-            @Param("search") String search,
-            Pageable pageable
-    );
+    List<Object[]> countTicketsByStatusForDepartment(@Param("departmentId") Long departmentId);
 
-    boolean existsByCategoryId(Long categoryId);
+    @Query("""
+    SELECT t.status, COUNT(t)
+    FROM Ticket t
+    GROUP BY t.status
+    """)
+    List<Object[]> countAllTicketsByStatus();
 
-    boolean existsBySubCategoryId(Long subCategoryId);
 }

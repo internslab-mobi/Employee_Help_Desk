@@ -19,16 +19,37 @@ public class UserPrincipal implements UserDetails {
     private final String email;
     private final String password;
     private final UserRole role;
+    private final String timezone;
     private final boolean enabled;
     private final Collection<? extends GrantedAuthority> authorities;
 
-    public UserPrincipal(Long employeeId, String email, String password, UserRole role, boolean enabled, Collection<? extends GrantedAuthority> authorities) {
+    public UserPrincipal(
+            Long employeeId,
+            String email,
+            String password,
+            UserRole role,
+            String timezone,
+            boolean enabled,
+            Collection<? extends GrantedAuthority> authorities
+    ) {
         this.employeeId = employeeId;
         this.email = email;
         this.password = password;
         this.role = role;
+        this.timezone = (timezone != null && !timezone.isBlank()) ? timezone.trim() : "UTC";
         this.enabled = enabled;
         this.authorities = authorities;
+    }
+
+    public UserPrincipal(
+            Long employeeId,
+            String email,
+            String password,
+            UserRole role,
+            boolean enabled,
+            Collection<? extends GrantedAuthority> authorities
+    ) {
+        this(employeeId, email, password, role, "UTC", enabled, authorities);
     }
 
     public static UserPrincipal create(Employee employee) {
@@ -37,17 +58,21 @@ public class UserPrincipal implements UserDetails {
                 new SimpleGrantedAuthority("ROLE_" + roleName)
         );
 
-        boolean isEligible = Boolean.TRUE.equals(employee.getEnabled())
-                && employee.getEmploymentStatus() == EmploymentStatus.ACTIVE;
+        boolean isEligible = employee.getEmploymentStatus() == EmploymentStatus.ACTIVE;
 
         return new UserPrincipal(
                 employee.getId(),
                 employee.getEmail(),
                 employee.getPasswordHash(),
                 employee.getRole() != null ? employee.getRole() : UserRole.EMPLOYEE,
+                employee.getTimezone() != null ? employee.getTimezone() : "UTC",
                 isEligible,
                 authorities
         );
+    }
+
+    public java.time.ZoneId getZoneId() {
+        return java.time.ZoneId.of(this.timezone);
     }
 
     @Override

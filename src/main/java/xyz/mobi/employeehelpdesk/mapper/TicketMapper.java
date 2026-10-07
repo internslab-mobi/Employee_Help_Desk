@@ -2,10 +2,8 @@ package xyz.mobi.employeehelpdesk.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import xyz.mobi.employeehelpdesk.dto.ticket.CreateTicketRequest;
-import xyz.mobi.employeehelpdesk.dto.ticket.TicketResponse;
-import xyz.mobi.employeehelpdesk.entity.SlaInstance;
-import xyz.mobi.employeehelpdesk.entity.Ticket;
+import xyz.mobi.employeehelpdesk.dto.ticket.*;
+import xyz.mobi.employeehelpdesk.entity.*;
 
 @Mapper(
         componentModel = "spring",
@@ -14,6 +12,7 @@ import xyz.mobi.employeehelpdesk.entity.Ticket;
 public interface TicketMapper {
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "version", ignore = true)
     @Mapping(target = "ticketNumber", ignore = true)
     @Mapping(target = "requester", ignore = true)
     @Mapping(target = "department", ignore = true)
@@ -23,6 +22,7 @@ public interface TicketMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "assignedAgent", ignore = true)
     @Mapping(target = "assignedManager", ignore = true)
+    @Mapping(target = "assignedAt", ignore = true)
     @Mapping(target = "slaPolicy", ignore = true)
     @Mapping(target = "reopenCount", ignore = true)
     @Mapping(target = "resolutionSummary", ignore = true)
@@ -34,45 +34,70 @@ public interface TicketMapper {
     @Mapping(target = "resolvedAt", ignore = true)
     @Mapping(target = "reopenedAt", ignore = true)
     @Mapping(target = "withdrawnAt", ignore = true)
-    Ticket toEntity(CreateTicketRequest request);
-
+    @Mapping(target = "reopenReason", ignore = true)
+    Ticket toEntity(CreateTicketRequestDTO request);
 
     @Mapping(source = "ticket.id", target = "id")
-    @Mapping(source = "ticket.requester.id", target = "requesterId")
-    @Mapping(source = "ticket.requester.firstName", target = "requesterName")
-
-    @Mapping(source = "ticket.department.id", target = "departmentId")
-    @Mapping(source = "ticket.department.name", target = "departmentName")
-
-    @Mapping(source = "ticket.category.id", target = "categoryId")
-    @Mapping(source = "ticket.category.name", target = "categoryName")
-
-    @Mapping(source = "ticket.subCategory.id", target = "subCategoryId")
-    @Mapping(source = "ticket.subCategory.name", target = "subCategoryName")
-
-    @Mapping(
-            source = "ticket.assignedAgent.id",
-            target = "assignedAgentId"
-    )
-    @Mapping(
-            source = "ticket.assignedAgent.employee.firstName",
-            target = "assignedAgentName"
-    )
-    @Mapping(
-            source = "ticket.assignedManager.employee.id",
-            target = "assignedManagerId"
-    )
-    @Mapping(
-            source = "ticket.assignedManager.employee.firstName",
-            target = "assignedManagerName"
-    )
+    @Mapping(source = "ticket.requester", target = "requester")
+    @Mapping(source = "ticket.department", target = "department")
+    @Mapping(source = "ticket.category", target = "category")
+    @Mapping(source = "ticket.subCategory", target = "subCategory")
+    @Mapping(source = "ticket.assignedAgent.employee", target = "assignedAgent")
+    @Mapping(source = "ticket.assignedManager.id", target = "managerId")
     @Mapping(source = "slaInstance.status", target = "slaStatus")
     @Mapping(source = "ticket.assignedAt", target = "assignedAt")
-
     @Mapping(source = "ticket.status", target = "status")
     @Mapping(source = "ticket.createdAt", target = "createdAt")
+    @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
+    @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
+    TicketCreateResponseDTO toCreateResponse(Ticket ticket, SlaInstance slaInstance);
+
+    @Mapping(source = "ticket.id", target = "id")
+    @Mapping(source = "ticket.requester", target = "requester")
+    @Mapping(source = "ticket.department", target = "department")
+    @Mapping(source = "ticket.category", target = "category")
+    @Mapping(source = "ticket.subCategory", target = "subCategory")
+    @Mapping(source = "ticket.assignedAgent.employee", target = "assignedAgent")
+    @Mapping(source = "ticket.assignedManager.id", target = "managerId")
+    @Mapping(source = "slaInstance.status", target = "slaStatus")
+    @Mapping(source = "ticket.assignedAt", target = "assignedAt")
+    @Mapping(source = "ticket.status", target = "status")
     @Mapping(source = "ticket.updatedAt", target = "updatedAt")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
-    TicketResponse toResponse(Ticket ticket, SlaInstance slaInstance);
+    TicketUpdateResponseDTO toUpdateResponse(Ticket ticket, SlaInstance slaInstance);
+
+    @Mapping(source = "ticket.id", target = "id")
+    @Mapping(source = "ticket.requester", target = "requester")
+    @Mapping(source = "ticket.department", target = "department")
+    @Mapping(source = "ticket.category", target = "category")
+    @Mapping(source = "ticket.subCategory", target = "subCategory")
+    @Mapping(source = "ticket.assignedAgent.employee", target = "assignedAgent")
+    @Mapping(source = "ticket.assignedManager.id", target = "managerId")
+    @Mapping(source = "slaInstance.status", target = "slaStatus")
+    @Mapping(source = "ticket.assignedAt", target = "assignedAt")
+    @Mapping(source = "ticket.status", target = "status")
+    @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
+    @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
+    TicketResponseDTO toResponse(Ticket ticket, SlaInstance slaInstance);
+
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "name", expression = "java(mapEmployeeName(employee))")
+    IdNameResponseDTO toIdNameResponse(Employee employee);
+
+    IdNameResponseDTO toIdNameResponse(Department department);
+
+    IdNameResponseDTO toIdNameResponse(Category category);
+
+    IdNameResponseDTO toIdNameResponse(SubCategory subCategory);
+
+    default String mapEmployeeName(Employee employee) {
+        if (employee == null) {
+            return null;
+        }
+        if (employee.getLastName() != null && !employee.getLastName().isBlank()) {
+            return employee.getFirstName() + " " + employee.getLastName();
+        }
+        return employee.getFirstName();
+    }
 }
