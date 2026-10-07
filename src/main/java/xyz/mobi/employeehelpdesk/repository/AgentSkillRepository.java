@@ -12,5 +12,5 @@ public interface AgentSkillRepository
 
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"skill", "agent"})
     List<AgentSkill> findByAgentIdIn(java.util.Collection<Long> agentIds);
-
+    
 }

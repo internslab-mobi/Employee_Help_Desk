@@ -7,6 +7,7 @@ import xyz.mobi.employeehelpdesk.entity.Ticket;
 public interface SlaService {
     SlaInstance startSla(Ticket ticket);
     SlaInstance startReopenSla(Ticket ticket);
+    SlaInstance startBreachRecoverySla(Ticket ticket);
     SlaInstance pauseSla(Ticket ticket);
     SlaInstance resumeSla(Ticket ticket);
     SlaInstance completeSla(Ticket ticket);

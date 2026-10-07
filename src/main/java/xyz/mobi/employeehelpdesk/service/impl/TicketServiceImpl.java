@@ -468,7 +468,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Integer> getTicketSummary(TicketView view, Long employeeId) {
+    public Map<String, Integer> getTicketSummary(TicketView view, Long employeeId, Long departmentId) {
         if (view == null) {
             throw new BadRequestException("TicketView is required");
         }
@@ -488,10 +488,8 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if (view == TicketView.DEPARTMENT) {
-            Long departmentId = resolveDepartmentForManager(employeeId, currentEmployee);
-            List<Object[]> rows = departmentId != null
-                    ? ticketRepository.countTicketsByStatusForDepartment(departmentId)
-                    : ticketRepository.countAllTicketsByStatus();
+            Long targetDepartmentId = resolveDepartmentSummaryTarget(departmentId, currentEmployee);
+            List<Object[]> rows = ticketRepository.countTicketsByStatusForDepartment(targetDepartmentId);
 
             for (Object[] row : rows) {
                 TicketStatus status = (TicketStatus) row[0];
@@ -536,6 +534,30 @@ public class TicketServiceImpl implements TicketService {
         }
 
         return counts;
+    }
+
+    private Long resolveDepartmentSummaryTarget(Long departmentId, Employee currentEmployee) {
+        if (currentEmployee.getRole() != UserRole.MANAGER && currentEmployee.getRole() != UserRole.ADMIN) {
+            throw new AccessDeniedException("Only managers and admins can view department tickets");
+        }
+
+        if (currentEmployee.getRole() == UserRole.MANAGER) {
+            if (currentEmployee.getDepartment() == null) {
+                throw new BadRequestException("Manager is not assigned to a department");
+            }
+            return currentEmployee.getDepartment().getId();
+        }
+
+        // ADMIN role
+        if (departmentId == null) {
+            throw new BadRequestException("Department ID is required");
+        }
+
+        if (!departmentRepository.existsById(departmentId)) {
+            throw new ResourceNotFoundException("Department not found: " + departmentId);
+        }
+
+        return departmentId;
     }
 
     private Long resolveDepartmentForManager(Long employeeId, Employee currentEmployee) {
@@ -1461,6 +1483,14 @@ public class TicketServiceImpl implements TicketService {
         // Update agent's last assignment time
         agent.setLastAssignedAt(now);
 
+        // If SLA is breached, start a new 50% SLA cycle
+        SlaInstance currentSla;
+        if (isSlaBreached) {
+            currentSla = slaService.startBreachRecoverySla(ticket);
+        } else {
+            currentSla = latestSla;
+        }
+
         // Create history event
         HistoryEventType historyEvent = isReassignment
                 ? HistoryEventType.REASSIGNED
@@ -1502,7 +1532,7 @@ public class TicketServiceImpl implements TicketService {
                 isReassignment ? "reassigned" : "assigned", ticket.getId(), ticket.getTicketNumber(), agent.getId(),
                 assignedManager != null ? assignedManager.getId() : null);
 
-        return ticketMapper.toUpdateResponse(ticket, latestSla);
+        return ticketMapper.toUpdateResponse(ticket, currentSla);
     }
 
     @Override

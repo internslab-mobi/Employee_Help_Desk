@@ -33,7 +33,6 @@ import java.util.Map;
 public class TicketController {
 
     private final TicketService ticketService;
-    private final AuthService authService;
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -149,13 +148,15 @@ public class TicketController {
     @GetMapping("/summary")
     public ResponseEntity<Map<String, Integer>> getTicketSummary(
             @RequestParam TicketView view,
-            @RequestParam(required = false) Long employeeId
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) Long departmentId
     ) {
 
         return ResponseEntity.ok(
                 ticketService.getTicketSummary(
                         view,
-                        employeeId
+                        employeeId,
+                        departmentId
                 )
         );
     }

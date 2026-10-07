@@ -153,7 +153,24 @@ public class SlaServiceImpl implements SlaService {
     @Override
     @Transactional
     public SlaInstance startReopenSla(Ticket ticket) {
+        Instant baseInstant = ticket.getReopenedAt() != null
+                ? ticket.getReopenedAt()
+                : Instant.now();
+        return createReducedSlaCycle(ticket, baseInstant, "Reopened");
+    }
 
+    /**
+     * Starts a BREACH RECOVERY SLA cycle for assigned/reassigned tickets.
+     * Allocation = previous cycle's allocatedMinutes / 2.
+     * Warning ratio is preserved from the previous cycle's policy.
+     */
+    @Override
+    @Transactional
+    public SlaInstance startBreachRecoverySla(Ticket ticket) {
+        return createReducedSlaCycle(ticket, Instant.now(), "Breach recovery");
+    }
+
+    private SlaInstance createReducedSlaCycle(Ticket ticket, Instant baseInstant, String cycleType) {
         if (ticket.getSubCategory() == null) {
             throw new BadRequestException(
                     "Cannot start SLA without a subcategory"
@@ -174,7 +191,7 @@ public class SlaServiceImpl implements SlaService {
                 .findTopByTicketIdOrderByCycleNumberDesc(ticket.getId())
                 .orElseThrow(() ->
                         new InvalidStateException(
-                                "Cannot reopen SLA: no previous SLA cycle exists for ticket " + ticket.getId()
+                                "Cannot " + (cycleType.equalsIgnoreCase("reopen") || cycleType.equalsIgnoreCase("reopened") ? "reopen" : "start " + cycleType.toLowerCase()) + " SLA: no previous SLA cycle exists for ticket " + ticket.getId()
                         )
                 );
 
@@ -187,12 +204,12 @@ public class SlaServiceImpl implements SlaService {
         // 3. Determine cycle number
         int cycleNumber = previousSla.getCycleNumber() + 1;
 
-        // 4. Determine start time from reopen timestamp
-        Instant baseInstant = ticket.getReopenedAt() != null
-                ? ticket.getReopenedAt()
+        // 4. Determine start time
+        Instant effectiveBaseInstant = baseInstant != null
+                ? baseInstant
                 : Instant.now();
 
-        Instant startAt = workingCalendarService.moveToWorkingTime(baseInstant, departmentId, departmentZone);
+        Instant startAt = workingCalendarService.moveToWorkingTime(effectiveBaseInstant, departmentId, departmentZone);
 
         // 5. Calculate deadline
         Instant deadline =
@@ -243,8 +260,8 @@ public class SlaServiceImpl implements SlaService {
         SlaInstance savedSla = slaInstanceRepository.save(slaInstance);
         slaDynamicScheduler.scheduleSlaEvent(savedSla.getId(), savedSla.getNextEventAt());
 
-        log.info("Reopened SLA cycle {} started: ticketId={}, slaInstanceId={}, allocatedMinutes={}, deadline={}, nextEventType={}, nextEventAt={}",
-                cycleNumber, ticket.getId(), savedSla.getId(), newAllocatedMinutes, deadline, nextEventType, nextEventAt);
+        log.info("{} SLA cycle {} started: ticketId={}, slaInstanceId={}, allocatedMinutes={}, deadline={}, nextEventType={}, nextEventAt={}",
+                cycleType, cycleNumber, ticket.getId(), savedSla.getId(), newAllocatedMinutes, deadline, nextEventType, nextEventAt);
 
         return savedSla;
     }

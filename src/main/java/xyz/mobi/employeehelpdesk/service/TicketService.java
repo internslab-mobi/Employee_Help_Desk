@@ -46,7 +46,8 @@ public interface TicketService {
 
     Map<String, Integer> getTicketSummary(
             TicketView view,
-            Long employeeId
+            Long employeeId,
+            Long departmentId
     );
 
     TicketUpdateResponseDTO updateTicket(
