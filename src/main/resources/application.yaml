@@ -12,7 +12,7 @@ spring:
       max-request-size: 30MB
 
   datasource:
-    url: jdbc:mysql://localhost:3306/Interns_db?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&preserveInstants=true
+    url: jdbc:mysql://192.168.11.101:3306/Interns_db?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&preserveInstants=true
     username: ${db_uname}
     password: ${db_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
