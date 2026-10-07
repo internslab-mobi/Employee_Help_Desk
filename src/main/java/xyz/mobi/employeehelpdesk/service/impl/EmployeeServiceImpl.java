@@ -8,16 +8,20 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeePatchRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.UpdateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.DepartmentAgent;
 import xyz.mobi.employeehelpdesk.entity.DepartmentManager;
 import xyz.mobi.employeehelpdesk.entity.Employee;
+import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
+import xyz.mobi.employeehelpdesk.entity.enums.AttachmentType;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import xyz.mobi.employeehelpdesk.exception.BadRequestException;
@@ -28,12 +32,16 @@ import xyz.mobi.employeehelpdesk.repository.DepartmentAgentRepository;
 import xyz.mobi.employeehelpdesk.repository.DepartmentManagerRepository;
 import xyz.mobi.employeehelpdesk.repository.DepartmentRepository;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
+import xyz.mobi.employeehelpdesk.repository.TicketAttachmentRepository;
 import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.service.EmployeeService;
 import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
+import xyz.mobi.employeehelpdesk.validator.TicketAttachmentValidator;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -55,6 +63,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final AuthService authService;
     private final ObjectMapper objectMapper;
     private final EmailService emailService;
+    private final TicketAttachmentRepository ticketAttachmentRepository;
+    private final TicketAttachmentValidator ticketAttachmentValidator;
 
     @Override
     @Transactional
@@ -62,11 +72,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         Long currentEmployeeId = authService.getCurrentEmployeeId();
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Employee not found with id: " + currentEmployeeId
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with id: " + currentEmployeeId));
 
         if (currentEmployee.getRole() != UserRole.ADMIN) {
             throw new AccessDeniedException("Only ADMIN can create employees");
@@ -84,7 +91,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         Department department = null;
         if (request.departmentId() != null) {
             department = departmentRepository.findById(request.departmentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Department not found with id: " + request.departmentId()));
         }
 
         UserRole role = request.role() != null ? request.role() : UserRole.EMPLOYEE;
@@ -103,18 +111,22 @@ public class EmployeeServiceImpl implements EmployeeService {
         DepartmentManager manager = null;
         if (request.managerId() != null) {
             manager = departmentManagerRepository.findById(request.managerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Department manager not found with id: " + request.managerId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Department manager not found with id: " + request.managerId()));
 
             Long managerDepartmentId = (manager.getEmployee() != null && manager.getEmployee().getDepartment() != null)
                     ? manager.getEmployee().getDepartment().getId()
                     : null;
 
-            if (request.departmentId() == null || managerDepartmentId == null || !request.departmentId().equals(managerDepartmentId)) {
-                log.warn("Employee creation rejected: managerId={} does not belong to departmentId={}", request.managerId(), request.departmentId());
+            if (request.departmentId() == null || managerDepartmentId == null
+                    || !request.departmentId().equals(managerDepartmentId)) {
+                log.warn("Employee creation rejected: managerId={} does not belong to departmentId={}",
+                        request.managerId(), request.departmentId());
                 throw new BadRequestException("Selected manager does not belong to the employee's department");
             }
 
-            if (manager.getEmployee() != null && manager.getEmployee().getEmail() != null && manager.getEmployee().getEmail().equalsIgnoreCase(email)) {
+            if (manager.getEmployee() != null && manager.getEmployee().getEmail() != null
+                    && manager.getEmployee().getEmail().equalsIgnoreCase(email)) {
                 log.warn("Employee creation rejected: manager cannot be assigned to themselves for email={}", email);
                 throw new BadRequestException("Manager cannot be assigned to themselves as their own manager");
             }
@@ -134,7 +146,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setRole(role);
         employee.setPasswordHash(passwordHash);
         employee.setDateOfJoining(request.dateOfJoining() != null ? request.dateOfJoining() : LocalDate.now());
-        employee.setTimezone(request.timezone() != null && !request.timezone().isBlank() ? request.timezone().trim() : "UTC");
+        employee.setTimezone(
+                request.timezone() != null && !request.timezone().isBlank() ? request.timezone().trim() : "UTC");
         employee.setManager(manager);
 
         // 1. Save Employee first so MySQL/JPA generates the primary-key ID
@@ -143,7 +156,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         // 2. Generate employeeCode using generated Employee ID
         savedEmployee.setEmployeeCode(generateEmployeeCode(savedEmployee.getId()));
 
-        log.info("Employee created successfully: employeeId={}, employeeCode={}, role={}, departmentId={}, managerId={}",
+        log.info(
+                "Employee created successfully: employeeId={}, employeeCode={}, role={}, departmentId={}, managerId={}",
                 savedEmployee.getId(),
                 savedEmployee.getEmployeeCode(),
                 savedEmployee.getRole(),
@@ -154,21 +168,20 @@ public class EmployeeServiceImpl implements EmployeeService {
         String message = String.format(
                 """
                         Hello %s,
-                        
+
                         Your employee account has been successfully created.
-                        
+
                         Here are your login credentials:
                         Email: %s
                         Initial Password: %s
-                        
+
                         Please use your email and initial password to log in. For security reasons, please change your password after logging in.
-                        
+
                         Best regards,
                         Employee Helpdesk Team""",
                 savedEmployee.getFirstName(),
                 savedEmployee.getEmail(),
-                rawPassword
-        );
+                rawPassword);
 
         emailService.sendNotificationEmail(savedEmployee.getEmail(), subject, message);
 
@@ -209,11 +222,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Employee not found with id: " + currentEmployeeId
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with id: " + currentEmployeeId));
 
         Long departmentId = null;
 
@@ -221,8 +231,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             if (currentEmployee.getDepartment() == null) {
                 throw new BadRequestException(
-                        "Manager is not assigned to a department"
-                );
+                        "Manager is not assigned to a department");
             }
 
             departmentId = currentEmployee.getDepartment().getId();
@@ -230,8 +239,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Page<Employee> page = employeeRepository.findAllEmployees(
                 departmentId,
-                pageable
-        );
+                pageable);
 
         return page.map(this::toResponse);
     }
@@ -243,36 +251,29 @@ public class EmployeeServiceImpl implements EmployeeService {
             Long departmentId,
             EmploymentStatus status,
             UserRole role,
-            Pageable pageable
-    ) {
+            Pageable pageable) {
 
         Long currentEmployeeId = authService.getCurrentEmployeeId();
 
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Employee not found with id: " + currentEmployeeId
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with id: " + currentEmployeeId));
 
         if (currentEmployee.getRole() == UserRole.MANAGER) {
 
             if (currentEmployee.getDepartment() == null) {
                 throw new BadRequestException(
-                        "Manager is not assigned to a department"
-                );
+                        "Manager is not assigned to a department");
             }
 
-            Long managerDepartmentId =
-                    currentEmployee.getDepartment().getId();
+            Long managerDepartmentId = currentEmployee.getDepartment().getId();
 
             if (departmentId != null
                     && !departmentId.equals(managerDepartmentId)) {
 
                 throw new AccessDeniedException(
-                        "You are not authorized to search employees from this department"
-                );
+                        "You are not authorized to search employees from this department");
             }
 
             departmentId = managerDepartmentId;
@@ -283,8 +284,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 status,
                 role,
                 search,
-                pageable
-        );
+                pageable);
 
         return page.map(this::toResponse);
     }
@@ -297,18 +297,12 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Employee not found with id: " + currentEmployeeId
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with id: " + currentEmployeeId));
 
         Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Employee not found with id: " + id
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with id: " + id));
 
         if (id.equals(currentEmployeeId)) {
             return toResponse(employee);
@@ -326,16 +320,14 @@ public class EmployeeServiceImpl implements EmployeeService {
                     .equals(employee.getDepartment().getId())) {
 
                 throw new AccessDeniedException(
-                        "You are not authorized to view this employee"
-                );
+                        "You are not authorized to view this employee");
             }
 
             return toResponse(employee);
         }
 
         throw new AccessDeniedException(
-                "You are not authorized to view this employee"
-        );
+                "You are not authorized to view this employee");
     }
 
     @Override
@@ -343,24 +335,19 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void deactivateEmployee(Long id) {
 
         Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Employee not found with id: " + id
-                        )
-                );
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with id: " + id));
 
         if (employee.getRole() == UserRole.AGENT) {
 
-            DepartmentAgent agent =
-                    departmentAgentRepository
-                            .findByEmployeeId(id)
-                            .orElse(null);
+            DepartmentAgent agent = departmentAgentRepository
+                    .findByEmployeeId(id)
+                    .orElse(null);
 
             if (agent != null && hasActiveTickets(agent)) {
                 log.warn("Employee deactivation rejected: agent employeeId={} has active tickets", id);
                 throw new InvalidStateException(
-                        "Cannot deactivate agent because the agent has active tickets."
-                );
+                        "Cannot deactivate agent because the agent has active tickets.");
             }
         }
 
@@ -536,13 +523,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .departmentId(
                         employee.getDepartment() != null
                                 ? employee.getDepartment().getId()
-                                : null
-                )
+                                : null)
                 .departmentName(
                         employee.getDepartment() != null
                                 ? employee.getDepartment().getName()
-                                : null
-                )
+                                : null)
                 .employmentStatus(employee.getEmploymentStatus())
                 .role(employee.getRole())
                 .dateOfJoining(employee.getDateOfJoining())
@@ -564,13 +549,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .departmentId(
                         employee.getDepartment() != null
                                 ? employee.getDepartment().getId()
-                                : null
-                )
+                                : null)
                 .departmentName(
                         employee.getDepartment() != null
                                 ? employee.getDepartment().getName()
-                                : null
-                )
+                                : null)
                 .employmentStatus(employee.getEmploymentStatus())
                 .role(employee.getRole())
                 .dateOfJoining(employee.getDateOfJoining())
@@ -578,6 +561,191 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .timezone(employee.getTimezone())
                 .createdAt(employee.getCreatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public EmployeeResponseDTO updateEmployee(
+            Long employeeId,
+            UpdateEmployeeRequestDTO request,
+            MultipartFile profileImage
+    ) throws IOException {
+        if (employeeId == null) {
+            throw new BadRequestException("Employee ID is required");
+        }
+
+        final UpdateEmployeeRequestDTO effectiveRequest = request != null
+                ? request
+                : UpdateEmployeeRequestDTO.builder().build();
+
+        // 1. Validate immutable / forbidden fields for ALL roles
+        if (effectiveRequest.employeeCode() != null) {
+            throw new BadRequestException("employeeCode is system-generated and cannot be modified");
+        }
+        if (effectiveRequest.dateOfJoining() != null) {
+            throw new BadRequestException("dateOfJoining is immutable after creation");
+        }
+        if (effectiveRequest.password() != null || effectiveRequest.passwordHash() != null) {
+            throw new BadRequestException("Password changes must continue through the existing password APIs");
+        }
+
+        // 2. Fetch current authenticated employee
+        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        Employee currentEmployee = employeeRepository.findById(currentEmployeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + currentEmployeeId));
+
+        // 3. Fetch target employee to update
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+
+        boolean isAdmin = currentEmployee.getRole() == UserRole.ADMIN;
+
+        // 4. Role-based Scope & Field-level Authorization
+        if (!isAdmin) {
+            // EMPLOYEE, AGENT, MANAGER can only update their own profile
+            if (!currentEmployeeId.equals(employeeId)) {
+                log.warn("Employee update rejected: user {} is not authorized to update employee {}", currentEmployeeId, employeeId);
+                throw new AccessDeniedException("You are not authorized to update another employee's profile");
+            }
+
+            // Reject attempts to modify unauthorized/administrative fields
+            if (effectiveRequest.email() != null) {
+                throw new AccessDeniedException("You are not authorized to update email");
+            }
+            if (effectiveRequest.departmentId() != null) {
+                throw new AccessDeniedException("You are not authorized to update department");
+            }
+            if (effectiveRequest.managerId() != null) {
+                throw new AccessDeniedException("You are not authorized to update manager");
+            }
+            if (effectiveRequest.employmentStatus() != null) {
+                throw new AccessDeniedException("You are not authorized to update employment status");
+            }
+            if (effectiveRequest.role() != null) {
+                throw new AccessDeniedException("You are not authorized to update role");
+            }
+            if (effectiveRequest.dateOfExit() != null) {
+                throw new AccessDeniedException("You are not authorized to update date of exit");
+            }
+            if (effectiveRequest.timezone() != null) {
+                throw new AccessDeniedException("You are not authorized to update timezone");
+            }
+        }
+
+        // 5. Update common allowed fields (firstName, lastName, phone, designation)
+        if (effectiveRequest.firstName() != null) {
+            if (effectiveRequest.firstName().trim().isBlank()) {
+                throw new BadRequestException("First name cannot be blank");
+            }
+            employee.setFirstName(effectiveRequest.firstName().trim());
+        }
+
+        if (effectiveRequest.lastName() != null) {
+            employee.setLastName(effectiveRequest.lastName().trim().isEmpty() ? null : effectiveRequest.lastName().trim());
+        }
+
+        if (effectiveRequest.phone() != null) {
+            String trimmedPhone = effectiveRequest.phone().trim();
+            employee.setPhone(trimmedPhone.isEmpty() ? null : trimmedPhone);
+        }
+
+        if (effectiveRequest.designation() != null) {
+            String trimmedDesignation = effectiveRequest.designation().trim();
+            employee.setDesignation(trimmedDesignation.isEmpty() ? null : trimmedDesignation);
+        }
+
+        // 6. Update ADMIN-only fields
+        if (isAdmin) {
+            if (effectiveRequest.email() != null) {
+                if (effectiveRequest.email().trim().isBlank()) {
+                    throw new BadRequestException("Email cannot be blank");
+                }
+                String email = effectiveRequest.email().trim().toLowerCase();
+                if (!email.equalsIgnoreCase(employee.getEmail())) {
+                    if (Boolean.TRUE.equals(employeeRepository.existsByEmail(email))) {
+                        throw new DuplicateResourceException("Employee with email '" + email + "' already exists");
+                    }
+                    employee.setEmail(email);
+                }
+            }
+
+            if (effectiveRequest.departmentId() != null) {
+                Department department = departmentRepository.findById(effectiveRequest.departmentId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + effectiveRequest.departmentId()));
+                employee.setDepartment(department);
+            }
+
+            if (effectiveRequest.employmentStatus() != null) {
+                employee.setEmploymentStatus(effectiveRequest.employmentStatus());
+            }
+
+            if (effectiveRequest.role() != null) {
+                employee.setRole(effectiveRequest.role());
+            }
+
+            if (effectiveRequest.dateOfExit() != null) {
+                employee.setDateOfExit(effectiveRequest.dateOfExit());
+            }
+
+            if (effectiveRequest.timezone() != null) {
+                if (effectiveRequest.timezone().trim().isBlank()) {
+                    throw new BadRequestException("Timezone cannot be blank");
+                }
+                employee.setTimezone(effectiveRequest.timezone().trim());
+            }
+
+            if (effectiveRequest.managerId() != null) {
+                DepartmentManager manager = departmentManagerRepository.findById(effectiveRequest.managerId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Department manager not found with id: " + effectiveRequest.managerId()));
+
+                Long targetDeptId = employee.getDepartment() != null ? employee.getDepartment().getId() : null;
+                Long managerDeptId = (manager.getEmployee() != null && manager.getEmployee().getDepartment() != null)
+                        ? manager.getEmployee().getDepartment().getId()
+                        : null;
+
+                if (targetDeptId == null || managerDeptId == null || !targetDeptId.equals(managerDeptId)) {
+                    log.warn("Employee update rejected: managerId={} does not belong to departmentId={}", effectiveRequest.managerId(), targetDeptId);
+                    throw new BadRequestException("Selected manager does not belong to the employee's department");
+                }
+
+                if (manager.getEmployee() != null && manager.getEmployee().getId().equals(employee.getId())) {
+                    log.warn("Employee update rejected: manager cannot be assigned to themselves for employeeId={}", employee.getId());
+                    throw new BadRequestException("Manager cannot be assigned to themselves as their own manager");
+                }
+
+                employee.setManager(manager);
+            }
+        }
+
+        // 7. Handle Profile Image
+        if (profileImage != null && !profileImage.isEmpty()) {
+            ticketAttachmentValidator.validate(List.of(profileImage));
+            if (profileImage.getContentType() == null || !profileImage.getContentType().startsWith("image/")) {
+                throw new BadRequestException("Profile image must be an image (JPEG or PNG)");
+            }
+
+            byte[] fileData = profileImage.getBytes();
+
+            TicketAttachment attachment = ticketAttachmentRepository
+                    .findByEmployeeIdAndAttachmentType(employee.getId(), AttachmentType.PROFILE_IMG)
+                    .orElseGet(TicketAttachment::new);
+
+            attachment.setEmployee(employee);
+            attachment.setUploadedBy(currentEmployee);
+            attachment.setAttachmentType(AttachmentType.PROFILE_IMG);
+            attachment.setOriginalFilename(profileImage.getOriginalFilename() != null ? profileImage.getOriginalFilename() : "profile.jpg");
+            attachment.setMimeType(profileImage.getContentType());
+            attachment.setFileSize(profileImage.getSize());
+            attachment.setFileData(fileData);
+
+            ticketAttachmentRepository.save(attachment);
+            log.info("Profile image updated for employeeId={} by uploadedBy={}", employee.getId(), currentEmployeeId);
+        }
+
+        Employee savedEmployee = employeeRepository.save(employee);
+        log.info("Employee updated successfully: employeeId={}", savedEmployee.getId());
+
+        return toResponse(savedEmployee);
     }
 
     private boolean hasActiveTickets(DepartmentAgent agent) {
@@ -598,8 +766,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         } catch (Exception e) {
             throw new InvalidStateException(
-                    "Unable to verify agent ticket status counts."
-            );
+                    "Unable to verify agent ticket status counts.");
         }
     }
 }
