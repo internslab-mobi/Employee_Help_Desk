@@ -15,7 +15,6 @@ import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.auth.*;
 import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
-import xyz.mobi.employeehelpdesk.dto.employee.EmployeePatchRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.UpdateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
@@ -74,17 +73,6 @@ public class UserController {
             @PathVariable Long id
     ) {
         EmployeeResponseDTO response = employeeService.getEmployeeById(id);
-
-        return ResponseEntity.ok(response);
-    }
-
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN', 'MANAGER', 'AGENT')")
-    @PatchMapping("/{id}")
-    public ResponseEntity<EmployeeResponseDTO> patchEmployee(
-            @PathVariable Long id,
-            @Valid @RequestBody EmployeePatchRequestDTO request
-    ) {
-        EmployeeResponseDTO response = employeeService.patchEmployee(id, request);
 
         return ResponseEntity.ok(response);
     }
