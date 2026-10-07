@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
+import xyz.mobi.employeehelpdesk.exception.UnauthorizedException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -25,18 +26,26 @@ public class JwtTokenProvider {
     private String jwtSecret;
 
     @Getter
-    @Value("${security.jwt.expiration-ms:3600000}")
+    @Value("${security.jwt.expiration-ms:900000}")
     private long expirationMs;
 
-    public String generateToken(Long employeeId, UserRole role) {
+    @Getter
+    @Value("${security.jwt.refresh-expiration-ms:2700000}")
+    private long refreshExpirationMs;
+
+    public String generateToken(Long employeeId, UserRole role, String timezone) {
         try {
             Date now = new Date();
             Date expiryDate = new Date(now.getTime() + expirationMs);
 
+            String resolvedTimezone = (timezone != null && !timezone.isBlank()) ? timezone.trim() : "UTC";
+            // Validate that resolvedTimezone is a valid IANA ZoneId
+            java.time.ZoneId.of(resolvedTimezone);
+
             JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                     .subject(employeeId.toString())
-                    .claim("employeeId", employeeId)
                     .claim("role", role != null ? role.name() : UserRole.EMPLOYEE.name())
+                    .claim("timezone", resolvedTimezone)
                     .issueTime(now)
                     .expirationTime(expiryDate)
                     .build();
@@ -52,7 +61,7 @@ public class JwtTokenProvider {
             return signedJWT.serialize();
         } catch (Exception ex) {
             log.error("Could not generate JWT token: {}", ex.getMessage(), ex);
-            throw new RuntimeException("Error creating JWT token", ex);
+            throw new UnauthorizedException("Authentication failed");
         }
     }
 
@@ -82,14 +91,11 @@ public class JwtTokenProvider {
     public Long getEmployeeIdFromToken(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
-            Object employeeIdClaim = signedJWT.getJWTClaimsSet().getClaim("employeeId");
-            if (employeeIdClaim instanceof Number num) {
-                return num.longValue();
-            }
             String subject = signedJWT.getJWTClaimsSet().getSubject();
             return Long.parseLong(subject);
         } catch (Exception ex) {
-            throw new RuntimeException("Could not extract employee ID from token", ex);
+            log.warn("Could not extract employee ID from token: {}", ex.getMessage());
+            throw new UnauthorizedException("Invalid token");
         }
     }
 
@@ -99,7 +105,18 @@ public class JwtTokenProvider {
             String roleStr = signedJWT.getJWTClaimsSet().getStringClaim("role");
             return roleStr != null ? UserRole.valueOf(roleStr) : UserRole.EMPLOYEE;
         } catch (Exception ex) {
+            log.warn("Could not extract role from token: {}", ex.getMessage());
             return UserRole.EMPLOYEE;
+        }
+    }
+
+    public String getTimezoneFromToken(String token) {
+        try {
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            return signedJWT.getJWTClaimsSet().getStringClaim("timezone");
+        } catch (Exception ex) {
+            log.warn("Could not extract timezone from token: {}", ex.getMessage());
+            return null;
         }
     }
 

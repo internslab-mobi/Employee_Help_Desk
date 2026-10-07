@@ -4,39 +4,37 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "holidays")
+@Table(
+        name = "holidays",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_holiday_department_date",
+                        columnNames = {"department_id", "holiday_date"}
+                )
+        },
+        indexes = {
+                @Index(
+                        name = "idx_holiday_dept_date",
+                        columnList = "department_id, holiday_date"
+                )
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Holiday {
+public class Holiday extends BaseEntity {
 
-    @Id
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "department_id", nullable = false)
+    private Department department;
+
     @Column(name = "holiday_date", nullable = false)
     private LocalDate holidayDate;
 
     @Column(name = "holiday_name", nullable = false, length = 100)
     private String holidayName;
-
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 }
