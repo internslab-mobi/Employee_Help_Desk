@@ -68,92 +68,225 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public EmployeeCreateResponseDTO createEmployee(CreateEmployeeRequestDTO request) {
+
+        // 1. Get currently logged-in employee
         Long currentEmployeeId = authService.getCurrentEmployeeId();
+
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Employee not found with id: " + currentEmployeeId));
+                        "Employee not found with id: " + currentEmployeeId
+                ));
 
+        // 2. Only ADMIN can create employees
         if (currentEmployee.getRole() != UserRole.ADMIN) {
             throw new AccessDeniedException("Only ADMIN can create employees");
         }
 
+        // 3. Validate email
         if (request.email() == null || request.email().isBlank()) {
             throw new BadRequestException("Email is required");
         }
 
         String email = request.email().trim().toLowerCase();
+
         if (Boolean.TRUE.equals(employeeRepository.existsByEmail(email))) {
-            throw new DuplicateResourceException("Employee with email '" + email + "' already exists");
+            throw new DuplicateResourceException(
+                    "Employee with email '" + email + "' already exists"
+            );
         }
 
+        // 4. Determine role
+        UserRole role = request.role() != null
+                ? request.role()
+                : UserRole.EMPLOYEE;
+
+        // 5. Validate department
         Department department = null;
+
         if (request.departmentId() != null) {
+
             department = departmentRepository.findById(request.departmentId())
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Department not found with id: " + request.departmentId()));
+                            "Department not found with id: " + request.departmentId()
+                    ));
         }
 
-        UserRole role = request.role() != null ? request.role() : UserRole.EMPLOYEE;
+        // 6. Validate department and manager requirements
+        //
+        // EMPLOYEE and AGENT:
+        // departmentId -> required
+        // managerId    -> required
+        //
+        // MANAGER:
+        // managerId    -> must NOT be provided
+        //
+        // ADMIN:
+        // managerId    -> must NOT be provided
 
         if (role == UserRole.AGENT || role == UserRole.EMPLOYEE) {
+
             if (request.departmentId() == null) {
-                log.warn("Employee creation rejected: departmentId is required for role={}", role);
-                throw new BadRequestException("Department is required for " + role + " role");
+                log.warn(
+                        "Employee creation rejected: departmentId is required for role={}",
+                        role
+                );
+
+                throw new BadRequestException(
+                        "Department is required for " + role + " role"
+                );
             }
+
             if (request.managerId() == null) {
-                log.warn("Employee creation rejected: managerId is required for role={}", role);
-                throw new BadRequestException("Manager is required for " + role + " role");
+                log.warn(
+                        "Employee creation rejected: managerId is required for role={}",
+                        role
+                );
+
+                throw new BadRequestException(
+                        "Manager is required for " + role + " role"
+                );
             }
         }
 
+        // Manager cannot have another manager
+        if (role == UserRole.MANAGER && request.managerId() != null) {
+
+            log.warn(
+                    "Manager creation rejected: managerId must be null for MANAGER role"
+            );
+
+            throw new BadRequestException(
+                    "Manager cannot be assigned to a MANAGER"
+            );
+        }
+
+        // Admin cannot have a manager
+        if (role == UserRole.ADMIN && request.managerId() != null) {
+
+            log.warn(
+                    "Admin creation rejected: managerId must be null for ADMIN role"
+            );
+
+            throw new BadRequestException(
+                    "Manager cannot be assigned to an ADMIN"
+            );
+        }
+
+        // 7. Validate manager
         DepartmentManager manager = null;
+
         if (request.managerId() != null) {
+
             manager = departmentManagerRepository.findById(request.managerId())
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Department manager not found with id: " + request.managerId()));
+                            "Department manager not found with id: "
+                                    + request.managerId()
+                    ));
 
-            Long managerDepartmentId = (manager.getEmployee() != null && manager.getEmployee().getDepartment() != null)
-                    ? manager.getEmployee().getDepartment().getId()
-                    : null;
+            // Get the manager's department
+            Long managerDepartmentId =
+                    (manager.getEmployee() != null
+                            && manager.getEmployee().getDepartment() != null)
+                            ? manager.getEmployee().getDepartment().getId()
+                            : null;
 
-            if (request.departmentId() == null || managerDepartmentId == null
+            // Manager must belong to the same department
+            if (request.departmentId() == null
+                    || managerDepartmentId == null
                     || !request.departmentId().equals(managerDepartmentId)) {
-                log.warn("Employee creation rejected: managerId={} does not belong to departmentId={}",
-                        request.managerId(), request.departmentId());
-                throw new BadRequestException("Selected manager does not belong to the employee's department");
+
+                log.warn(
+                        "Employee creation rejected: managerId={} does not belong to departmentId={}",
+                        request.managerId(),
+                        request.departmentId()
+                );
+
+                throw new BadRequestException(
+                        "Selected manager does not belong to the employee's department"
+                );
             }
 
-            if (manager.getEmployee() != null && manager.getEmployee().getEmail() != null
+            // Manager cannot be the employee being created
+            if (manager.getEmployee() != null
+                    && manager.getEmployee().getEmail() != null
                     && manager.getEmployee().getEmail().equalsIgnoreCase(email)) {
-                log.warn("Employee creation rejected: manager cannot be assigned to themselves for email={}", email);
-                throw new BadRequestException("Manager cannot be assigned to themselves as their own manager");
+
+                log.warn(
+                        "Employee creation rejected: manager cannot be assigned to themselves for email={}",
+                        email
+                );
+
+                throw new BadRequestException(
+                        "Manager cannot be assigned to themselves as their own manager"
+                );
             }
         }
 
+        // 8. Generate secure password
         String rawPassword = generateSecurePassword();
+
         String passwordHash = passwordEncoder.encode(rawPassword);
 
+        // 9. Create Employee entity
         Employee employee = new Employee();
+
         employee.setFirstName(request.firstName().trim());
-        employee.setLastName(request.lastName() != null ? request.lastName().trim() : null);
+
+        employee.setLastName(
+                request.lastName() != null
+                        ? request.lastName().trim()
+                        : null
+        );
+
         employee.setEmail(email);
-        employee.setPhone(request.phone() != null ? request.phone().trim() : null);
-        employee.setDesignation(request.designation() != null ? request.designation().trim() : null);
+
+        employee.setPhone(
+                request.phone() != null
+                        ? request.phone().trim()
+                        : null
+        );
+
+        employee.setDesignation(
+                request.designation() != null
+                        ? request.designation().trim()
+                        : null
+        );
+
         employee.setDepartment(department);
+
         employee.setEmploymentStatus(EmploymentStatus.ACTIVE);
+
         employee.setRole(role);
+
         employee.setPasswordHash(passwordHash);
-        employee.setDateOfJoining(request.dateOfJoining() != null ? request.dateOfJoining() : LocalDate.now());
+
+        employee.setDateOfJoining(
+                request.dateOfJoining() != null
+                        ? request.dateOfJoining()
+                        : LocalDate.now()
+        );
+
         employee.setTimezone(
-                request.timezone() != null && !request.timezone().isBlank() ? request.timezone().trim() : "UTC");
+                request.timezone() != null
+                        && !request.timezone().isBlank()
+                        ? request.timezone().trim()
+                        : "UTC"
+        );
+
         employee.setManager(manager);
 
-        // 1. Save Employee first so MySQL/JPA generates the primary-key ID
+        // 10. Save employee first
+        // MySQL/JPA generates the employee ID
         Employee savedEmployee = employeeRepository.save(employee);
 
-        // 2. Generate employeeCode using generated Employee ID
-        savedEmployee.setEmployeeCode(generateEmployeeCode(savedEmployee.getId()));
+        // 11. Generate employee code using generated ID
+        savedEmployee.setEmployeeCode(
+                generateEmployeeCode(savedEmployee.getId())
+        );
+
+        // Save employee code
+        savedEmployee = employeeRepository.save(savedEmployee);
 
         log.info(
                 "Employee created successfully: employeeId={}, employeeCode={}, role={}, departmentId={}, managerId={}",
@@ -161,29 +294,41 @@ public class EmployeeServiceImpl implements EmployeeService {
                 savedEmployee.getEmployeeCode(),
                 savedEmployee.getRole(),
                 department != null ? department.getId() : null,
-                manager != null ? manager.getId() : null);
+                manager != null ? manager.getId() : null
+        );
 
-        String subject = "Welcome to Employee Helpdesk - Account Created";
+        // 12. Send welcome email
+        String subject =
+                "Welcome to Employee Helpdesk - Account Created";
+
         String message = String.format(
                 """
-                        Hello %s,
-
-                        Your employee account has been successfully created.
-
-                        Here are your login credentials:
-                        Email: %s
-                        Initial Password: %s
-
-                        Please use your email and initial password to log in. For security reasons, please change your password after logging in.
-
-                        Best regards,
-                        Employee Helpdesk Team""",
+                Hello %s,
+    
+                Your employee account has been successfully created.
+    
+                Here are your login credentials:
+                Email: %s
+                Initial Password: %s
+    
+                Please use your email and initial password to log in.
+                For security reasons, please change your password after logging in.
+    
+                Best regards,
+                Employee Helpdesk Team
+                """,
                 savedEmployee.getFirstName(),
                 savedEmployee.getEmail(),
-                rawPassword);
+                rawPassword
+        );
 
-        emailService.sendNotificationEmail(savedEmployee.getEmail(), subject, message);
+        emailService.sendNotificationEmail(
+                savedEmployee.getEmail(),
+                subject,
+                message
+        );
 
+        // 13. Return response
         return toCreateResponse(savedEmployee);
     }
 

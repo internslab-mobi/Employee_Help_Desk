@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Entity
 @Table(
-        name = "departments"
+        name = "hd_departments"
 )
 @Getter
 @Setter

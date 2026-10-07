@@ -10,7 +10,7 @@ import java.time.Instant;
 
 @Entity
 @Table(
-        name = "tickets",
+        name = "hd_tickets",
         indexes = {
                 @Index(name = "idx_ticket_requester", columnList = "requester_id"),
                 @Index(name = "idx_ticket_requester_created", columnList = "requester_id, created_at"),

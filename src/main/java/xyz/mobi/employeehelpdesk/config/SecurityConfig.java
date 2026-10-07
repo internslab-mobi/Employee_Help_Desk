@@ -49,9 +49,9 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/employees/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/employees/refresh-token").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/employees/forgot-password/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/user/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/user/refresh-token").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/user/forgot-password/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(
                                 "/swagger-ui/**",

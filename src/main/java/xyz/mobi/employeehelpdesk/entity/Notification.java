@@ -7,7 +7,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
 
 @Entity
 @Table(
-        name = "notifications",
+        name = "hd_notifications",
         indexes = {
                 @Index(
                         name = "idx_notification_recipient",

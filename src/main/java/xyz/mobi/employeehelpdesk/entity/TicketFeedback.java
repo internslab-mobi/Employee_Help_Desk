@@ -5,7 +5,7 @@ import lombok.*;
 
 @Entity
 @Table(
-        name = "ticket_feedback",
+        name = "hd_ticket_feedback",
         indexes = {
                 @Index(
                         name = "idx_ticket_feedback_ticket",

@@ -9,7 +9,7 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "password_reset_otps", indexes = {
+@Table(name = "hd_password_reset_otps", indexes = {
         @Index(name = "idx_otp_email", columnList = "email")
 })
 @Getter

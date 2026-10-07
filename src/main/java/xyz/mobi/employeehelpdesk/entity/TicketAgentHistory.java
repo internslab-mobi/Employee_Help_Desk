@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "ticket_agent_history")
+@Table(name = "hd_ticket_agent_history")
 @Getter
 @Setter
 public class TicketAgentHistory extends BaseEntity {

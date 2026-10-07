@@ -7,7 +7,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 
 @Entity
 @Table(
-        name = "sub_categories",
+        name = "hd_sub_categories",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_sub_category_category_name",

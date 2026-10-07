@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Entity
 @Table(
-        name = "categories",
+        name = "hd_categories",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_category_department_name",

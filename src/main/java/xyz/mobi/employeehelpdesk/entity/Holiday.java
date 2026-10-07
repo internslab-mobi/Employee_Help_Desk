@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(
-        name = "holidays",
+        name = "hd_holidays",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_holiday_department_date",

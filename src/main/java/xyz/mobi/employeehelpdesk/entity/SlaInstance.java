@@ -9,7 +9,7 @@ import java.time.Instant;
 
 @Entity
 @Table(
-        name = "sla_instances",
+        name = "hd_sla_instances",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_sla_instance_ticket_cycle",

@@ -7,7 +7,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.AttachmentType;
 
 @Entity
 @Table(
-        name = "ticket_attachments",
+        name = "hd_ticket_attachments",
         indexes = {
                 @Index(
                         name = "idx_ticket_attachment_ticket",

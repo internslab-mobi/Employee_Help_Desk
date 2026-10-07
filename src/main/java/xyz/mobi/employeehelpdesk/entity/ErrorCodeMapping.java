@@ -8,7 +8,7 @@ import lombok.*;
 
 @Entity
 @Table(
-        name = "error_codes",
+        name = "hd_error_codes",
         indexes = {
                 @Index(name = "idx_error_codes_exception_type", columnList = "exception_type")
         }

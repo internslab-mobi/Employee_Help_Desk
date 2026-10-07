@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "skills")
+@Table(name = "hd_skills")
 @Getter
 @Setter
 public class Skill extends BaseEntity {

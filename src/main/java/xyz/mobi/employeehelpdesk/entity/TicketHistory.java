@@ -8,7 +8,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 
 @Entity
 @Table(
-        name = "ticket_history",
+        name = "hd_ticket_history",
         indexes = {
                 @Index(
                         name = "idx_ticket_history_ticket",

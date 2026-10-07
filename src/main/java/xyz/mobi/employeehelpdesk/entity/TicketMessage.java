@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Entity
 @Table(
-        name = "ticket_messages",
+        name = "hd_ticket_messages",
         indexes = {
                 @Index(
                         name = "idx_ticket_message_ticket",

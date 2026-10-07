@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Entity
 @Table(
-        name = "sla_policies",
+        name = "hd_sla_policies",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_sla_policy_department_subcategory",

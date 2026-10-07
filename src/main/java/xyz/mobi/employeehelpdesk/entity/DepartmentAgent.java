@@ -10,7 +10,7 @@ import java.time.Instant;
 
 @Entity
 @Table(
-        name = "department_agents",
+        name = "hd_department_agents",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_department_agent_employee",
