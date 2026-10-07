@@ -153,7 +153,7 @@ public class UserController {
     @PatchMapping(value = "/{employeeId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EmployeeResponseDTO> updateEmployee(
             @PathVariable Long employeeId,
-            @Valid @RequestPart(value = "request", required = false) UpdateEmployeeRequestDTO request,
+            @Valid @RequestPart(value = "request", required = true) UpdateEmployeeRequestDTO request,
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
     ) throws IOException {
         EmployeeResponseDTO response = employeeService.updateEmployee(

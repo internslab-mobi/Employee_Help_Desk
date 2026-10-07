@@ -31,21 +31,9 @@ public record UpdateEmployeeRequestDTO(
 
         Long managerId,
 
-        EmploymentStatus employmentStatus,
-
         UserRole role,
 
-        LocalDate dateOfJoining,
-
-        LocalDate dateOfExit,
-
         @ValidTimezone
-        String timezone,
-
-        String employeeCode,
-
-        String password,
-
-        String passwordHash
+        String timezone
 ) {
 }

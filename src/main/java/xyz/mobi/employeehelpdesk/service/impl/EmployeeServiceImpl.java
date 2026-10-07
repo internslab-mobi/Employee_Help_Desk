@@ -39,6 +39,7 @@ import xyz.mobi.employeehelpdesk.validator.TicketAttachmentValidator;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -496,6 +497,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         employee.setEmploymentStatus(EmploymentStatus.INACTIVE);
+        employee.setDateOfExit(LocalDate.now());
         log.info("Employee deactivated successfully: employeeId={}", id);
     }
 
@@ -567,17 +569,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                 ? request
                 : UpdateEmployeeRequestDTO.builder().build();
 
-        // 1. Validate immutable / forbidden fields for ALL roles
-        if (effectiveRequest.employeeCode() != null) {
-            throw new BadRequestException("employeeCode is system-generated and cannot be modified");
-        }
-        if (effectiveRequest.dateOfJoining() != null) {
-            throw new BadRequestException("dateOfJoining is immutable after creation");
-        }
-        if (effectiveRequest.password() != null || effectiveRequest.passwordHash() != null) {
-            throw new BadRequestException("Password changes must continue through the existing password APIs");
-        }
-
         // 2. Fetch current authenticated employee
         Long currentEmployeeId = authService.getCurrentEmployeeId();
         Employee currentEmployee = employeeRepository.findById(currentEmployeeId)
@@ -607,14 +598,8 @@ public class EmployeeServiceImpl implements EmployeeService {
             if (effectiveRequest.managerId() != null) {
                 throw new AccessDeniedException("You are not authorized to update manager");
             }
-            if (effectiveRequest.employmentStatus() != null) {
-                throw new AccessDeniedException("You are not authorized to update employment status");
-            }
             if (effectiveRequest.role() != null) {
                 throw new AccessDeniedException("You are not authorized to update role");
-            }
-            if (effectiveRequest.dateOfExit() != null) {
-                throw new AccessDeniedException("You are not authorized to update date of exit");
             }
             if (effectiveRequest.timezone() != null) {
                 throw new AccessDeniedException("You are not authorized to update timezone");
@@ -664,16 +649,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.setDepartment(department);
             }
 
-            if (effectiveRequest.employmentStatus() != null) {
-                employee.setEmploymentStatus(effectiveRequest.employmentStatus());
-            }
-
             if (effectiveRequest.role() != null) {
                 employee.setRole(effectiveRequest.role());
-            }
-
-            if (effectiveRequest.dateOfExit() != null) {
-                employee.setDateOfExit(effectiveRequest.dateOfExit());
             }
 
             if (effectiveRequest.timezone() != null) {

@@ -75,7 +75,7 @@ public class Employee extends BaseEntity {
     @Column(
             name = "ticket_status_counts",
             columnDefinition = "JSON",
-            nullable = false,
+            nullable = true,
             insertable = false,
             updatable = false
     )
