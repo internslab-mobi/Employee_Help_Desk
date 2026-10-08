@@ -27,7 +27,7 @@ public interface EmployeeService {
 
     EmployeeResponseDTO getEmployeeById(Long id);
 
-        void deactivateEmployee(Long id);
+    void deactivateEmployee(Long id);
 
     EmployeeResponseDTO updateEmployee(
             Long employeeId,
