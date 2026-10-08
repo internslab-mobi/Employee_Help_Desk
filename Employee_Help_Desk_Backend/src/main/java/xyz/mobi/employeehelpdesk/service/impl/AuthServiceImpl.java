@@ -43,39 +43,108 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
 
+    /**
+     * Password policy:
+     * - Minimum 8 characters
+     * - At least one uppercase letter
+     * - At least one lowercase letter
+     * - At least one digit
+     * - At least one special character
+     */
+    private static final String PASSWORD_PATTERN =
+            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{8,}$";
+
     @Override
     @Transactional
     public LoginResponseDTO login(LoginRequestDTO request) {
-        if (request == null || request.email() == null || request.password() == null) {
+
+        // Validate request
+        if (request == null
+                || request.email() == null
+                || request.password() == null) {
+
             log.warn("Login failed: missing email or password");
+
             throw new UnauthorizedException("Invalid email or password");
         }
 
-        Employee employee = employeeRepository.findByEmail(request.email().trim())
+        // Find employee by email
+        Employee employee = employeeRepository
+                .findByEmail(request.email().trim())
                 .orElseThrow(() -> {
-                    log.warn("Login failed for email={}: invalid email or password", request.email());
-                    return new UnauthorizedException("Invalid email or password");
+
+                    log.warn(
+                            "Login failed for email={}: invalid email or password",
+                            request.email()
+                    );
+
+                    return new UnauthorizedException(
+                            "Invalid email or password"
+                    );
                 });
 
-        if (employee.getPasswordHash() == null || !passwordEncoder.matches(request.password(), employee.getPasswordHash())) {
-            log.warn("Login failed for email={}: invalid email or password", request.email());
-            throw new UnauthorizedException("Invalid email or password");
+        // Validate password
+        if (employee.getPasswordHash() == null
+                || !passwordEncoder.matches(
+                request.password(),
+                employee.getPasswordHash()
+        )) {
+
+            log.warn(
+                    "Login failed for email={}: invalid email or password",
+                    request.email()
+            );
+
+            throw new UnauthorizedException(
+                    "Invalid email or password"
+            );
         }
 
+        // Validate employment status
         if (employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
-            log.warn("Login failed for email={}, employeeId={}: account is not active", employee.getEmail(), employee.getId());
-            throw new UnauthorizedException("Employee account is not active");
+
+            log.warn(
+                    "Login failed for email={}, employeeId={}: account is not active",
+                    employee.getEmail(),
+                    employee.getId()
+            );
+
+            throw new UnauthorizedException(
+                    "Employee account is not active"
+            );
         }
 
-        UserRole role = employee.getRole() != null ? employee.getRole() : UserRole.EMPLOYEE;
-        String timezone = employee.getTimezone() != null ? employee.getTimezone() : "UTC";
-        String accessToken = jwtTokenProvider.generateToken(employee.getId(), role, timezone);
+        // Get employee role
+        UserRole role = employee.getRole() != null
+                ? employee.getRole()
+                : UserRole.EMPLOYEE;
+
+        // Get employee timezone
+        String timezone = employee.getTimezone() != null
+                ? employee.getTimezone()
+                : "UTC";
+
+        // Generate access token
+        String accessToken = jwtTokenProvider.generateToken(
+                employee.getId(),
+                role,
+                timezone
+        );
+
         long expiresIn = jwtTokenProvider.getExpirationMs();
+        
+        refreshTokenRepository.deleteByEmployeeId(employee.getId());
 
-        // Generate Refresh Token (45 min lifetime, max 3 usages)
+        // Generate new refresh token
         String refreshTokenStr = UUID.randomUUID().toString();
-        Instant refreshExpiresAt = Instant.now().plusMillis(jwtTokenProvider.getRefreshExpirationMs());
 
+        // Calculate refresh-token expiration
+        Instant refreshExpiresAt = Instant.now()
+                .plusMillis(
+                        jwtTokenProvider.getRefreshExpirationMs()
+                );
+
+        // Create new refresh token
         RefreshToken refreshToken = RefreshToken.builder()
                 .token(refreshTokenStr)
                 .employee(employee)
@@ -86,10 +155,16 @@ public class AuthServiceImpl implements AuthService {
                 .createdAt(Instant.now())
                 .build();
 
+        // Save new refresh token
         refreshTokenRepository.save(refreshToken);
 
-        log.info("Login successful: employeeId={}, role={}", employee.getId(), role);
+        log.info(
+                "Login successful: employeeId={}, role={}",
+                employee.getId(),
+                role
+        );
 
+        // Return login response
         return new LoginResponseDTO(
                 accessToken,
                 refreshTokenStr,
@@ -103,7 +178,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public TokenRefreshResponseDTO refreshToken(RefreshTokenRequestDTO request) {
-        if (request == null || request.refreshToken() == null || request.refreshToken().isBlank()) {
+        if (request == null
+                || request.refreshToken() == null
+                || request.refreshToken().isBlank()) {
+
             log.warn("Token refresh rejected: missing refresh token");
             throw new UnauthorizedException("Refresh token is required");
         }
@@ -113,25 +191,49 @@ public class AuthServiceImpl implements AuthService {
 
         // Atomically increment usage count and revoke if limit reached
         Integer updated = refreshTokenRepository.incrementUsageIfValid(tokenStr, now);
+
         if (updated == null || updated == 0) {
             log.warn("Token refresh failed: invalid, expired, or over-used token");
             throw new UnauthorizedException("Invalid or expired refresh token");
         }
 
         RefreshToken refreshToken = refreshTokenRepository.findByToken(tokenStr)
-                .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
+                .orElseThrow(() ->
+                        new UnauthorizedException("Invalid or expired refresh token")
+                );
 
         Employee employee = refreshToken.getEmployee();
-        if (employee == null || employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
-            log.warn("Token refresh failed for employeeId={}: account is not active", employee != null ? employee.getId() : null);
+
+        if (employee == null
+                || employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
+
+            log.warn(
+                    "Token refresh failed for employeeId={}: account is not active",
+                    employee != null ? employee.getId() : null
+            );
+
             throw new UnauthorizedException("Employee account is not active");
         }
 
-        UserRole role = employee.getRole() != null ? employee.getRole() : UserRole.EMPLOYEE;
-        String timezone = employee.getTimezone() != null ? employee.getTimezone() : "UTC";
-        String newAccessToken = jwtTokenProvider.generateToken(employee.getId(), role, timezone);
+        UserRole role = employee.getRole() != null
+                ? employee.getRole()
+                : UserRole.EMPLOYEE;
 
-        log.info("Token refreshed successfully: employeeId={}, role={}", employee.getId(), role);
+        String timezone = employee.getTimezone() != null
+                ? employee.getTimezone()
+                : "UTC";
+
+        String newAccessToken = jwtTokenProvider.generateToken(
+                employee.getId(),
+                role,
+                timezone
+        );
+
+        log.info(
+                "Token refreshed successfully: employeeId={}, role={}",
+                employee.getId(),
+                role
+        );
 
         return new TokenRefreshResponseDTO(
                 newAccessToken,
@@ -144,7 +246,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void changePassword(ChangePasswordRequestDTO request) {
-        if (request == null || request.currentPassword() == null || request.newPassword() == null || request.confirmNewPassword() == null) {
+
+        if (request == null
+                || request.currentPassword() == null
+                || request.newPassword() == null
+                || request.confirmNewPassword() == null) {
+
             throw new BadRequestException("All password fields are required");
         }
 
@@ -153,53 +260,100 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (!request.newPassword().equals(request.confirmNewPassword())) {
-            throw new BadRequestException("New password and confirm password do not match");
+            throw new BadRequestException(
+                    "New password and confirm password do not match"
+            );
         }
 
-        Long currentEmployeeId = getCurrentEmployeeId();
-        Employee employee = employeeRepository.findById(currentEmployeeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + currentEmployeeId));
+        // Validate password complexity
+        validatePassword(request.newPassword());
 
-        if (!passwordEncoder.matches(request.currentPassword(), employee.getPasswordHash())) {
-            log.warn("Password change failed for employeeId={}: current password incorrect", currentEmployeeId);
+        Long currentEmployeeId = getCurrentEmployeeId();
+
+        Employee employee = employeeRepository.findById(currentEmployeeId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Employee not found with id: " + currentEmployeeId
+                        )
+                );
+
+        if (!passwordEncoder.matches(
+                request.currentPassword(),
+                employee.getPasswordHash())) {
+
+            log.warn(
+                    "Password change failed for employeeId={}: current password incorrect",
+                    currentEmployeeId
+            );
+
             throw new BadRequestException("Current password is incorrect");
         }
 
-        if (passwordEncoder.matches(request.newPassword(), employee.getPasswordHash())) {
-            throw new BadRequestException("New password cannot be the same as current password");
+        if (passwordEncoder.matches(
+                request.newPassword(),
+                employee.getPasswordHash())) {
+
+            throw new BadRequestException(
+                    "New password cannot be the same as current password"
+            );
         }
 
-        employee.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        employee.setPasswordHash(
+                passwordEncoder.encode(request.newPassword())
+        );
+
         employeeRepository.save(employee);
 
         // Invalidate all active refresh tokens on password change
         refreshTokenRepository.deleteByEmployeeId(employee.getId());
 
-        log.info("Password changed successfully: employeeId={}", employee.getId());
+        log.info(
+                "Password changed successfully: employeeId={}",
+                employee.getId()
+        );
     }
 
     @Override
     @Transactional
     public void requestForgotPasswordOtp(ForgotPasswordOtpRequestDTO request) {
-        if (request == null || request.email() == null || request.email().isBlank()) {
+
+        if (request == null
+                || request.email() == null
+                || request.email().isBlank()) {
+
             throw new BadRequestException("Email is required");
         }
 
         String email = request.email().trim();
+
         Employee employee = employeeRepository.findByEmail(email)
                 .orElseThrow(() -> {
-                    log.warn("Password reset OTP request failed: no active employee found for email={}", email);
-                    return new ResourceNotFoundException("No active employee found with email: " + email);
+                    log.warn(
+                            "Password reset OTP request failed: no active employee found for email={}",
+                            email
+                    );
+
+                    return new ResourceNotFoundException(
+                            "No active employee found with email: " + email
+                    );
                 });
 
         if (employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
-            log.warn("Password reset OTP request failed for email={}, employeeId={}: account not active", email, employee.getId());
+            log.warn(
+                    "Password reset OTP request failed for email={}, employeeId={}: account not active",
+                    email,
+                    employee.getId()
+            );
+
             throw new BadRequestException("Employee account is not active");
         }
 
         // Generate 6-digit numeric OTP
         SecureRandom random = new SecureRandom();
-        String otp = String.format("%06d", random.nextInt(1000000));
+        String otp = String.format(
+                "%06d",
+                random.nextInt(1_000_000)
+        );
 
         // Invalidate/replace existing OTPs for this email
         passwordResetOtpRepository.deleteByEmail(email);
@@ -207,7 +361,9 @@ public class AuthServiceImpl implements AuthService {
         PasswordResetOtp resetOtp = PasswordResetOtp.builder()
                 .email(email)
                 .otpHash(passwordEncoder.encode(otp))
-                .otpExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES))
+                .otpExpiresAt(
+                        Instant.now().plus(10, ChronoUnit.MINUTES)
+                )
                 .otpAttemptCount(0)
                 .otpVerified(false)
                 .resetTokenHash(null)
@@ -220,16 +376,25 @@ public class AuthServiceImpl implements AuthService {
         emailService.sendNotificationEmail(
                 email,
                 "Password Reset OTP",
-                "Your OTP for password reset is: " + otp + ". This OTP is valid for 10 minutes."
+                "Your OTP for password reset is: "
+                        + otp
+                        + ". This OTP is valid for 10 minutes."
         );
 
-        log.info("Password reset OTP generated and sent to email={}", email);
+        log.info(
+                "Password reset OTP generated and sent to email={}",
+                email
+        );
     }
 
     @Override
     @Transactional
     public VerifyOtpResponseDTO verifyOtp(VerifyOtpRequestDTO request) {
-        if (request == null || request.email() == null || request.otp() == null) {
+
+        if (request == null
+                || request.email() == null
+                || request.otp() == null) {
+
             throw new BadRequestException("Email and OTP are required");
         }
 
@@ -237,7 +402,11 @@ public class AuthServiceImpl implements AuthService {
         String otp = request.otp().trim();
 
         Employee employee = employeeRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("No active employee found with email: " + email));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No active employee found with email: " + email
+                        )
+                );
 
         if (employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
             throw new BadRequestException("Employee account is not active");
@@ -245,34 +414,68 @@ public class AuthServiceImpl implements AuthService {
 
         PasswordResetOtp resetOtp = passwordResetOtpRepository
                 .findTopByEmailOrderByCreatedAtDesc(email)
-                .orElseThrow(() -> new BadRequestException("No OTP request found for this email. Please request a new OTP."));
+                .orElseThrow(() ->
+                        new BadRequestException(
+                                "No OTP request found for this email. Please request a new OTP."
+                        )
+                );
 
         if (resetOtp.isOtpVerified()) {
             throw new BadRequestException("OTP has already been verified");
         }
 
         if (resetOtp.getOtpExpiresAt().isBefore(Instant.now())) {
-            log.warn("OTP verification rejected for email={}: OTP expired", email);
-            throw new BadRequestException("OTP has expired. Please request a new OTP.");
+            log.warn(
+                    "OTP verification rejected for email={}: OTP expired",
+                    email
+            );
+
+            throw new BadRequestException(
+                    "OTP has expired. Please request a new OTP."
+            );
         }
 
         if (resetOtp.getOtpAttemptCount() >= 3) {
-            log.warn("OTP verification rejected for email={}: maximum attempts exceeded", email);
-            throw new BadRequestException("Maximum OTP attempts exceeded. Please request a new OTP.");
+            log.warn(
+                    "OTP verification rejected for email={}: maximum attempts exceeded",
+                    email
+            );
+
+            throw new BadRequestException(
+                    "Maximum OTP attempts exceeded. Please request a new OTP."
+            );
         }
 
-        if (!passwordEncoder.matches(otp, resetOtp.getOtpHash())) {
-            int newAttemptCount = resetOtp.getOtpAttemptCount() + 1;
+        if (!passwordEncoder.matches(
+                otp,
+                resetOtp.getOtpHash())) {
+
+            int newAttemptCount =
+                    resetOtp.getOtpAttemptCount() + 1;
+
             resetOtp.setOtpAttemptCount(newAttemptCount);
+
             passwordResetOtpRepository.save(resetOtp);
 
-            log.warn("OTP verification attempt failed for email={}, attempts={}", email, newAttemptCount);
+            log.warn(
+                    "OTP verification attempt failed for email={}, attempts={}",
+                    email,
+                    newAttemptCount
+            );
 
             if (newAttemptCount >= 3) {
-                throw new BadRequestException("Maximum OTP attempts exceeded. Please request a new OTP.");
+                throw new BadRequestException(
+                        "Maximum OTP attempts exceeded. Please request a new OTP."
+                );
             }
+
             int remainingAttempts = 3 - newAttemptCount;
-            throw new BadRequestException("Invalid OTP. " + remainingAttempts + " attempt(s) remaining.");
+
+            throw new BadRequestException(
+                    "Invalid OTP. "
+                            + remainingAttempts
+                            + " attempt(s) remaining."
+            );
         }
 
         // Mark OTP verification as successful
@@ -280,16 +483,31 @@ public class AuthServiceImpl implements AuthService {
 
         // Generate cryptographically secure, short-lived reset token
         byte[] randomBytes = new byte[32];
+
         new SecureRandom().nextBytes(randomBytes);
-        String resetToken = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+
+        String resetToken = Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(randomBytes);
 
         // Store only the hash of the reset token
-        resetOtp.setResetTokenHash(passwordEncoder.encode(resetToken));
-        resetOtp.setResetTokenExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
+        resetOtp.setResetTokenHash(
+                passwordEncoder.encode(resetToken)
+        );
+
+        resetOtp.setResetTokenExpiresAt(
+                Instant.now().plus(15, ChronoUnit.MINUTES)
+        );
+
         resetOtp.setResetTokenUsed(false);
+
         passwordResetOtpRepository.save(resetOtp);
 
-        log.info("Password reset OTP verified successfully for email={}, employeeId={}", email, employee.getId());
+        log.info(
+                "Password reset OTP verified successfully for email={}, employeeId={}",
+                email,
+                employee.getId()
+        );
 
         return new VerifyOtpResponseDTO(resetToken);
     }
@@ -297,68 +515,165 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequestDTO request) {
-        if (request == null || request.email() == null || request.resetToken() == null
-                || request.newPassword() == null || request.confirmNewPassword() == null) {
+
+        if (request == null
+                || request.email() == null
+                || request.resetToken() == null
+                || request.newPassword() == null
+                || request.confirmNewPassword() == null) {
+
             throw new BadRequestException("All fields are required");
         }
 
         if (!request.newPassword().equals(request.confirmNewPassword())) {
-            throw new BadRequestException("New password and confirm password do not match");
+            throw new BadRequestException(
+                    "New password and confirm password do not match"
+            );
         }
 
         if (request.newPassword().isBlank()) {
-            throw new BadRequestException("New password cannot be empty");
+            throw new BadRequestException(
+                    "New password cannot be empty"
+            );
         }
+
+        // Validate password complexity
+        validatePassword(request.newPassword());
 
         String email = request.email().trim();
         String resetToken = request.resetToken().trim();
 
         Employee employee = employeeRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("No active employee found with email: " + email));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No active employee found with email: " + email
+                        )
+                );
 
         if (employee.getEmploymentStatus() != EmploymentStatus.ACTIVE) {
-            throw new BadRequestException("Employee account is not active");
+            throw new BadRequestException(
+                    "Employee account is not active"
+            );
         }
 
         PasswordResetOtp resetOtp = passwordResetOtpRepository
                 .findTopByEmailOrderByCreatedAtDesc(email)
-                .orElseThrow(() -> new BadRequestException("Invalid or expired password reset token"));
+                .orElseThrow(() ->
+                        new BadRequestException(
+                                "Invalid or expired password reset token"
+                        )
+                );
 
         if (!resetOtp.isOtpVerified()) {
-            log.warn("Password reset rejected for email={}: OTP was not verified", email);
-            throw new BadRequestException("OTP verification required before resetting password");
+            log.warn(
+                    "Password reset rejected for email={}: OTP was not verified",
+                    email
+            );
+
+            throw new BadRequestException(
+                    "OTP verification required before resetting password"
+            );
         }
 
         if (resetOtp.isResetTokenUsed()) {
-            log.warn("Password reset rejected for email={}: reset token already used", email);
-            throw new BadRequestException("Reset token has already been used");
+            log.warn(
+                    "Password reset rejected for email={}: reset token already used",
+                    email
+            );
+
+            throw new BadRequestException(
+                    "Reset token has already been used"
+            );
         }
 
-        if (resetOtp.getResetTokenExpiresAt() == null || resetOtp.getResetTokenExpiresAt().isBefore(Instant.now())) {
-            log.warn("Password reset rejected for email={}: reset token expired", email);
-            throw new BadRequestException("Reset token has expired");
+        if (resetOtp.getResetTokenExpiresAt() == null
+                || resetOtp.getResetTokenExpiresAt().isBefore(Instant.now())) {
+
+            log.warn(
+                    "Password reset rejected for email={}: reset token expired",
+                    email
+            );
+
+            throw new BadRequestException(
+                    "Reset token has expired"
+            );
         }
 
-        if (resetOtp.getResetTokenHash() == null || !passwordEncoder.matches(resetToken, resetOtp.getResetTokenHash())) {
-            log.warn("Password reset rejected for email={}: invalid reset token", email);
-            throw new BadRequestException("Invalid password reset token");
+        if (resetOtp.getResetTokenHash() == null
+                || !passwordEncoder.matches(
+                resetToken,
+                resetOtp.getResetTokenHash())) {
+
+            log.warn(
+                    "Password reset rejected for email={}: invalid reset token",
+                    email
+            );
+
+            throw new BadRequestException(
+                    "Invalid password reset token"
+            );
         }
 
-        if (employee.getPasswordHash() != null && passwordEncoder.matches(request.newPassword(), employee.getPasswordHash())) {
-            throw new BadRequestException("New password cannot be the same as current password");
+        if (employee.getPasswordHash() != null
+                && passwordEncoder.matches(
+                request.newPassword(),
+                employee.getPasswordHash())) {
+
+            throw new BadRequestException(
+                    "New password cannot be the same as current password"
+            );
         }
 
-        employee.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        employee.setPasswordHash(
+                passwordEncoder.encode(request.newPassword())
+        );
+
         employeeRepository.save(employee);
 
         // Invalidate reset token immediately after successful password reset
         resetOtp.setResetTokenUsed(true);
+
         passwordResetOtpRepository.save(resetOtp);
 
         // Invalidate active refresh tokens
-        refreshTokenRepository.deleteByEmployeeId(employee.getId());
+        refreshTokenRepository.deleteByEmployeeId(
+                employee.getId()
+        );
 
-        log.info("Password reset completed successfully for email={}, employeeId={}", email, employee.getId());
+        log.info(
+                "Password reset completed successfully for email={}, employeeId={}",
+                email,
+                employee.getId()
+        );
+    }
+
+    /**
+     * Validates the application's password policy.
+     *
+     * Requirements:
+     * - Minimum 8 characters
+     * - At least one uppercase letter
+     * - At least one lowercase letter
+     * - At least one number
+     * - At least one special character
+     */
+    private void validatePassword(String password) {
+
+        if (password == null || password.isBlank()) {
+            throw new BadRequestException(
+                    "Password cannot be empty"
+            );
+        }
+
+        if (!password.matches(PASSWORD_PATTERN)) {
+            throw new BadRequestException(
+                    "Password must be at least 8 characters long and contain "
+                            + "at least one uppercase letter, "
+                            + "one lowercase letter, "
+                            + "one number, "
+                            + "and one special character"
+            );
+        }
     }
 
     @Override
@@ -387,16 +702,27 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private UserPrincipal getAuthenticatedPrincipal() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
-            throw new UnauthorizedException("User is not authenticated");
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+
+            throw new UnauthorizedException(
+                    "User is not authenticated"
+            );
         }
 
         Object principal = authentication.getPrincipal();
+
         if (principal instanceof UserPrincipal userPrincipal) {
             return userPrincipal;
         }
 
-        throw new UnauthorizedException("Invalid authentication principal");
+        throw new UnauthorizedException(
+                "Invalid authentication principal"
+        );
     }
 }
