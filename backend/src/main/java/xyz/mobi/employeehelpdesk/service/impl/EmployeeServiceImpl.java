@@ -39,7 +39,6 @@ import xyz.mobi.employeehelpdesk.validator.TicketAttachmentValidator;
 
 import java.io.IOException;
 import java.security.SecureRandom;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -66,8 +65,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final TicketAttachmentRepository ticketAttachmentRepository;
     private final TicketAttachmentValidator ticketAttachmentValidator;
 
-    @Override
     @Transactional
+    @Override
     public EmployeeCreateResponseDTO createEmployee(CreateEmployeeRequestDTO request) {
 
         // 1. Get currently logged-in employee
@@ -359,8 +358,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         return new String(chars);
     }
 
-    @Override
     @Transactional(readOnly = true)
+    @Override
     public Page<EmployeeResponseDTO> getAllEmployees(Pageable pageable) {
 
         Long currentEmployeeId = authService.getCurrentEmployeeId();
@@ -389,8 +388,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         return page.map(this::toResponse);
     }
 
-    @Override
     @Transactional(readOnly = true)
+    @Override
     public Page<EmployeeResponseDTO> searchEmployees(
             String search,
             Long departmentId,
@@ -434,8 +433,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         return page.map(this::toResponse);
     }
 
-    @Override
     @Transactional(readOnly = true)
+    @Override
     public EmployeeResponseDTO getEmployeeById(Long id) {
 
         Long currentEmployeeId = authService.getCurrentEmployeeId();
@@ -475,8 +474,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 "You are not authorized to view this employee");
     }
 
-    @Override
     @Transactional
+    @Override
     public void deactivateEmployee(Long id) {
 
         Employee employee = employeeRepository.findById(id)
@@ -554,8 +553,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .build();
     }
 
-    @Override
     @Transactional
+    @Override
     public EmployeeResponseDTO updateEmployee(
             Long employeeId,
             UpdateEmployeeRequestDTO request,
