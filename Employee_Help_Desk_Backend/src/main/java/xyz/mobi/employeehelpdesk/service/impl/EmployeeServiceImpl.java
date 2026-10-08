@@ -591,6 +591,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             if (effectiveRequest.email() != null) {
                 throw new AccessDeniedException("You are not authorized to update email");
             }
+
             if (effectiveRequest.departmentId() != null) {
                 throw new AccessDeniedException("You are not authorized to update department");
             }
