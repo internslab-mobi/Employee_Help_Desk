@@ -21,8 +21,7 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager(ERROR_CODE_CACHE);
         cacheManager.setCaffeine(Caffeine.newBuilder()
-                .maximumSize(500)
-                .expireAfterWrite(1, TimeUnit.HOURS));
+                .maximumSize(500));
         return cacheManager;
     }
 }
