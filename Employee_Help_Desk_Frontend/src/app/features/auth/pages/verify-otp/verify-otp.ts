@@ -259,6 +259,6 @@ export class VerifyOtp implements OnInit, OnDestroy {
         this.errorMessage.set(err.error?.message || 'Failed to resend OTP. Please try again.');
       }
     });
-    
+
   }
 }

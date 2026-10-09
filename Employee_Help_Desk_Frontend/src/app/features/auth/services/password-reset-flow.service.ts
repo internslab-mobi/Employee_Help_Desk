@@ -6,7 +6,7 @@ import { AuthApiResponse,
   ForgotPasswordRequest,
   ResetPasswordRequest,
   VerifyOtpRequest,
-  VerifyOtpResponse 
+  VerifyOtpResponse
 } from '../../../core/models/auth.models';
 
 export interface VerifyOtpResult {
@@ -21,7 +21,7 @@ export interface VerifyOtpResult {
 })
 export class PasswordResetFlowService {
   private readonly http = inject(HttpClient);
-  
+
   readonly MAX_ATTEMPTS = 3;
   readonly OTP_VALIDITY_SECONDS = 120; // 2 minutes
 
