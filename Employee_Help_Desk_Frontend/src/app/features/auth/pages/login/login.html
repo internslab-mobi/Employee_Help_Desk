@@ -1,0 +1,157 @@
+<div class="login-page">
+
+  <!-- Decorative background shapes -->
+  <div class="decor-circle circle-one"></div>
+  <div class="decor-circle circle-two"></div>
+  <div class="decor-circle circle-three"></div>
+
+  <!-- Main Login Card -->
+  <div class="login-card">
+
+    <!-- =========================
+         LEFT SIDE - ILLUSTRATION
+         ========================= -->
+    <div class="illustration-section">
+
+      <div class="illustration-content">
+
+        <h1>Support Is <br>Always Within Reach</h1>
+
+        <p>
+          From Requests to Resolutions, We’ve Got You.
+        </p>
+
+        <img 
+        src="/undraw_login_weas.svg" 
+        alt="Customer Support" 
+        class="support-illustration">
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         RIGHT SIDE - LOGIN FORM
+         ========================= -->
+    <div class="login-section">
+
+      <div class="login-content">
+
+        <!-- Header -->
+        <div class="login-header">
+
+          <h2>Help Desk</h2>
+          <p>Sign in to access your Employee Help Desk</p>
+
+        </div>
+
+        <!-- Login Form -->
+        <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
+
+          <!-- Email -->
+          <div class="form-group">
+
+            <label for="email">Work email</label>
+
+            <input
+              id="email"
+              type="email"
+              formControlName="email"
+              placeholder="name@company.com"
+              autocomplete="email"
+            />
+
+            @if (email?.touched && email?.invalid) {
+
+              @if (email?.errors?.['required']) {
+                <small class="error-message">
+                  Email is required.
+                </small>
+              }
+
+              @if (email?.errors?.['email']) {
+                <small class="error-message">
+                  Please enter a valid email address.
+                </small>
+              }
+
+            }
+
+          </div>
+
+
+          <!-- Password -->
+          <div class="form-group">
+
+            <label for="password">
+              Password
+            </label>
+
+            <div class="password-wrapper">
+
+              <input
+                id="password"
+                [type]="showPassword ? 'text' : 'password'"
+                formControlName="password"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+              />
+
+              <button
+                type="button"
+                class="password-toggle"
+                (click)="togglePassword()"
+              >
+                {{ showPassword ? 'Hide' : 'Show' }}
+              </button>
+
+            </div>
+
+            @if (password?.touched && password?.invalid) {
+
+              <small class="error-message">
+                Password is required.
+              </small>
+
+            }
+
+          </div>
+
+
+          <!-- Forgot Password -->
+          <div class="forgot-password">
+
+            <!--
+              Intentionally no routing/functionality yet.
+            -->
+            <a routerLink="/forgot-password">
+              Forgot Password?
+            </a>
+
+          </div>
+
+
+          <!-- Login Button -->
+          <button
+            type="submit"
+            class="login-button"
+          >
+            Login
+          </button>
+
+        </form>
+
+
+        <!-- Bottom text -->
+        <p class="login-footer">
+          Employee Help Desk
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

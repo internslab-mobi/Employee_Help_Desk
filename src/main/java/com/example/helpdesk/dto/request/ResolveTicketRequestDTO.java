@@ -1,0 +1,17 @@
+package com.example.helpdesk.dto.request;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ResolveTicketRequestDTO {
+
+    @NotBlank(message = "Resolution summary is required")
+    private String resolutionSummary;
+}
