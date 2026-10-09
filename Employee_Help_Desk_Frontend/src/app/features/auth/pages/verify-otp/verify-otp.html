@@ -29,6 +29,12 @@
         </p>
       </div>
 
+      <!-- Dev-only Mock OTP Badge -->
+      <div class="mock-otp-badge" role="note">
+        <span class="badge-tag">Dev Mode</span>
+        <span class="badge-text">Mock OTP is <strong>123456</strong></span>
+      </div>
+
       <!-- Verification Attempts Indicator -->
       <div class="attempts-indicator" [class.attempts-warning]="remainingAttempts() === 1" [class.attempts-exhausted]="isLocked()">
         <span class="attempts-icon" aria-hidden="true">●</span>
@@ -103,7 +109,7 @@
         }
       </button>
 
-      <!-- Resend OTP Option with 120s Countdown -->
+      <!-- Resend OTP Option with 30s Countdown -->
       <div class="resend-section">
         <span class="resend-label">Didn't receive code?</span>
         @if (countdown() > 0) {
@@ -114,7 +120,6 @@
           <button
             type="button"
             class="btn-resend-active"
-            [disabled]="isVerifying()"
             (click)="onResend()"
           >
             Resend OTP
