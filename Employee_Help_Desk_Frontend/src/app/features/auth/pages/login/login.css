@@ -261,6 +261,11 @@
   background: #174dbf;
 }
 
+.login-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 /* =========================================
    FOOTER
    ========================================= */
@@ -357,4 +362,4 @@
   .login-header p {
     font-size: 13.5px;
   }
-}
+}

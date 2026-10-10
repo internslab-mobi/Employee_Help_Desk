@@ -1,0 +1,252 @@
+
+<div class="dashboard-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <div class="brand">
+      <div>
+        <h4>Help Desk</h4>
+        <small>Agent Workspace</small>
+      </div>
+    </div>
+
+    <div class="nav-heading">WORKSPACE</div>
+
+    <a class="nav-item active" routerLink="/dashboard/agent">
+      <i class="bi bi-grid"></i>
+      <span>Dashboard</span>
+    </a>
+
+    <a class="nav-item" routerLink="/dashboard/agent">
+      <i class="bi bi-ticket-detailed"></i>
+      <span>My Tickets</span>
+    </a>
+
+    <a class="nav-item" routerLink="/dashboard/agent">
+      <i class="bi bi-clock-history"></i>
+      <span>SLA Monitoring</span>
+    </a>
+
+    <div class="sidebar-footer">
+      <div class="agent-avatar">D</div>
+      <div class="agent-info">
+        <strong>Support Agent</strong>
+        <small>Agent Account</small>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Top Header -->
+    <header class="topbar">
+      <div>
+        <h2>Agent Dashboard</h2>
+        <p>Track your tickets and manage your workload.</p>
+      </div>
+
+      <div class="topbar-actions">
+        <button type="button" class="icon-button"
+                aria-label="Notifications">
+          <i class="bi bi-bell"></i>
+        </button>
+
+        <div class="profile-avatar">D</div>
+      </div>
+    </header>
+
+    <!-- Welcome -->
+    <section class="welcome-section">
+      <div>
+        <h3>Welcome back!</h3>
+        <p>Here's an overview of your support activities.</p>
+      </div>
+      <span class="role-badge">
+        <i class="bi bi-person-workspace"></i>
+        Support Agent
+      </span>
+    </section>
+
+    <!-- Summary Cards -->
+    <section class="summary-grid">
+
+      <article class="summary-card">
+        <div class="card-icon assigned-icon">
+          <i class="bi bi-ticket-perforated"></i>
+        </div>
+        <p>Assigned to Me</p>
+        <h3>{{ totalAssigned }}</h3>
+        <small>Tickets in your queue</small>
+      </article>
+
+      <article class="summary-card">
+        <div class="card-icon progress-icon">
+          <i class="bi bi-arrow-repeat"></i>
+        </div>
+        <p>In Progress</p>
+        <h3>{{ inProgress }}</h3>
+        <small>Currently being handled</small>
+      </article>
+
+      <article class="summary-card">
+        <div class="card-icon sla-icon">
+          <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <p>SLA At Risk</p>
+        <h3>{{ slaAtRisk }}</h3>
+        <small>Needs attention</small>
+      </article>
+
+      <article class="summary-card">
+        <div class="card-icon resolved-icon">
+          <i class="bi bi-check-circle"></i>
+        </div>
+        <p>Resolved Today</p>
+        <h3>{{ resolvedToday }}</h3>
+        <small>Completed today</small>
+      </article>
+
+    </section>
+
+    <!-- Tickets -->
+    <section class="tickets-section">
+
+      <div class="section-header">
+        <div>
+          <h3>My Assigned Tickets</h3>
+          <p>Tickets assigned to you for resolution.</p>
+        </div>
+
+        <button type="button" class="refresh-button">
+          <i class="bi bi-arrow-clockwise"></i>
+          Refresh
+        </button>
+      </div>
+
+      <!-- Search and Filters -->
+      <div class="filters">
+
+        <div class="search-box">
+          <i class="bi bi-search"></i>
+          <input
+            type="text"
+            placeholder="Search ticket number or description"
+            aria-label="Search assigned tickets">
+        </div>
+
+        <select aria-label="Filter by status">
+          <option value="">All Statuses</option>
+          <option value="NEW">New</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="WAITING_FOR_EMPLOYEE">
+            Waiting for Employee
+          </option>
+          <option value="RESOLVED">Resolved</option>
+          <option value="REOPENED">Reopened</option>
+        </select>
+
+        <select aria-label="Filter by priority">
+          <option value="">All Priorities</option>
+          <option value="CRITICAL">Critical</option>
+          <option value="HIGH">High</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="LOW">Low</option>
+        </select>
+
+      </div>
+
+      <!-- Table -->
+      <div class="table-container">
+        <table>
+
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Description</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>SLA Deadline</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            <tr>
+              <td>
+                <strong>HD_1042</strong>
+                <small>Priya</small>
+              </td>
+              <td>Laptop is not starting</td>
+              <td>
+                <span class="priority critical">Critical</span>
+              </td>
+              <td>
+                <span class="status in-progress">In Progress</span>
+              </td>
+              <td>Example deadline</td>
+              <td>
+                <button type="button" class="view-button">
+                  View
+                </button>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <strong>HD_1043</strong>
+                <small>Rahul</small>
+              </td>
+              <td>Password reset request</td>
+              <td>
+                <span class="priority high">High</span>
+              </td>
+              <td>
+                <span class="status new">New</span>
+              </td>
+              <td>Example deadline</td>
+              <td>
+                <button type="button" class="view-button">
+                  View
+                </button>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <strong>HD_1044</strong>
+                <small>Ananya</small>
+              </td>
+              <td>Access card is not working</td>
+              <td>
+                <span class="priority medium">Medium</span>
+              </td>
+              <td>
+                <span class="status waiting">Waiting for Employee</span>
+              </td>
+              <td>Example deadline</td>
+              <td>
+                <button type="button" class="view-button">
+                  View
+                </button>
+              </td>
+            </tr>
+
+          </tbody>
+
+        </table>
+      </div>
+
+      <p class="demo-note">
+        Sample data for UI development only. Live ticket data will come
+        from the backend API.
+      </p>
+
+    </section>
+
+  </main>
+
+</div>
