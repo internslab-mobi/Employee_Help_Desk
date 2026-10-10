@@ -150,4 +150,4 @@ export class AgentDashboard implements OnInit {
       this.router.navigate(['/profile']);
     }
   }
-}
+}
