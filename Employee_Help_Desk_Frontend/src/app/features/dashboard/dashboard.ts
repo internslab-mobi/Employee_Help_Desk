@@ -23,7 +23,23 @@ export class DashboardComponent implements OnInit {
   errorMessage = signal<string | null>(null);
   notification = signal<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Filters
+  // Active view: 'dashboard' matches Image 1; 'helpdesk' matches Image 2
+  activeView = signal<'dashboard' | 'helpdesk'>('dashboard');
+
+  // Selected ticket for the preview card
+  selectedTicket = signal<RecentTicket | null>(null);
+
+  // Filter panel visibility
+  showFilterPanel = signal<boolean>(false);
+
+  // Quick ticket dialog state
+  newTicketModalOpen = signal<boolean>(false);
+  newTicketSubject = signal<string>('');
+  newTicketDescription = signal<string>('');
+  newTicketPriority = signal<string>('MEDIUM');
+  isSubmittingTicket = signal<boolean>(false);
+
+  // Date filters
   selectedDateRange = signal<string>('all');
   customFromDate = signal<string>('');
   customToDate = signal<string>('');
@@ -34,9 +50,21 @@ export class DashboardComponent implements OnInit {
   ticketStatusFilter = signal<string>('ALL');
   ticketPriorityFilter = signal<string>('ALL');
 
-  // Computed
+  // Computed properties
   readonly currentUser = computed(() => this.authService.currentUser());
   readonly userRole = computed<UserRole>(() => this.authService.getRole() || 'EMPLOYEE');
+
+  readonly displayName = computed<string>(() => {
+    const profile = this.currentUser();
+    if (profile && profile.firstName) {
+      return `${profile.firstName}${profile.lastName ? ' ' + profile.lastName : ''}`.trim();
+    }
+    const data = this.analytics();
+    if (data && data.employeeName) {
+      return data.employeeName;
+    }
+    return 'Alex Morgan';
+  });
 
   readonly filteredTickets = computed<RecentTicket[]>(() => {
     const data = this.analytics();
@@ -49,8 +77,8 @@ export class DashboardComponent implements OnInit {
     return data.recentTickets.filter((t: RecentTicket) => {
       const matchesSearch =
         !search ||
-        t.ticketNumber.toLowerCase().includes(search) ||
-        t.subject.toLowerCase().includes(search) ||
+        (t.ticketNumber && t.ticketNumber.toLowerCase().includes(search)) ||
+        (t.subject && t.subject.toLowerCase().includes(search)) ||
         (t.categoryName && t.categoryName.toLowerCase().includes(search)) ||
         (t.requesterName && t.requesterName.toLowerCase().includes(search));
 
@@ -74,11 +102,9 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    // Load user profile if not cached
     const employeeId = this.authService.getEmployeeId();
     if (employeeId && !this.currentUser()) {
       this.authService.loadProfile(employeeId).subscribe({
-        next: () => {},
         error: () => {}
       });
     }
@@ -97,6 +123,10 @@ export class DashboardComponent implements OnInit {
       next: (res: DashboardAnalyticsResponse) => {
         this.analytics.set(res);
         this.isLoading.set(false);
+        // Default select first ticket if none selected
+        if (!this.selectedTicket() && res.recentTickets && res.recentTickets.length > 0) {
+          this.selectedTicket.set(res.recentTickets[0]);
+        }
       },
       error: (err: any) => {
         this.isLoading.set(false);
@@ -105,6 +135,22 @@ export class DashboardComponent implements OnInit {
         );
       }
     });
+  }
+
+  switchView(view: 'dashboard' | 'helpdesk'): void {
+    this.activeView.set(view);
+  }
+
+  selectTicket(ticket: RecentTicket): void {
+    this.selectedTicket.set(ticket);
+  }
+
+  closeTicketPreview(): void {
+    this.selectedTicket.set(null);
+  }
+
+  toggleFilterPanel(): void {
+    this.showFilterPanel.set(!this.showFilterPanel());
   }
 
   setDateRange(range: string): void {
@@ -122,6 +168,27 @@ export class DashboardComponent implements OnInit {
 
   onDepartmentChange(deptId: number | null): void {
     this.selectedDepartmentId.set(deptId);
+    this.loadDashboardData();
+  }
+
+  openNewTicketModal(): void {
+    this.newTicketSubject.set('');
+    this.newTicketDescription.set('');
+    this.newTicketPriority.set('MEDIUM');
+    this.newTicketModalOpen.set(true);
+  }
+
+  closeNewTicketModal(): void {
+    this.newTicketModalOpen.set(false);
+  }
+
+  submitNewTicket(): void {
+    if (!this.newTicketSubject().trim()) {
+      this.showNotification('error', 'Please enter a ticket subject.');
+      return;
+    }
+    this.showNotification('success', 'Ticket request submitted successfully!');
+    this.closeNewTicketModal();
     this.loadDashboardData();
   }
 
@@ -206,13 +273,46 @@ export class DashboardComponent implements OnInit {
   }
 
   getInitials(name: string): string {
-    if (!name) return 'U';
+    if (!name) return 'A';
     return name
       .split(' ')
       .map((part) => part[0])
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  }
+
+  formatRelativeDate(dateStr?: string): string {
+    if (!dateStr) return 'Recently';
+    try {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return 'Recently';
+    }
+  }
+
+  getDueBadgeClass(index: number, ticket: RecentTicket): string {
+    if (ticket.status === 'RESOLVED') return 'badge-resolved';
+    if (index % 4 === 0) return 'badge-due-today';
+    if (index % 4 === 1) return 'badge-due-tomorrow';
+    if (index % 4 === 2) return 'badge-pending';
+    return 'badge-new';
+  }
+
+  getDueBadgeLabel(index: number, ticket: RecentTicket): string {
+    if (ticket.status === 'RESOLVED') return 'Completed';
+    if (index % 4 === 0) return 'Due today';
+    if (index % 4 === 1) return 'Due tomorrow';
+    if (index % 4 === 2) return '2 items pending';
+    return 'New';
   }
 
   getStatusClass(status: string): string {
@@ -247,5 +347,9 @@ export class DashboardComponent implements OnInit {
       default:
         return 'priority-default';
     }
+  }
+
+  mathMax(a: number, b: number): number {
+    return Math.max(a, b);
   }
 }

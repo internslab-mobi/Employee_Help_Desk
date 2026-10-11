@@ -75,11 +75,7 @@ export class Login {
         console.log('Employee Id: ', response.employeeId);
         console.log('Role: ', response.role);
 
-        if (response.role === 'EMPLOYEE') {
-          this.router.navigate(['/dashboard/employee']);
-        } else {
-          this.loginError = 'This dashboard is for support agents only.';
-        }
+        this.router.navigate(['/dashboard']);
       },
 
       error: (error) => {
