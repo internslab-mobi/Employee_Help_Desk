@@ -75,4 +75,11 @@ public interface EmployeeRepository
             @Param("departmentId") Long departmentId,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT e.employmentStatus, COUNT(e)
+        FROM Employee e
+        GROUP BY e.employmentStatus
+    """)
+    java.util.List<Object[]> countEmployeesByStatus();
 }

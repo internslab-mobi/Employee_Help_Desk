@@ -1,0 +1,29 @@
+server:
+  port: ${REPORT_SERVICE_PORT:8083}
+
+spring:
+  application:
+    name: employee-helpdesk-report-service
+
+helpdesk:
+  backend:
+    url: ${BACKEND_URL:http://localhost:8082}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:this-is-my-superkey-for-employee-helpdesk}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    xyz.mobi.reportservice: DEBUG
+    org.springframework.security: WARN
