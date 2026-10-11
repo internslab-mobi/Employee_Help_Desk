@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
-import {  FormBuilder,  FormGroup,  ReactiveFormsModule, Validators } from '@angular/forms';
-import {RouterLink} from '@angular/router';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -9,21 +10,21 @@ import {RouterLink} from '@angular/router';
   templateUrl: './login.html',
   styleUrl: './login.css'
 })
-
 export class Login {
-
   loginForm: FormGroup;
   showPassword = false;
+  isLoading = false;
+  errorMessage = '';
 
-  constructor(private fb: FormBuilder) {
-
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService,
+    private router: Router
+  ) {
     this.loginForm = this.fb.group({
-
-      email: ['', [ Validators.required,  Validators.email]],
-      password: [  '',  Validators.required ]
-
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', Validators.required]
     });
-
   }
 
   get email() {
@@ -44,11 +45,20 @@ export class Login {
       return;
     }
 
-    /*
-      Backend integration will be added later.
-      For now, just check the form values.
-    */
-    console.log('Login:', this.loginForm.value);
-  }
+    this.isLoading = true;
+    this.errorMessage = '';
 
+    this.authService.login(this.loginForm.value).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.errorMessage =
+          err?.error?.message ||
+          'Invalid work email or password. Please try again.';
+      }
+    });
+  }
 }

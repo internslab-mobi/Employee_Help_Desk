@@ -46,6 +46,12 @@
 
         </div>
 
+        @if (errorMessage) {
+          <div class="login-alert">
+            {{ errorMessage }}
+          </div>
+        }
+
         <!-- Login Form -->
         <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
 
@@ -136,8 +142,9 @@
           <button
             type="submit"
             class="login-button"
+            [disabled]="isLoading"
           >
-            Login
+            {{ isLoading ? 'Signing in...' : 'Login' }}
           </button>
 
         </form>

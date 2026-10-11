@@ -42,7 +42,6 @@ public class TicketController {
     ) throws IOException {
 
 
-
         TicketCreateResponseDTO response = ticketService.createTicket(
                 request,
                 attachments

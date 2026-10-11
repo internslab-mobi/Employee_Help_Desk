@@ -321,4 +321,166 @@ public interface TicketRepository
     """)
     List<Object[]> countAllTicketsByStatus();
 
+    @Query("""
+    SELECT t.status, COUNT(t)
+    FROM Ticket t
+    WHERE (:requesterId IS NULL OR t.requester.id = :requesterId)
+      AND (:agentId IS NULL OR t.assignedAgent.id = :agentId)
+      AND (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+    GROUP BY t.status
+    """)
+    List<Object[]> countScopedTicketsByStatus(
+            @Param("requesterId") Long requesterId,
+            @Param("agentId") Long agentId,
+            @Param("departmentId") Long departmentId,
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @Query("""
+    SELECT t.priority, COUNT(t)
+    FROM Ticket t
+    WHERE (:requesterId IS NULL OR t.requester.id = :requesterId)
+      AND (:agentId IS NULL OR t.assignedAgent.id = :agentId)
+      AND (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+    GROUP BY t.priority
+    """)
+    List<Object[]> countScopedTicketsByPriority(
+            @Param("requesterId") Long requesterId,
+            @Param("agentId") Long agentId,
+            @Param("departmentId") Long departmentId,
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @Query("""
+    SELECT t.department.id, t.department.name, COUNT(t),
+           SUM(CASE WHEN t.status IN ('OPEN', 'IN_PROGRESS', 'ON_HOLD', 'REOPENED') THEN 1 ELSE 0 END),
+           SUM(CASE WHEN t.status = 'RESOLVED' THEN 1 ELSE 0 END)
+    FROM Ticket t
+    WHERE (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+    GROUP BY t.department.id, t.department.name
+    ORDER BY COUNT(t) DESC
+    """)
+    List<Object[]> countTicketsByDepartment(
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @Query("""
+    SELECT COALESCE(t.category.name, 'Uncategorized'), COUNT(t)
+    FROM Ticket t
+    WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+    GROUP BY t.category.name
+    ORDER BY COUNT(t) DESC
+    """)
+    List<Object[]> countTicketsByCategory(
+            @Param("departmentId") Long departmentId,
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @Query("""
+    SELECT COUNT(DISTINCT t)
+    FROM Ticket t
+    JOIN SlaInstance s ON s.ticket = t
+    WHERE (:requesterId IS NULL OR t.requester.id = :requesterId)
+      AND (:agentId IS NULL OR t.assignedAgent.id = :agentId)
+      AND (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+      AND s.status = :slaStatus
+      AND s.cycleNumber = (
+          SELECT MAX(s2.cycleNumber)
+          FROM SlaInstance s2
+          WHERE s2.ticket.id = t.id
+      )
+    """)
+    long countTicketsByLatestSlaStatus(
+            @Param("requesterId") Long requesterId,
+            @Param("agentId") Long agentId,
+            @Param("departmentId") Long departmentId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("slaStatus") SlaStatus slaStatus
+    );
+
+    @Query("""
+    SELECT
+        SUM(CASE WHEN t.assignedAgent IS NOT NULL THEN 1 ELSE 0 END),
+        SUM(CASE WHEN t.assignedAgent IS NULL THEN 1 ELSE 0 END)
+    FROM Ticket t
+    WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+    """)
+    List<Object[]> countAssignedAndUnassignedTickets(
+            @Param("departmentId") Long departmentId,
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @Query("""
+    SELECT t.createdAt, t.resolvedAt
+    FROM Ticket t
+    WHERE t.resolvedAt IS NOT NULL
+      AND (:requesterId IS NULL OR t.requester.id = :requesterId)
+      AND (:agentId IS NULL OR t.assignedAgent.id = :agentId)
+      AND (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+    """)
+    List<Object[]> findResolutionIntervals(
+            @Param("requesterId") Long requesterId,
+            @Param("agentId") Long agentId,
+            @Param("departmentId") Long departmentId,
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @Query("""
+    SELECT t.createdAt, t.resolvedAt
+    FROM Ticket t
+    WHERE (:requesterId IS NULL OR t.requester.id = :requesterId)
+      AND (:agentId IS NULL OR t.assignedAgent.id = :agentId)
+      AND (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+    ORDER BY t.createdAt ASC
+    """)
+    List<Object[]> findTimestampsForTrend(
+            @Param("requesterId") Long requesterId,
+            @Param("agentId") Long agentId,
+            @Param("departmentId") Long departmentId,
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
+            "assignedAgent", "assignedAgent.employee"})
+    @Query("""
+    SELECT t
+    FROM Ticket t
+    WHERE (:requesterId IS NULL OR t.requester.id = :requesterId)
+      AND (:agentId IS NULL OR t.assignedAgent.id = :agentId)
+      AND (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+    ORDER BY t.createdAt DESC
+    """)
+    List<Ticket> findScopedRecentTickets(
+            @Param("requesterId") Long requesterId,
+            @Param("agentId") Long agentId,
+            @Param("departmentId") Long departmentId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            Pageable pageable
+    );
 }
