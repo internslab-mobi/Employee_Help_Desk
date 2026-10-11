@@ -42,9 +42,15 @@
         <div class="login-header">
 
           <h2>Help Desk</h2>
-          <p>Sign in to access your Help Desk account</p>
+          <p>Sign in to access your Employee Help Desk</p>
 
         </div>
+
+        @if (errorMessage) {
+          <div class="login-alert">
+            {{ errorMessage }}
+          </div>
+        }
 
         <!-- Login Form -->
         <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
@@ -128,25 +134,22 @@
             <a routerLink="/forgot-password">
               Forgot Password?
             </a>
+
           </div>
-          
+
 
           <!-- Login Button -->
           <button
             type="submit"
             class="login-button"
-            [disabled] = "isLoading">
-            {{isLoading ? 'Signing in...' : 'Login'}}
+            [disabled]="isLoading"
+          >
+            {{ isLoading ? 'Signing in...' : 'Login' }}
           </button>
 
-          @if (loginError) {
-            <p class="error-message" role="alert">
-              {{ loginError }}
-            </p>
-          }
-
         </form>
-        
+
+
         <!-- Bottom text -->
         <p class="login-footer">
           Employee Help Desk
