@@ -31,12 +31,12 @@ public class GlobalExceptionHandler {
 
     // ── Validation ──────────────────────────────────────────
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+    @ExceptionHandler({MethodArgumentNotValidException.class, org.springframework.validation.BindException.class})
+    public ResponseEntity<ErrorResponse> handleValidation(org.springframework.validation.BindException ex) {
         String message = ex.getBindingResult()
-                .getFieldErrors()
+                .getAllErrors()
                 .stream()
-                .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                .map(e -> (e instanceof org.springframework.validation.FieldError fe ? fe.getField() + ": " : "") + e.getDefaultMessage())
                 .collect(Collectors.joining("; "));
 
         return buildResponse(HttpStatus.BAD_REQUEST, ex, message);
@@ -137,7 +137,14 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex, "The requested endpoint does not exist");
     }
 
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailable(ServiceUnavailableException ex) {
+        log.warn("Downstream service unavailable: {}", ex.getMessage());
+        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex, ex.getMessage());
+    }
+
     // ── Domain Base Fallback ────────────────────────────────
+
 
     @ExceptionHandler(HelpdeskException.class)
     public ResponseEntity<ErrorResponse> handleHelpdeskException(HelpdeskException ex) {
