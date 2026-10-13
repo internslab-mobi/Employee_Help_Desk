@@ -2,10 +2,8 @@ package xyz.mobi.employeehelpdesk.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.SlaPolicy;
@@ -13,10 +11,8 @@ import xyz.mobi.employeehelpdesk.entity.Ticket;
 import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaEventType;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
-import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import xyz.mobi.employeehelpdesk.exception.BadRequestException;
 import xyz.mobi.employeehelpdesk.exception.InvalidStateException;
-import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
 import xyz.mobi.employeehelpdesk.repository.DepartmentManagerRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaInstanceRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaPolicyRepository;
@@ -545,75 +541,6 @@ public class SlaServiceImpl implements SlaService {
         } catch (Exception e) {
             throw new InvalidStateException("Invalid timezone '" + tz + "' configured for department " + department.getId());
         }
-    }
-
-    //crud sla
-
-    @Override
-    @Transactional(readOnly = true)
-    public SlaPolicyResponseDTO getSlaPolicyById(Long id) {
-        SlaPolicy policy = slaPolicyRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("SlaPolicy not found with id: " + id));
-        return toResponse(policy);
-    }
-
-    private void validateTiming(Integer durationMinutes, Integer warningMinutes) {
-        if (durationMinutes == null || durationMinutes <= 0) {
-            throw new BadRequestException("Duration must be greater than 0");
-        }
-        if (warningMinutes != null) {
-            if (warningMinutes <= 0) {
-                throw new BadRequestException("Warning duration must be greater than 0");
-            }
-            if (warningMinutes >= durationMinutes) {
-                throw new BadRequestException("Warning duration (" + warningMinutes + ") must be less than duration (" + durationMinutes + ")");
-            }
-        }
-    }
-
-    private void checkDepartmentAccess(Long departmentId) {
-        UserRole role = authService.getCurrentUserRole();
-        if (role == UserRole.ADMIN) {
-            return;
-        }
-        if (role == UserRole.MANAGER) {
-            Long currentEmpId = authService.getCurrentEmployeeId();
-            if (!isManagerOfDepartment(currentEmpId, departmentId)) {
-                throw new AccessDeniedException("Access denied: You are not a manager of department " + departmentId);
-            }
-            return;
-        }
-        throw new AccessDeniedException("Access denied: Insufficient permissions");
-    }
-
-    private SlaPolicyResponseDTO toResponse(SlaPolicy policy) {
-        return SlaPolicyResponseDTO.builder()
-                .id(policy.getId())
-                .departmentId(policy.getDepartment().getId())
-                .departmentName(policy.getDepartment().getName())
-                .subCategoryId(policy.getSubCategory().getId())
-                .subCategoryName(policy.getSubCategory().getName())
-                .durationMinutes(policy.getDurationMinutes())
-                .warningMinutes(policy.getWarningMinutes())
-                .isActive(policy.getIsActive())
-                .build();
-    }
-
-    private boolean isManagerOfDepartment(
-            Long employeeId,
-            Long departmentId
-    ) {
-        if (employeeId == null || departmentId == null) {
-            return false;
-        }
-
-        return Boolean.TRUE.equals(
-                departmentManagerRepository
-                        .existsByEmployeeIdAndDepartmentId(
-                                employeeId,
-                                departmentId
-                        )
-        );
     }
 
     private void sendBreachNotifications(SlaInstance sla) {

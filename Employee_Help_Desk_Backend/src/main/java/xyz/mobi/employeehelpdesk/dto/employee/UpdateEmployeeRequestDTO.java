@@ -5,11 +5,8 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
-import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import xyz.mobi.employeehelpdesk.util.TimezoneUtil;
-
-import java.time.LocalDate;
 
 @Builder
 public record UpdateEmployeeRequestDTO(
