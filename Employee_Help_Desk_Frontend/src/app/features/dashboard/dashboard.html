@@ -1,656 +1,754 @@
-<div class="dashboard-container">
-  <!-- ================= TOP HEADER ================= -->
-  <header class="dashboard-header">
-    <div class="header-brand">
-      <div class="brand-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-          <path d="M22 6l-10 7L2 6"/>
-        </svg>
-      </div>
-      <div class="brand-info">
-        <h1>Employee Help Desk</h1>
-        <span class="brand-subtitle">Analytics & Performance Dashboard</span>
-      </div>
+<div class="peoplehub-layout">
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside class="peoplehub-sidebar">
+    <!-- Brand / Logo -->
+    <div class="sidebar-brand">
+      <h1 class="brand-title">HELP DESK</h1>
+      <span class="brand-subtitle">Employee Management Portal</span>
     </div>
 
-    <!-- User Profile & Action Bar -->
-    <div class="header-actions">
-      <!-- Profile Chip -->
-      @if (analytics(); as data) {
-        <div class="user-chip">
-          <div class="avatar-circle">
-            {{ getInitials(data.employeeName) }}
-          </div>
-          <div class="user-meta">
-            <span class="user-name">{{ data.employeeName }}</span>
-            <div class="user-submeta">
-              <span class="role-badge role-{{ data.role.toLowerCase() }}">{{ data.role }}</span>
-              @if (data.departmentName) {
-                <span class="dept-tag">{{ data.departmentName }}</span>
-              }
-            </div>
-          </div>
-        </div>
-      }
+    <!-- Navigation Menu -->
+    <nav class="sidebar-nav">
+      <button type="button" class="nav-item" [class.active]="activeNav() === 'dashboard'"
+        (click)="setActiveNav('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+        <span class="nav-label">Dashboard</span>
+      </button>
 
-      <!-- Export to Excel Button -->
-      <button
-        id="export-excel-btn"
-        class="btn btn-export"
-        [disabled]="isExporting() || isLoading()"
-        (click)="exportSummaryToExcel()"
-        title="Generate and download role-appropriate Excel summary report"
-      >
-        @if (isExporting()) {
-          <svg class="spinner-icon" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="30 60"></circle>
+      <button type="button" class="nav-item" [class.active]="activeNav() === 'helpdesk'"
+        (click)="setActiveNav('helpdesk')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        <span class="nav-label">Employee Help Desk</span>
+      </button>
+
+      <button type="button" class="nav-item" [class.active]="activeNav() === 'assets'" (click)="setActiveNav('assets')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+          <line x1="8" y1="21" x2="16" y2="21" />
+          <line x1="12" y1="17" x2="12" y2="21" />
+        </svg>
+        <span class="nav-label">Asset Management</span>
+      </button>
+
+      <button type="button" class="nav-item" [class.active]="activeNav() === 'exits'" (click)="setActiveNav('exits')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="7" y1="17" x2="17" y2="7" />
+          <polyline points="7 7 17 7 17 17" />
+        </svg>
+        <span class="nav-label">Employee Exit Management</span>
+      </button>
+    </nav>
+
+    <!-- Signed In As (Footer) -->
+    <div class="sidebar-footer">
+      <span class="signed-label">Signed in as</span>
+      <strong class="signed-name">{{ displayUserName() }}</strong>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN CONTENT AREA ================= -->
+  <main class="peoplehub-main">
+    <!-- Top Header Bar -->
+    <header class="main-header">
+      <div class="header-titles">
+        @if (activeNav() === 'dashboard') {
+        <h2 class="page-title">Dashboard</h2>
+        <p class="page-subtitle">Here's what's happening across employee operations.</p>
+        } @else if (activeNav() === 'helpdesk') {
+        <h2 class="page-title">Employee Help Desk</h2>
+        <p class="page-subtitle">Raise, track and resolve employee support requests.</p>
+        } @else if (activeNav() === 'assets') {
+        <h2 class="page-title">Asset Management</h2>
+        <p class="page-subtitle">View and manage company equipment and hardware assignments.</p>
+        } @else if (activeNav() === 'exits') {
+        <h2 class="page-title">Employee Exit Management</h2>
+        <p class="page-subtitle">Track departure clearances, offboarding checklists and handovers.</p>
+        }
+      </div>
+
+      <!-- Profile Chip & Action Bar -->
+      <div class="header-right">
+        <!-- Report Category Type Selector -->
+        <select id="report-type-select" class="select-report-type" [ngModel]="selectedReportType()"
+          (ngModelChange)="selectedReportType.set($event)" title="Select generic report summary category">
+          @for (type of permittedReportTypes(); track type) {
+          <option [value]="type">{{ formatReportTypeName(type) }}</option>
+          }
+        </select>
+
+        <!-- View On-Screen JSON Summary Button -->
+        <button id="view-json-summary-btn" class="btn-summary-view" [disabled]="isLoadingReportJson() || isLoading()"
+          (click)="fetchSummaryJson()" title="View on-screen JSON summary report">
+          @if (isLoadingReportJson()) {
+          <span class="export-spinner"></span>
+          <span>Loading...</span>
+          } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
+          <span>View Summary</span>
+          }
+        </button>
+
+        <!-- Export Summary to Excel button (Preserves test & Excel functionality) -->
+        <button id="export-excel-btn" class="btn-excel-export" [disabled]="isExporting() || isLoading()"
+          (click)="exportSummaryToExcel()" title="Export Excel summary report">
+          @if (isExporting()) {
+          <span class="export-spinner"></span>
           <span>Exporting...</span>
-        } @else {
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-            <polyline points="10 9 9 9 8 9"/>
+          } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
           <span>Export Summary to Excel</span>
-        }
-      </button>
+          }
+        </button>
 
-      <!-- Logout Button -->
-      <button class="btn btn-logout" (click)="logout()" title="Sign out of help desk">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-          <polyline points="16 17 21 12 16 7"/>
-          <line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-        <span>Logout</span>
-      </button>
-    </div>
-  </header>
 
-  <!-- ================= NOTIFICATION TOAST ================= -->
-  @if (notification(); as notif) {
-    <div class="toast-banner toast-{{ notif.type }}">
-      <div class="toast-content">
-        @if (notif.type === 'success') {
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
+        <!-- Refresh Data Button -->
+        <button class="btn-icon-header" (click)="loadDashboardData()" title="Refresh live data">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M23 4v6h-6" />
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
           </svg>
-        } @else {
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </button>
+
+        <!-- Logout Button -->
+        <button class="btn-icon-header" (click)="logout()" title="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
-        }
-        <span>{{ notif.message }}</span>
-      </div>
-    </div>
-  }
+        </button>
 
-  <!-- ================= FILTER CONTROLS TOOLBAR ================= -->
-  <section class="toolbar-section">
-    <div class="filter-group">
-      <span class="filter-label">Date Range:</span>
-      <div class="pills-container">
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedDateRange() === 'all'"
-          (click)="setDateRange('all')"
-        >
-          All Time
-        </button>
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedDateRange() === 'today'"
-          (click)="setDateRange('today')"
-        >
-          Today
-        </button>
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedDateRange() === '7days'"
-          (click)="setDateRange('7days')"
-        >
-          Last 7 Days
-        </button>
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedDateRange() === '30days'"
-          (click)="setDateRange('30days')"
-        >
-          Last 30 Days
-        </button>
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedDateRange() === 'thisMonth'"
-          (click)="setDateRange('thisMonth')"
-        >
-          This Month
-        </button>
-        <button
-          type="button"
-          class="pill-btn"
-          [class.active]="selectedDateRange() === 'custom'"
-          (click)="setDateRange('custom')"
-        >
-          Custom
-        </button>
-      </div>
-
-      @if (selectedDateRange() === 'custom') {
-        <div class="custom-range-inputs">
-          <input
-            type="date"
-            class="date-input"
-            [ngModel]="customFromDate()"
-            (ngModelChange)="customFromDate.set($event)"
-            placeholder="From Date"
-          />
-          <span class="range-separator">to</span>
-          <input
-            type="date"
-            class="date-input"
-            [ngModel]="customToDate()"
-            (ngModelChange)="customToDate.set($event)"
-            placeholder="To Date"
-          />
-          <button class="btn btn-secondary btn-sm" (click)="applyCustomDateRange()">Apply</button>
+        <!-- User Profile Area -->
+        <div class="profile-chip">
+          <div class="profile-avatar">
+            {{ getInitials(displayUserName()) }}
+          </div>
+          <div class="profile-info">
+            <span class="profile-name">{{ displayUserName() }}</span>
+            <span class="profile-role">{{ displayUserRole() }}</span>
+          </div>
         </div>
-      }
+      </div>
+    </header>
+
+    <!-- Notification Toast Banner -->
+    @if (notification(); as notif) {
+    <div class="toast-banner notif-{{ notif.type }}">
+      <span>{{ notif.message }}</span>
+    </div>
+    }
+
+    <!-- Loading State -->
+    @if (isLoading()) {
+    <div class="state-container loading-state">
+      <div class="loading-ring"></div>
+      <p>Loading real-time help desk data...</p>
+    </div>
+    } @else if (errorMessage()) {
+    <div class="state-container error-state">
+      <h3>Unable to load dashboard data</h3>
+      <p>{{ errorMessage() }}</p>
+      <button class="btn-primary-blue" (click)="loadDashboardData()">Retry</button>
+    </div>
+    } @else {
+
+    <!-- ============================================== -->
+    <!-- VIEW 1: DASHBOARD (MATCHES SCREENSHOT 1)      -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'dashboard') {
+    <!-- 4 Summary KPI Cards (100% Persisted Application Database Data) -->
+    <section class="summary-cards-grid">
+      <!-- 1. Open Help Desk Tickets -->
+      <div class="summary-card">
+        <span class="card-label">Open Help Desk Tickets</span>
+        <div class="card-bottom">
+          <span class="card-value">{{ analytics()?.summary?.openTickets ?? 0 }}</span>
+          <button type="button" class="card-link link-blue" (click)="setActiveNav('helpdesk')">View</button>
+        </div>
+      </div>
+
+      <!-- 2. Assigned Tickets -->
+      <div class="summary-card">
+        <span class="card-label">Assigned Tickets</span>
+        <div class="card-bottom">
+          <span class="card-value">{{ analytics()?.summary?.assignedTickets ?? 0 }}</span>
+          <button type="button" class="card-link link-blue" (click)="setActiveNav('helpdesk')">View</button>
+        </div>
+      </div>
+
+      <!-- 3. In Progress Tickets -->
+      <div class="summary-card">
+        <span class="card-label">In Progress Tickets</span>
+        <div class="card-bottom">
+          <span class="card-value">{{ analytics()?.summary?.inProgressTickets ?? 0 }}</span>
+          <button type="button" class="card-link link-orange" (click)="setActiveNav('helpdesk')">View</button>
+        </div>
+      </div>
+
+      <!-- 4. SLA Overdue Tickets -->
+      <div class="summary-card">
+        <span class="card-label">SLA Overdue Tickets</span>
+        <div class="card-bottom">
+          <span class="card-value">{{ analytics()?.summary?.overdueTickets ?? 0 }}</span>
+          <button type="button" class="card-link link-red" (click)="setActiveNav('helpdesk')">View</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Middle Section: My Work + Quick actions -->
+    <section class="middle-grid">
+      <!-- My Work (Left Column) -->
+      <div class="content-card my-work-card">
+        <div class="card-header-clean">
+          <h3 class="card-title">My Work</h3>
+          <p class="card-subtitle">Tasks that need your attention</p>
+        </div>
+
+        <div class="work-list">
+          @if (analytics()?.recentTickets?.length) {
+            @for (ticket of analytics()!.recentTickets.slice(0, 4); track ticket.id) {
+              <div class="work-item" (click)="selectTicket(ticket); setActiveNav('helpdesk')">
+                <span class="work-title">{{ ticket.subject }}</span>
+                <span class="work-dept">{{ ticket.departmentName || ticket.categoryName || 'Help Desk' }}</span>
+                <span class="work-badge" [class.badge-due-today]="ticket.priority === 'CRITICAL' || ticket.priority === 'HIGH'" [class.badge-new]="ticket.status === 'OPEN'">
+                  {{ ticket.status }}
+                </span>
+              </div>
+            }
+          } @else {
+            <p class="empty-hint" style="padding: 14px; color: #64748b; font-size: 13px;">No active tasks recorded.</p>
+          }
+        </div>
+      </div>
+
+      <!-- Quick actions (Right Column) -->
+      <div class="content-card quick-actions-card">
+        <div class="card-header-clean">
+          <h3 class="card-title">Quick actions</h3>
+        </div>
+
+        <div class="action-buttons-list">
+          <button type="button" class="quick-action-btn" (click)="openNewTicketModal()">
+            <span class="action-icon action-plus">+</span>
+            <span class="action-text">Raise a ticket</span>
+          </button>
+
+          <button type="button" class="quick-action-btn" (click)="setActiveNav('assets')">
+            <svg class="action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <line x1="9" y1="3" x2="9" y2="21" />
+            </svg>
+            <span class="action-text">Request an asset</span>
+          </button>
+
+          <button type="button" class="quick-action-btn" (click)="setActiveNav('exits')">
+            <span class="action-icon action-arrow">&rarr;</span>
+            <span class="action-text">Start exit request</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Section: Recent activity -->
+    <section class="content-card recent-activity-card">
+      <div class="card-header-clean">
+        <h3 class="card-title">Recent activity</h3>
+      </div>
+
+      <div class="activity-list">
+        @if (analytics()?.recentTickets?.length) {
+          @for (ticket of analytics()!.recentTickets.slice(0, 4); track ticket.id) {
+            <div class="activity-item" (click)="selectTicket(ticket); setActiveNav('helpdesk')" style="cursor: pointer;">
+              <strong class="activity-tag">{{ ticket.ticketNumber }}</strong>
+              <span class="activity-desc">{{ ticket.subject }} ({{ ticket.status }})</span>
+            </div>
+          }
+        } @else {
+          <p class="empty-hint" style="padding: 14px; color: #64748b; font-size: 13px;">No recent activity recorded.</p>
+        }
+      </div>
+    </section>
+
+
+    <!-- Detailed Analytics Accordion for Admin/Manager/Agent (Preserves charts & analytics) -->
+    <div class="analytics-accordion-wrapper">
+      <button type="button" class="btn-toggle-analytics" (click)="toggleAnalyticsSection()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        <span>{{ showAnalyticsSection() ? 'Hide Detailed Operational Analytics & SLA Charts' : 'Show Detailed
+          Operational Analytics & SLA Charts' }}</span>
+        <span class="toggle-arrow">{{ showAnalyticsSection() ? '▲' : '▼' }}</span>
+      </button>
     </div>
 
-    <!-- Admin Department Filter -->
-    @if (userRole() === 'ADMIN' && analytics()?.departmentDistribution?.length) {
-      <div class="dept-filter-group">
-        <label for="dept-select" class="filter-label">Department:</label>
-        <select
-          id="dept-select"
-          class="dept-select"
-          [ngModel]="selectedDepartmentId()"
-          (ngModelChange)="onDepartmentChange($event)"
-        >
+    @if (showAnalyticsSection() && analytics(); as data) {
+    <section class="charts-section-grid">
+      <!-- Ticket Status Distribution -->
+      <div class="content-card">
+        <h4 class="card-title">Ticket Status Distribution</h4>
+        <div class="distribution-list">
+          @for (item of data.statusDistribution; track item.key) {
+          <div class="dist-row">
+            <span class="dist-label">{{ item.label }}</span>
+            <div class="dist-bar-wrap">
+              <div class="dist-bar bg-blue-bar" [style.width.%]="item.percentage"></div>
+            </div>
+            <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- Ticket Priority Distribution -->
+      <div class="content-card">
+        <h4 class="card-title">Ticket Priority Distribution</h4>
+        <div class="distribution-list">
+          @for (item of data.priorityDistribution; track item.key) {
+          <div class="dist-row">
+            <span class="dist-label">{{ item.label }}</span>
+            <div class="dist-bar-wrap">
+              <div class="dist-bar bg-purple-bar" [style.width.%]="item.percentage"></div>
+            </div>
+            <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- Creation vs Resolution Trends -->
+      @if (data.trends.length) {
+      <div class="content-card span-full">
+        <h4 class="card-title">Creation vs Resolution Trends</h4>
+        <div class="trends-timeline">
+          @for (t of data.trends; track t.period) {
+          <div class="trend-col">
+            <div class="trend-bars">
+              <div class="bar-created" [style.height.px]="t.createdCount * 14" [title]="'Created: ' + t.createdCount">
+              </div>
+              <div class="bar-resolved" [style.height.px]="t.resolvedCount * 14"
+                [title]="'Resolved: ' + t.resolvedCount"></div>
+            </div>
+            <span class="trend-date">{{ t.period.substring(5) }}</span>
+          </div>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- Agent Workload (Admin & Manager) -->
+      @if (data.agentWorkload?.length) {
+      <div class="content-card span-full">
+        <h4 class="card-title">Support Agent Workload</h4>
+        <div class="agent-grid">
+          @for (ag of data.agentWorkload; track ag.agentId) {
+          <div class="agent-pill">
+            <div class="agent-avatar">{{ getInitials(ag.agentName) }}</div>
+            <div class="agent-info">
+              <strong>{{ ag.agentName }}</strong>
+              <small>{{ ag.departmentName || 'General Support' }}</small>
+            </div>
+            <span class="agent-badge">{{ ag.activeTickets }} active</span>
+          </div>
+          }
+        </div>
+      </div>
+      }
+    </section>
+    }
+    }
+
+    <!-- ============================================== -->
+    <!-- VIEW 2: EMPLOYEE HELP DESK (SCREENSHOT 2)      -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'helpdesk') {
+    <!-- Search and Action Bar -->
+    <section class="helpdesk-toolbar">
+      <div class="search-input-wrap">
+        <input type="text" class="search-tickets-input" placeholder="Search tickets, categories or request IDs"
+          [ngModel]="ticketSearchTerm()" (ngModelChange)="ticketSearchTerm.set($event)" />
+      </div>
+
+      <div class="toolbar-actions">
+        <button type="button" class="btn-primary-blue" (click)="openNewTicketModal()">
+          + New ticket
+        </button>
+        <button type="button" class="btn-outline-filters" [class.active]="showFilters()" (click)="toggleFilters()">
+          Filters
+        </button>
+      </div>
+    </section>
+
+    <!-- Collapsible Filters Drawer -->
+    @if (showFilters()) {
+    <section class="filters-drawer">
+      <div class="filter-item">
+        <label>Status:</label>
+        <select [ngModel]="ticketStatusFilter()" (ngModelChange)="ticketStatusFilter.set($event)">
+          <option value="ALL">All Statuses</option>
+          <option value="OPEN">Open</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="PENDING">Pending</option>
+          <option value="ON_HOLD">On Hold</option>
+          <option value="RESOLVED">Resolved</option>
+          <option value="WITHDRAWN">Withdrawn</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label>Priority:</label>
+        <select [ngModel]="ticketPriorityFilter()" (ngModelChange)="ticketPriorityFilter.set($event)">
+          <option value="ALL">All Priorities</option>
+          <option value="CRITICAL">Critical</option>
+          <option value="HIGH">High</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="LOW">Low</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label>Date Range:</label>
+        <select [ngModel]="selectedDateRange()" (ngModelChange)="setDateRange($event)">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="7days">Last 7 Days</option>
+          <option value="30days">Last 30 Days</option>
+          <option value="thisMonth">This Month</option>
+        </select>
+      </div>
+
+      @if (userRole() === 'ADMIN' && analytics()?.departmentDistribution?.length) {
+      <div class="filter-item">
+        <label>Department:</label>
+        <select [ngModel]="selectedDepartmentId()" (ngModelChange)="onDepartmentChange($event)">
           <option [ngValue]="null">All Departments</option>
           @for (d of analytics()?.departmentDistribution; track d.departmentId) {
-            <option [ngValue]="d.departmentId">{{ d.departmentName }}</option>
+          <option [ngValue]="d.departmentId">{{ d.departmentName }}</option>
           }
         </select>
       </div>
+      }
+    </section>
     }
 
-    <!-- Refresh Button -->
-    <button class="btn btn-refresh" (click)="loadDashboardData()" title="Reload dashboard data">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 4v6h-6"/>
-        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-      </svg>
-      <span>Refresh</span>
-    </button>
-  </section>
-
-  <!-- ================= ERROR STATE ================= -->
-  @if (errorMessage()) {
-    <div class="error-banner">
-      <div class="error-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-      </div>
-      <div class="error-text">
-        <h3>Unable to load dashboard data</h3>
-        <p>{{ errorMessage() }}</p>
-      </div>
-      <button class="btn btn-secondary" (click)="loadDashboardData()">Retry</button>
-    </div>
-  }
-
-  <!-- ================= LOADING SKELETON ================= -->
-  @if (isLoading()) {
-    <div class="loading-state">
-      <div class="loading-spinner"></div>
-      <p>Loading real-time help desk analytics...</p>
-    </div>
-  } @else if (analytics(); as data) {
-
-    <!-- ================= SUMMARY METRIC CARDS ================= -->
-    <section class="metrics-grid">
-      <!-- 1. Total Tickets -->
-      <div class="metric-card card-total">
-        <div class="metric-icon-box bg-blue">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-            <line x1="8" y1="21" x2="16" y2="21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-        </div>
-        <div class="metric-body">
-          <span class="metric-title">
-            @if (userRole() === 'EMPLOYEE') { My Raised Tickets }
-            @else if (userRole() === 'AGENT') { Assigned Tickets }
-            @else if (userRole() === 'MANAGER') { Department Tickets }
-            @else { Total Tickets }
-          </span>
-          <span class="metric-number">{{ data.summary.totalTickets | number }}</span>
-          <span class="metric-hint">In selected period</span>
-        </div>
+    <!-- My tickets Table Card -->
+    <section class="content-card my-tickets-card">
+      <div class="card-header-clean">
+        <h3 class="card-title">My tickets</h3>
       </div>
 
-      <!-- 2. Open Tickets -->
-      <div class="metric-card card-open">
-        <div class="metric-icon-box bg-sky">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-        </div>
-        <div class="metric-body">
-          <span class="metric-title">Open Tickets</span>
-          <span class="metric-number text-sky">{{ data.summary.openTickets | number }}</span>
-          <span class="metric-hint">Awaiting initial action</span>
-        </div>
-      </div>
-
-      <!-- 3. In Progress -->
-      <div class="metric-card card-progress">
-        <div class="metric-icon-box bg-purple">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-          </svg>
-        </div>
-        <div class="metric-body">
-          <span class="metric-title">In Progress</span>
-          <span class="metric-number text-purple">{{ data.summary.inProgressTickets | number }}</span>
-          <span class="metric-hint">Under investigation</span>
-        </div>
-      </div>
-
-      <!-- 4. Resolved Tickets -->
-      <div class="metric-card card-resolved">
-        <div class="metric-icon-box bg-emerald">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-        </div>
-        <div class="metric-body">
-          <span class="metric-title">Resolved Tickets</span>
-          <span class="metric-number text-emerald">{{ data.summary.resolvedTickets | number }}</span>
-          <span class="metric-hint">Completed & closed</span>
-        </div>
-      </div>
-
-      <!-- 5. Overdue / SLA Breached -->
-      <div class="metric-card card-overdue">
-        <div class="metric-icon-box bg-rose">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-        </div>
-        <div class="metric-body">
-          <span class="metric-title">Overdue / SLA Breached</span>
-          <span class="metric-number text-rose">{{ data.summary.overdueTickets | number }}</span>
-          <span class="metric-hint">Requires immediate action</span>
-        </div>
-      </div>
-
-      <!-- 6. SLA Compliance Rate -->
-      <div class="metric-card card-sla">
-        <div class="metric-icon-box bg-indigo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-        </div>
-        <div class="metric-body">
-          <span class="metric-title">SLA Compliance</span>
-          <span class="metric-number text-indigo">{{ data.summary.slaComplianceRate }}%</span>
-          <span class="metric-hint">Target: 95.0%</span>
-        </div>
-      </div>
-
-      <!-- 7. Average Resolution Time -->
-      <div class="metric-card card-time">
-        <div class="metric-icon-box bg-amber">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 14 14"/>
-          </svg>
-        </div>
-        <div class="metric-body">
-          <span class="metric-title">Avg Resolution Time</span>
-          <span class="metric-number text-amber">{{ data.summary.avgResolutionHours }}h</span>
-          <span class="metric-hint">From creation to resolution</span>
-        </div>
-      </div>
-
-      <!-- 8. Organization Staff Stats (Admin only) -->
-      @if (data.employeeStats) {
-        <div class="metric-card card-emp">
-          <div class="metric-icon-box bg-teal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </div>
-          <div class="metric-body">
-            <span class="metric-title">Organization Staff</span>
-            <span class="metric-number text-teal">{{ data.employeeStats.activeEmployees }} Active</span>
-            <span class="metric-hint">{{ data.employeeStats.totalEmployees }} total employees</span>
-          </div>
-        </div>
-      }
-    </section>
-
-    <!-- ================= CHARTS & VISUAL ANALYTICS ================= -->
-    <section class="charts-grid">
-      <!-- Chart 1: Status Distribution -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3>Ticket Status Distribution</h3>
-          <span class="chart-subtitle">Breakdown by current lifecycle status</span>
-        </div>
-        <div class="chart-body">
-          <div class="distribution-list">
-            @for (item of data.statusDistribution; track item.key) {
-              <div class="dist-row">
-                <div class="dist-info">
-                  <span class="status-indicator {{ getStatusClass(item.key) }}"></span>
-                  <span class="dist-label">{{ item.label }}</span>
-                </div>
-                <div class="dist-bar-wrap">
-                  <div
-                    class="dist-bar {{ getStatusClass(item.key) }}-bg"
-                    [style.width.%]="item.percentage"
-                  ></div>
-                </div>
-                <div class="dist-stats">
-                  <span class="dist-count">{{ item.count }}</span>
-                  <span class="dist-pct">{{ item.percentage }}%</span>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-
-      <!-- Chart 2: Priority Distribution -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3>Ticket Priority Distribution</h3>
-          <span class="chart-subtitle">Urgency & severity levels</span>
-        </div>
-        <div class="chart-body">
-          <div class="distribution-list">
-            @for (item of data.priorityDistribution; track item.key) {
-              <div class="dist-row">
-                <div class="dist-info">
-                  <span class="status-indicator {{ getPriorityClass(item.key) }}"></span>
-                  <span class="dist-label">{{ item.label }}</span>
-                </div>
-                <div class="dist-bar-wrap">
-                  <div
-                    class="dist-bar {{ getPriorityClass(item.key) }}-bg"
-                    [style.width.%]="item.percentage"
-                  ></div>
-                </div>
-                <div class="dist-stats">
-                  <span class="dist-count">{{ item.count }}</span>
-                  <span class="dist-pct">{{ item.percentage }}%</span>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-
-      <!-- Chart 3: Trends Over Time -->
-      <div class="chart-card chart-span-2">
-        <div class="chart-header">
-          <h3>Ticket Creation vs Resolution Trends</h3>
-          <div class="legend-container">
-            <span class="legend-item"><span class="legend-dot bg-blue"></span> Created</span>
-            <span class="legend-item"><span class="legend-dot bg-emerald"></span> Resolved</span>
-          </div>
-        </div>
-        <div class="chart-body">
-          @if (data.trends.length) {
-            <div class="trends-timeline">
-              @for (t of data.trends; track t.period) {
-                <div class="trend-col">
-                  <div class="trend-bars">
-                    <div
-                      class="bar-created"
-                      [style.height.px]="t.createdCount * 14"
-                      [title]="'Created: ' + t.createdCount"
-                    ></div>
-                    <div
-                      class="bar-resolved"
-                      [style.height.px]="t.resolvedCount * 14"
-                      [title]="'Resolved: ' + t.resolvedCount"
-                    ></div>
-                  </div>
-                  <span class="trend-date">{{ t.period.substring(5) }}</span>
-                </div>
-              }
-            </div>
-          } @else {
-            <div class="empty-state">No trend activity in selected period.</div>
-          }
-        </div>
-      </div>
-
-      <!-- Chart 4: Department / Category Breakdown (Admin & Manager) -->
-      @if (data.departmentDistribution?.length || data.categoryDistribution?.length) {
-        <div class="chart-card chart-span-2">
-          <div class="chart-header">
-            <h3>Department & Category Analytics</h3>
-            <span class="chart-subtitle">Volume distribution across organizational units</span>
-          </div>
-          <div class="chart-body dual-column">
-            <!-- Left: Department Breakdown -->
-            @if (data.departmentDistribution?.length) {
-              <div class="dept-table-wrap">
-                <h4>Departments</h4>
-                <table class="mini-table">
-                  <thead>
-                    <tr>
-                      <th>Department</th>
-                      <th>Total</th>
-                      <th>Open</th>
-                      <th>Resolved</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (dept of data.departmentDistribution; track dept.departmentId) {
-                      <tr>
-                        <td class="font-medium">{{ dept.departmentName }}</td>
-                        <td>{{ dept.totalTickets }}</td>
-                        <td><span class="badge text-sky">{{ dept.openTickets }}</span></td>
-                        <td><span class="badge text-emerald">{{ dept.resolvedTickets }}</span></td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            }
-
-            <!-- Right: Category Breakdown -->
-            @if (data.categoryDistribution?.length) {
-              <div class="cat-list-wrap">
-                <h4>Top Categories</h4>
-                <div class="distribution-list">
-                  @for (cat of data.categoryDistribution; track cat.key) {
-                    <div class="dist-row">
-                      <span class="dist-label">{{ cat.label }}</span>
-                      <div class="dist-bar-wrap">
-                        <div class="dist-bar bg-indigo-bar" [style.width.%]="cat.percentage"></div>
-                      </div>
-                      <span class="dist-count">{{ cat.count }} ({{ cat.percentage }}%)</span>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      <!-- Chart 5: Agent Workload (Admin & Manager) -->
-      @if (data.agentWorkload?.length) {
-        <div class="chart-card chart-span-2">
-          <div class="chart-header">
-            <h3>Support Agent Workload</h3>
-            <span class="chart-subtitle">Active ticket distribution per support engineer</span>
-          </div>
-          <div class="chart-body">
-            <div class="agent-cards-grid">
-              @for (agent of data.agentWorkload; track agent.agentId) {
-                <div class="agent-card">
-                  <div class="agent-avatar">{{ getInitials(agent.agentName) }}</div>
-                  <div class="agent-details">
-                    <span class="agent-name">{{ agent.agentName }}</span>
-                    <span class="agent-dept">{{ agent.departmentName || 'General Support' }}</span>
-                  </div>
-                  <div class="agent-stat">
-                    <span class="agent-stat-num">{{ agent.activeTickets }}</span>
-                    <span class="agent-stat-label">Active Tickets</span>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-        </div>
-      }
-    </section>
-
-    <!-- ================= RECENT ACTIVITY & TICKET HISTORY ================= -->
-    <section class="tickets-section">
-      <div class="section-header">
-        <div class="section-title-wrap">
-          <h2>Ticket Activity & History</h2>
-          <span class="section-subtitle">
-            Showing {{ filteredTickets().length }} of {{ data.recentTickets.length }} recent tickets
-          </span>
-        </div>
-
-        <!-- Search & Filter Controls -->
-        <div class="table-controls">
-          <div class="search-box">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="Search by ticket #, subject..."
-              [ngModel]="ticketSearchTerm()"
-              (ngModelChange)="ticketSearchTerm.set($event)"
-            />
-          </div>
-
-          <select
-            class="filter-select"
-            [ngModel]="ticketStatusFilter()"
-            (ngModelChange)="ticketStatusFilter.set($event)"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="OPEN">Open</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="ON_HOLD">On Hold</option>
-            <option value="RESOLVED">Resolved</option>
-            <option value="WITHDRAWN">Withdrawn</option>
-            <option value="REOPENED">Reopened</option>
-          </select>
-
-          <select
-            class="filter-select"
-            [ngModel]="ticketPriorityFilter()"
-            (ngModelChange)="ticketPriorityFilter.set($event)"
-          >
-            <option value="ALL">All Priorities</option>
-            <option value="CRITICAL">Critical</option>
-            <option value="HIGH">High</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LOW">Low</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Tickets Table -->
-      <div class="table-responsive">
-        <table class="tickets-table">
+      <div class="table-container">
+        <table class="tickets-table-clean">
           <thead>
             <tr>
-              <th>Ticket #</th>
-              <th>Subject</th>
-              <th>Category</th>
-              @if (userRole() !== 'EMPLOYEE') {
-                <th>Requester</th>
-              }
-              <th>Assigned Agent</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Created At</th>
+              <th style="width: 14%;">Ticket</th>
+              <th style="width: 36%;">Subject</th>
+              <th style="width: 20%;">Category</th>
+              <th style="width: 16%;">Status</th>
+              <th style="width: 14%;">Updated</th>
             </tr>
           </thead>
           <tbody>
-            @if (filteredTickets().length) {
-              @for (ticket of filteredTickets(); track ticket.id) {
-                <tr class="ticket-row">
-                  <td class="cell-tkt-number font-mono">{{ ticket.ticketNumber }}</td>
-                  <td class="cell-subject font-medium">{{ ticket.subject }}</td>
-                  <td class="cell-category">
-                    <span class="cat-pill">{{ ticket.categoryName || 'General' }}</span>
-                  </td>
-                  @if (userRole() !== 'EMPLOYEE') {
-                    <td class="cell-requester">{{ ticket.requesterName }}</td>
-                  }
-                  <td class="cell-agent">{{ ticket.assignedAgentName || 'Unassigned' }}</td>
-                  <td>
-                    <span class="pill-priority {{ getPriorityClass(ticket.priority) }}">
-                      {{ ticket.priority }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="pill-status {{ getStatusClass(ticket.status) }}">
-                      {{ ticket.status }}
-                    </span>
-                  </td>
-                  <td class="cell-date font-mono text-muted">
-                    {{ ticket.createdAt | date: 'yyyy-MM-dd HH:mm' }}
-                  </td>
-                </tr>
-              }
+            @if (displayTickets().length > 0) {
+            @for (ticket of displayTickets(); track ticket.id; let idx = $index) {
+            <tr class="ticket-row-clean" [class.row-selected]="selectedTicketForPreview()?.id === ticket.id"
+              (click)="selectTicket(ticket)">
+              <td>
+                <span class="ticket-link">{{ ticket.ticketNumber }}</span>
+              </td>
+              <td>
+                <span class="ticket-subject">{{ ticket.subject }}</span>
+              </td>
+              <td>
+                <span class="ticket-category">{{ ticket.categoryName || 'IT Support' }}</span>
+              </td>
+              <td>
+                @if (ticket.status === 'IN_PROGRESS') {
+                <span class="status-pill pill-inprogress">In Progress</span>
+                } @else if (ticket.status === 'RESOLVED') {
+                <span class="status-pill pill-resolved">Resolved</span>
+                } @else if (ticket.status === 'PENDING' || ticket.status === 'OPEN') {
+                <span class="status-pill pill-pending">Pending</span>
+                } @else if (ticket.status === 'ON_HOLD') {
+                <span class="status-pill pill-hold">On Hold</span>
+                } @else {
+                <span class="status-pill pill-default">{{ ticket.status }}</span>
+                }
+              </td>
+              <td>
+                <span class="ticket-updated">{{ formatRelativeTime(ticket.createdAt, idx) }}</span>
+              </td>
+            </tr>
+            }
             } @else {
-              <tr>
-                <td colspan="8" class="empty-table-cell">
-                  <div class="empty-state-content">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <circle cx="11" cy="11" r="8"/>
-                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                    </svg>
-                    <p>No tickets match your filter criteria.</p>
-                  </div>
-                </td>
-              </tr>
+            <tr>
+              <td colspan="5" class="empty-table-state">
+                <p>No tickets match your filter criteria.</p>
+              </td>
+            </tr>
             }
           </tbody>
         </table>
       </div>
     </section>
+
+    <!-- Ticket detail preview Card -->
+    <section class="content-card ticket-preview-card">
+      <div class="card-header-clean">
+        <div class="preview-title-row">
+          <h3 class="card-title">Ticket detail preview</h3>
+          @if (selectedTicketForPreview()) {
+          <button type="button" class="btn-clear-preview" (click)="clearSelectedTicket()">Deselect</button>
+          }
+        </div>
+        @if (!selectedTicketForPreview()) {
+        <p class="card-subtitle">Select a ticket to view conversation, attachments, SLA and resolution history.</p>
+        }
+      </div>
+
+      @if (selectedTicketForPreview(); as selected) {
+      <div class="preview-details-body">
+        <div class="preview-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Ticket ID</span>
+            <strong class="meta-val">{{ selected.ticketNumber }}</strong>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Subject</span>
+            <strong class="meta-val">{{ selected.subject }}</strong>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Category</span>
+            <span class="meta-val">{{ selected.categoryName || 'IT Support' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Priority</span>
+            <span class="meta-val font-semibold">{{ selected.priority }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Requester</span>
+            <span class="meta-val">{{ selected.requesterName || displayUserName() }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Assigned Support</span>
+            <span class="meta-val">{{ selected.assignedAgentName || 'IT Support Team' }}</span>
+          </div>
+        </div>
+
+        <div class="preview-timeline">
+          <h5 class="timeline-heading">Resolution History & SLA</h5>
+          <div class="timeline-step">
+            <div class="timeline-dot"></div>
+            <div class="timeline-info">
+              <strong>Ticket Created</strong>
+              <small>Logged into the help desk queue</small>
+            </div>
+          </div>
+          <div class="timeline-step">
+            <div class="timeline-dot dot-active"></div>
+            <div class="timeline-info">
+              <strong>{{ selected.status === 'RESOLVED' ? 'Issue Resolved' : 'Assigned & Under Investigation'
+                }}</strong>
+              <small>{{ selected.status === 'RESOLVED' ? 'Resolution confirmed by support team' : 'SLA Target active.
+                Support engineer reviewing diagnostic logs' }}</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      }
+    </section>
+    }
+
+    <!-- ============================================== -->
+    <!-- VIEW 3: ASSET MANAGEMENT                      -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'assets') {
+    <section class="content-card">
+      <div class="card-header-clean">
+        <h3 class="card-title">Assigned Hardware & IT Assets</h3>
+        <p class="card-subtitle">Equipment assigned to employee</p>
+      </div>
+      <div class="work-list">
+        <p class="empty-hint" style="padding: 24px; color: #64748b; font-size: 14px; text-align: center;">
+          No hardware or company assets currently assigned to your account.
+        </p>
+      </div>
+    </section>
+    }
+
+    <!-- ============================================== -->
+    <!-- VIEW 4: EXIT MANAGEMENT                       -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'exits') {
+    <section class="content-card">
+      <div class="card-header-clean">
+        <h3 class="card-title">Employee Exit Clearance Workflows</h3>
+        <p class="card-subtitle">Departure clearances and offboarding checklists</p>
+      </div>
+      <div class="work-list">
+        <p class="empty-hint" style="padding: 24px; color: #64748b; font-size: 14px; text-align: center;">
+          No exit clearance requests currently in progress.
+        </p>
+      </div>
+    </section>
+    }
+
+
+    }
+  </main>
+
+  <!-- ================= NEW TICKET MODAL ================= -->
+  @if (showNewTicketModal()) {
+  <div class="modal-backdrop" (click)="closeNewTicketModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Raise a Support Ticket</h3>
+        <button type="button" class="btn-close-modal" (click)="closeNewTicketModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Subject</label>
+          <input type="text" class="form-control" placeholder="Brief summary of your request"
+            [ngModel]="newTicketSubject()" (ngModelChange)="newTicketSubject.set($event)" />
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Category</label>
+            <select class="form-control" [ngModel]="newTicketCategory()"
+              (ngModelChange)="newTicketCategory.set($event)">
+              <option value="IT Support">IT Support</option>
+              <option value="Access">Access / Permissions</option>
+              <option value="Facilities">Facilities</option>
+              <option value="Software">Software</option>
+              <option value="Hardware">Hardware</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Priority</label>
+            <select class="form-control" [ngModel]="newTicketPriority()"
+              (ngModelChange)="newTicketPriority.set($event)">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea class="form-control text-area" rows="3" placeholder="Describe your issue or request in detail"
+            [ngModel]="newTicketDescription()" (ngModelChange)="newTicketDescription.set($event)"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-outline" (click)="closeNewTicketModal()">Cancel</button>
+        <button type="button" class="btn-primary-blue" (click)="submitNewTicket()">Submit Ticket</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ================= REPORT JSON SUMMARY MODAL ================= -->
+  @if (showReportJsonModal() && reportSummaryJson(); as report) {
+  <div class="modal-backdrop" (click)="closeReportJsonModal()">
+    <div class="modal-card modal-report-json" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3>Report Summary: {{ formatReportTypeName(report.reportType) }}</h3>
+          <span class="report-meta-chip">Role: {{ report.role }} | Total Persisted Records: {{ report.totalRecords }}</span>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeReportJsonModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="report-summary-metrics-grid">
+          <div class="metric-card">
+            <span class="metric-lbl">Total Tickets</span>
+            <strong class="metric-val">{{ report.summary?.totalTickets ?? 0 }}</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-lbl">Open</span>
+            <strong class="metric-val text-blue">{{ report.summary?.openTickets ?? 0 }}</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-lbl">In Progress</span>
+            <strong class="metric-val text-amber">{{ report.summary?.inProgressTickets ?? 0 }}</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-lbl">Resolved</span>
+            <strong class="metric-val text-green">{{ report.summary?.resolvedTickets ?? 0 }}</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-lbl">SLA Breached</span>
+            <strong class="metric-val text-red">{{ report.summary?.slaBreachedTickets ?? 0 }}</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-lbl">SLA Compliance</span>
+            <strong class="metric-val">{{ report.summary?.slaComplianceRate ?? 100 }}%</strong>
+          </div>
+        </div>
+
+        @if (report.statusDistribution && report.statusDistribution.length) {
+        <div class="report-section-block">
+          <h4>Status Distribution</h4>
+          <div class="distribution-list">
+            @for (item of report.statusDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        @if (report.priorityDistribution && report.priorityDistribution.length) {
+        <div class="report-section-block">
+          <h4>Priority Distribution</h4>
+          <div class="distribution-list">
+            @for (item of report.priorityDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        <div class="report-raw-json-block">
+          <h4>Structured Response Payload</h4>
+          <pre class="json-code-box">{{ report | json }}</pre>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-primary-blue" (click)="exportSummaryToExcel()">
+          Export This Report to Excel
+        </button>
+        <button type="button" class="btn-outline-cancel" (click)="closeReportJsonModal()">Close</button>
+      </div>
+    </div>
+  </div>
   }
 </div>
