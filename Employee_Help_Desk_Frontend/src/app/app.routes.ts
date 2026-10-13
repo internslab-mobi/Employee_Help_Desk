@@ -17,7 +17,7 @@ export const routes: Routes = [
   { path: 'verify-otp', component: VerifyOtp, canActivate: [verifyOtpGuard] },
   { path: 'reset-password', component: ResetPassword, canActivate: [resetPasswordGuard] },
   { path: 'change-password', component: ChangePassword },
-  { path: 'dashboard/employee', redirectTo: 'dashboard', pathMatch: 'full' },
+  { path: 'dashboard/employee', component: AgentDashboard, canActivate: [authGuard] },
   { path: 'dashboard/agent', redirectTo: 'dashboard', pathMatch: 'full' },
   { path: '**', redirectTo: 'login' }
 ];

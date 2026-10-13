@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_ENDPOINTS } from '../config/api.config';
-import { environment } from '../../../environments/environment';
 import { ReportSummaryRequest, ReportSummaryResponse, ReportType } from '../models/report.models';
 
 @Injectable({
@@ -10,7 +9,7 @@ import { ReportSummaryRequest, ReportSummaryResponse, ReportType } from '../mode
 })
 export class ReportService {
   // Integrates strictly through the Core Backend - never calls Report Microservice directly
-  private readonly baseUrl = `${environment.backendUrl}/api/reports`;
+  private readonly baseUrl = API_ENDPOINTS.reports.base;
 
   constructor(private http: HttpClient) {}
 

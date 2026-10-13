@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.SlaPolicy;
@@ -13,6 +14,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.SlaEventType;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 import xyz.mobi.employeehelpdesk.exception.BadRequestException;
 import xyz.mobi.employeehelpdesk.exception.InvalidStateException;
+import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
 import xyz.mobi.employeehelpdesk.repository.DepartmentManagerRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaInstanceRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaPolicyRepository;
@@ -458,6 +460,27 @@ public class SlaServiceImpl implements SlaService {
             log.info("SLA breached successfully for id={}", slaInstanceId);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SlaPolicyResponseDTO getSlaPolicyById(Long id) {
+        log.info("Fetching SLA policy by id: {}", id);
+
+        SlaPolicy policy = slaPolicyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("SLA policy not found with id: " + id));
+
+        return SlaPolicyResponseDTO.builder()
+                .id(policy.getId())
+                .departmentId(policy.getDepartment() != null ? policy.getDepartment().getId() : null)
+                .departmentName(policy.getDepartment() != null ? policy.getDepartment().getName() : null)
+                .subCategoryId(policy.getSubCategory() != null ? policy.getSubCategory().getId() : null)
+                .subCategoryName(policy.getSubCategory() != null ? policy.getSubCategory().getName() : null)
+                .durationMinutes(policy.getDurationMinutes())
+                .warningMinutes(policy.getWarningMinutes())
+                .isActive(policy.getIsActive())
+                .build();
+    }
+
 
     /**
      * Calculate warning time for initial SLA cycle.

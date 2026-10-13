@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ReportService } from './report.service';
-import { environment } from '../../../environments/environment';
+import { API_ENDPOINTS } from '../config/api.config';
 
 describe('ReportService', () => {
   let service: ReportService;
@@ -42,7 +42,7 @@ describe('ReportService', () => {
       expect(response.body).toBeTruthy();
     });
 
-    const expectedBaseUrl = `${environment.backendUrl}/api/reports/summary`;
+    const expectedBaseUrl = `${API_ENDPOINTS.reports.base}/summary`;
     const req = httpMock.expectOne(request => request.url === expectedBaseUrl);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('reportType')).toBe('TICKET_SUMMARY');
@@ -78,7 +78,7 @@ describe('ReportService', () => {
       expect(data.totalRecords).toBe(5);
     });
 
-    const expectedBaseUrl = `${environment.backendUrl}/api/reports/summary`;
+    const expectedBaseUrl = `${API_ENDPOINTS.reports.base}/summary`;
     const req = httpMock.expectOne(request => request.url === expectedBaseUrl);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('reportType')).toBe('GENERAL_SUMMARY');
@@ -101,7 +101,7 @@ describe('ReportService', () => {
       employeeId: 99
     }).subscribe();
 
-    const expectedBaseUrl = `${environment.backendUrl}/api/reports/summary`;
+    const expectedBaseUrl = `${API_ENDPOINTS.reports.base}/summary`;
     const req = httpMock.expectOne(request => request.url === expectedBaseUrl);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('reportType')).toBe('ADMIN_SUMMARY');
@@ -127,7 +127,7 @@ describe('ReportService', () => {
       employeeId: undefined
     }).subscribe();
 
-    const expectedBaseUrl = `${environment.backendUrl}/api/reports/summary`;
+    const expectedBaseUrl = `${API_ENDPOINTS.reports.base}/summary`;
     const req = httpMock.expectOne(request => request.url === expectedBaseUrl);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('reportType')).toBe('EMPLOYEE_SUMMARY');
@@ -145,7 +145,7 @@ describe('ReportService', () => {
   it('should never call port 8083 directly from Angular ReportService', () => {
     service.getSummaryReport({ reportType: 'GENERAL_SUMMARY' }).subscribe();
 
-    const req = httpMock.expectOne(request => request.url.startsWith(environment.backendUrl));
+    const req = httpMock.expectOne(request => request.url.startsWith(API_ENDPOINTS.reports.base));
     expect(req.request.url).not.toContain(':8083');
     req.flush({ totalRecords: 0 });
   });
