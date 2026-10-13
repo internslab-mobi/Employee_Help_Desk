@@ -8,7 +8,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.mobi.employeehelpdesk.dto.notification.NotificationResponseDTO;
-import xyz.mobi.employeehelpdesk.dto.notification.NotificationUpdateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.notification.UnreadNotificationCountResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.Notification;
@@ -127,7 +126,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public NotificationUpdateResponseDTO markAsRead(Long notificationId) {
+    public NotificationResponseDTO markAsRead(Long notificationId) {
         long currentEmployeeId = authService.getCurrentEmployeeId();
 
         Notification notification = notificationRepository.findById(notificationId)

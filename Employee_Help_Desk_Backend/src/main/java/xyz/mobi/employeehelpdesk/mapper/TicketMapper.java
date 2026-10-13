@@ -11,32 +11,6 @@ import xyz.mobi.employeehelpdesk.entity.*;
 )
 public interface TicketMapper {
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "version", ignore = true)
-    @Mapping(target = "ticketNumber", ignore = true)
-    @Mapping(target = "requester", ignore = true)
-    @Mapping(target = "department", ignore = true)
-    @Mapping(target = "category", ignore = true)
-    @Mapping(target = "subCategory", ignore = true)
-    @Mapping(target = "priority", ignore = true)
-    @Mapping(target = "status", ignore = true)
-    @Mapping(target = "assignedAgent", ignore = true)
-    @Mapping(target = "assignedManager", ignore = true)
-    @Mapping(target = "assignedAt", ignore = true)
-    @Mapping(target = "slaPolicy", ignore = true)
-    @Mapping(target = "reopenCount", ignore = true)
-    @Mapping(target = "resolutionSummary", ignore = true)
-    @Mapping(target = "holdReason", ignore = true)
-    @Mapping(target = "holdStartedAt", ignore = true)
-    @Mapping(target = "withdrawalReason", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "resolvedAt", ignore = true)
-    @Mapping(target = "reopenedAt", ignore = true)
-    @Mapping(target = "withdrawnAt", ignore = true)
-    @Mapping(target = "reopenReason", ignore = true)
-    Ticket toEntity(CreateTicketRequestDTO request);
-
     @Mapping(source = "ticket.id", target = "id")
     @Mapping(source = "ticket.requester", target = "requester")
     @Mapping(source = "ticket.department", target = "department")
@@ -48,9 +22,12 @@ public interface TicketMapper {
     @Mapping(source = "ticket.assignedAt", target = "assignedAt")
     @Mapping(source = "ticket.status", target = "status")
     @Mapping(source = "ticket.createdAt", target = "createdAt")
-    @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
-    @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
-    TicketCreateResponseDTO toCreateResponse(Ticket ticket, SlaInstance slaInstance);
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(source = "slaInstance.currentDeadlineAt", target = "slaDeadline")
+    @Mapping(target = "reopenCount", ignore = true)
+    @Mapping(target = "resolvedAt", ignore = true)
+    @Mapping(target = "reopenedAt", ignore = true)
+    TicketResponseDTO toCreateResponse(Ticket ticket, SlaInstance slaInstance);
 
     @Mapping(source = "ticket.id", target = "id")
     @Mapping(source = "ticket.requester", target = "requester")
@@ -62,10 +39,12 @@ public interface TicketMapper {
     @Mapping(source = "slaInstance.status", target = "slaStatus")
     @Mapping(source = "ticket.assignedAt", target = "assignedAt")
     @Mapping(source = "ticket.status", target = "status")
+    @Mapping(target = "createdAt", ignore = true)
     @Mapping(source = "ticket.updatedAt", target = "updatedAt")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
-    TicketUpdateResponseDTO toUpdateResponse(Ticket ticket, SlaInstance slaInstance);
+    @Mapping(target = "slaDeadline", ignore = true)
+    TicketResponseDTO toUpdateResponse(Ticket ticket, SlaInstance slaInstance);
 
     @Mapping(source = "ticket.id", target = "id")
     @Mapping(source = "ticket.requester", target = "requester")
@@ -79,6 +58,9 @@ public interface TicketMapper {
     @Mapping(source = "ticket.status", target = "status")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "slaDeadline", ignore = true)
     TicketResponseDTO toResponse(Ticket ticket, SlaInstance slaInstance);
 
     @Mapping(target = "id", source = "id")

@@ -25,8 +25,8 @@ import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 @Setter
 public class SubCategory extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
     private Category category;
 
     @Column(nullable = false, length = 150)

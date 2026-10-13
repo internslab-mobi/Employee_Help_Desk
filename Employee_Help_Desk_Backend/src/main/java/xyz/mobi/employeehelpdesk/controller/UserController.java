@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.auth.*;
 import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
-import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.UpdateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
@@ -35,10 +34,10 @@ public class UserController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<EmployeeCreateResponseDTO> createEmployee(
+    public ResponseEntity<EmployeeResponseDTO> createEmployee(
             @Valid @RequestBody CreateEmployeeRequestDTO request
     ) {
-        EmployeeCreateResponseDTO response = employeeService.createEmployee(request);
+        EmployeeResponseDTO response = employeeService.createEmployee(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

@@ -30,7 +30,6 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
     private final NotificationService notificationService;
     private final SubCategorySkillRepository subCategorySkillRepository;
     private final AgentSkillRepository agentSkillRepository;
-    private final DepartmentManagerRepository departmentManagerRepository;
 
     @Override
     @Transactional
@@ -44,10 +43,14 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         log.debug("Routing ticketId={}, ticketNumber={}, departmentId={}",
                 ticket.getId(), ticket.getTicketNumber(), ticket.getDepartment() != null ? ticket.getDepartment().getId() : null);
 
+        Long departmentId = ticket.getDepartment() != null ? ticket.getDepartment().getId() : null;
+        Long categoryId = ticket.getCategory() != null ? ticket.getCategory().getId() : null;
+
         // Find eligible agents in the ticket's department
         List<DepartmentAgent> eligibleAgents =
                 departmentAgentRepository.findEligibleAgents(
-                        ticket.getDepartment().getId()
+                        departmentId,
+                        categoryId
                 );
 
         // Nobody available -> leave ticket OPEN and unassigned
@@ -110,9 +113,12 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
                 .map(DepartmentAgent::getId)
                 .toList();
 
-        // 1. Fetch required skill IDs for subcategory once
+        // 1. Fetch required skill IDs for subcategory once (skipped for Others)
+        boolean isOthers = ticket.getSubCategory() != null
+                && "others".equalsIgnoreCase(ticket.getSubCategory().getName());
+
         Set<Long> requiredSkillIds = Collections.emptySet();
-        if (ticket.getSubCategory() != null) {
+        if (ticket.getSubCategory() != null && !isOthers) {
             List<SubCategorySkill> requiredSkills =
                     subCategorySkillRepository.findBySubCategoryId(ticket.getSubCategory().getId());
             requiredSkillIds = requiredSkills.stream()
@@ -121,13 +127,18 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         }
         int requiredSkillCount = requiredSkillIds.size();
 
-        // 2. Batch fetch agent skills for all candidate agents
-        List<AgentSkill> agentSkills = agentSkillRepository.findByAgentIdIn(agentIds);
-        Map<Long, Set<Long>> agentSkillMap = agentSkills.stream()
-                .collect(Collectors.groupingBy(
-                        as -> as.getAgent().getId(),
-                        Collectors.mapping(as -> as.getSkill().getId(), Collectors.toSet())
-                ));
+        // 2. Batch fetch agent skills for all candidate agents (skipped for Others)
+        Map<Long, Set<Long>> agentSkillMap;
+        if (!isOthers && requiredSkillCount > 0) {
+            List<AgentSkill> agentSkills = agentSkillRepository.findByAgentIdIn(agentIds);
+            agentSkillMap = agentSkills.stream()
+                    .collect(Collectors.groupingBy(
+                            as -> as.getAgent().getId(),
+                            Collectors.mapping(as -> as.getSkill().getId(), Collectors.toSet())
+                    ));
+        } else {
+            agentSkillMap = Collections.emptyMap();
+        }
 
         // 3. Batch count active tickets for all candidate agents
         List<Object[]> countRows = ticketRepository.countActiveTicketsForAgents(agentIds, activeStatuses);

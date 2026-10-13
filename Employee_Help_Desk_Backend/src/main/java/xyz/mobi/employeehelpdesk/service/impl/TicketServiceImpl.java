@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
@@ -70,7 +69,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketCreateResponseDTO createTicket(
+    public TicketResponseDTO createTicket(
             CreateTicketRequestDTO request,
             List<MultipartFile> attachments
     ) throws IOException {
@@ -112,16 +111,15 @@ public class TicketServiceImpl implements TicketService {
         );
 
 
-        // Create Ticket using MapStruct
-        Ticket ticket = ticketMapper.toEntity(request);
-
-        // used toBuilder to build on same object
-        ticket = ticket.toBuilder()
+        // Create Ticket using Builder
+        Ticket ticket = Ticket.builder()
                 .requester(requester)
                 .department(department)
                 .category(category)
                 .subCategory(subCategory)
                 .priority(subCategory.getPriority())
+                .subject(request.getSubject())
+                .description(request.getDescription())
                 .status(OPEN)
                 .reopenCount(0)
                 .build();
@@ -354,6 +352,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         Long departmentId = ticket.getDepartment().getId();
+        Long categoryId = ticket.getCategory() != null ? ticket.getCategory().getId() : null;
 
         if (currentEmployee.getRole() != UserRole.MANAGER && currentEmployee.getRole() != UserRole.ADMIN) {
             throw new AccessDeniedException("Only managers and admins can view assignable agents");
@@ -367,7 +366,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         // 1. Fetch eligible agents in the ticket's department (ACTIVE status and AGENT role)
-        List<DepartmentAgent> eligibleAgents = departmentAgentRepository.findEligibleAgents(departmentId);
+        List<DepartmentAgent> eligibleAgents = departmentAgentRepository.findEligibleAgents(departmentId, categoryId);
         if (eligibleAgents.isEmpty()) {
             return Collections.emptyList();
         }
@@ -376,9 +375,12 @@ public class TicketServiceImpl implements TicketService {
                 .map(DepartmentAgent::getId)
                 .toList();
 
-        // 2. Fetch required skills for the ticket subcategory
+        // 2. Fetch required skills for the ticket subcategory (skipped for Others)
+        boolean isOthers = ticket.getSubCategory() != null
+                && "others".equalsIgnoreCase(ticket.getSubCategory().getName());
+
         Set<Long> requiredSkillIds = Collections.emptySet();
-        if (ticket.getSubCategory() != null) {
+        if (ticket.getSubCategory() != null && !isOthers) {
             List<SubCategorySkill> requiredSkills =
                     subCategorySkillRepository.findBySubCategoryId(ticket.getSubCategory().getId());
             requiredSkillIds = requiredSkills.stream()
@@ -387,8 +389,10 @@ public class TicketServiceImpl implements TicketService {
         }
         int requiredSkillCount = requiredSkillIds.size();
 
-        // 3. Batch fetch agent skills
-        List<AgentSkill> agentSkills = agentSkillRepository.findByAgentIdIn(agentIds);
+        // 3. Batch fetch agent skills (skipped for Others)
+        List<AgentSkill> agentSkills = (!isOthers && requiredSkillCount > 0)
+                ? agentSkillRepository.findByAgentIdIn(agentIds)
+                : Collections.emptyList();
         Map<Long, Set<Long>> agentSkillMap = agentSkills.stream()
                 .collect(Collectors.groupingBy(
                         (AgentSkill as) -> as.getAgent().getId(),
@@ -666,7 +670,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public TicketUpdateResponseDTO withdrawTicket(Long ticketId, WithdrawRequestDTO withdrawRequest) {
+    public TicketResponseDTO withdrawTicket(Long ticketId, WithdrawRequestDTO withdrawRequest) {
 
         String reason = withdrawRequest.reason();
 
@@ -755,7 +759,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('AGENT')")
-    public TicketUpdateResponseDTO startTicket(Long ticketId) {
+    public TicketResponseDTO startTicket(Long ticketId) {
 
         long currentAgentId = authService.getCurrentEmployeeId();
 
@@ -814,7 +818,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('AGENT')")
-    public TicketUpdateResponseDTO holdTicket(Long ticketId, HoldTicketRequestDTO request) {
+    public TicketResponseDTO holdTicket(Long ticketId, HoldTicketRequestDTO request) {
         long currentAgentId = authService.getCurrentEmployeeId();
 
         String reason = request != null ? request.reason() : null;
@@ -874,7 +878,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('AGENT')")
-    public TicketUpdateResponseDTO resumeTicket(Long ticketId) {
+    public TicketResponseDTO resumeTicket(Long ticketId) {
         long currentAgentId = authService.getCurrentEmployeeId();
 
         Ticket ticket = ticketRepository.findById(ticketId)
@@ -929,7 +933,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('AGENT')")
-    public TicketUpdateResponseDTO resolveTicket(Long ticketId, ResolveTicketRequestDTO request) {
+    public TicketResponseDTO resolveTicket(Long ticketId, ResolveTicketRequestDTO request) {
         long currentAgentId = authService.getCurrentEmployeeId();
 
         String summary = request != null ? request.resolutionSummary() : null;
@@ -989,7 +993,7 @@ public class TicketServiceImpl implements TicketService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public TicketUpdateResponseDTO reopenTicket(Long ticketId, ReopenRequestDTO request) {
+    public TicketResponseDTO reopenTicket(Long ticketId, ReopenRequestDTO request) {
 
         Long employeeId = authService.getCurrentEmployeeId();
 
@@ -1152,14 +1156,15 @@ public class TicketServiceImpl implements TicketService {
         }
 
 
-        // SubCategory must belong to selected Category
-
-        if (!subCategory.getCategory().getId()
-                .equals(category.getId())) {
-
-            throw new BadRequestException(
-                    "Subcategory does not belong to selected category"
-            );
+        // SubCategory must belong to selected Category (unless it's the shared "Others" subcategory)
+        boolean isOthers = "others".equalsIgnoreCase(subCategory.getName());
+        if (!isOthers) {
+            if (subCategory.getCategory() == null
+                    || !subCategory.getCategory().getId().equals(category.getId())) {
+                throw new BadRequestException(
+                        "Subcategory does not belong to selected category"
+                );
+            }
         }
 
 
@@ -1251,7 +1256,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketFeedbackCreateResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request) {
+    public TicketFeedbackResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request) {
         long currentEmployeeId = authService.getCurrentEmployeeId();
 
         if (request == null || request.rating() == null) {
@@ -1366,7 +1371,7 @@ public class TicketServiceImpl implements TicketService {
     @PreAuthorize("hasRole('MANAGER')")
     @Override
     @Transactional
-    public TicketUpdateResponseDTO assignTicketByManager(Long ticketId, Long agentId) {
+    public TicketResponseDTO assignTicketByManager(Long ticketId, Long agentId) {
 
         if (agentId == null) {
             throw new BadRequestException("Agent ID is required");
@@ -1537,7 +1542,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    public TicketUpdateResponseDTO updateTicket(
+    public TicketResponseDTO updateTicket(
             Long ticketId,
             UpdateTicketRequestDTO request
     ) {

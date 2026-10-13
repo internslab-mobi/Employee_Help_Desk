@@ -1,12 +1,15 @@
 package xyz.mobi.employeehelpdesk.dto.employee;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record EmployeeResponseDTO(
         Long id,
         String employeeCode,
@@ -21,6 +24,8 @@ public record EmployeeResponseDTO(
         UserRole role,
         LocalDate dateOfJoining,
         LocalDate dateOfExit,
-        String timezone
+        String timezone,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 }
