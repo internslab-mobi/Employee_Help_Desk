@@ -46,11 +46,6 @@
 
         </div>
 
-        @if (errorMessage) {
-          <div class="login-alert">
-            {{ errorMessage }}
-          </div>
-        }
 
         <!-- Login Form -->
         <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
@@ -128,9 +123,6 @@
           <!-- Forgot Password -->
           <div class="forgot-password">
 
-            <!--
-              Intentionally no routing/functionality yet.
-            -->
             <a routerLink="/forgot-password">
               Forgot Password?
             </a>
@@ -146,6 +138,12 @@
           >
             {{ isLoading ? 'Signing in...' : 'Login' }}
           </button>
+
+          @if (errorMessage) {
+          <div class="login-alert">
+            {{ errorMessage }}
+          </div>
+        }
 
         </form>
 

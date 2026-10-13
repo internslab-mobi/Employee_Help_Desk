@@ -1,5 +1,6 @@
 package xyz.mobi.employeehelpdesk.service;
 
+import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
 
@@ -13,4 +14,6 @@ public interface SlaService {
 
     // Event-driven SLA processing
     void processSlaEvent(Long slaInstanceId);
+
+    SlaPolicyResponseDTO getSlaPolicyById(Long id);
 }

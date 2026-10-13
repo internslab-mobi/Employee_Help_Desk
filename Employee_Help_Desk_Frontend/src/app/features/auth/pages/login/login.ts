@@ -67,7 +67,7 @@ export class Login {
       )
       .subscribe({
         next: () => {
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/dashboard/employee']);
         },
         error: (err) => {
           if (err?.status === 0) {
