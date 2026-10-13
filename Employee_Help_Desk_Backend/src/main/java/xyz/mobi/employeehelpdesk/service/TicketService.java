@@ -3,7 +3,6 @@ package xyz.mobi.employeehelpdesk.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
@@ -17,7 +16,7 @@ import java.util.Map;
 
 public interface TicketService {
 
-    TicketCreateResponseDTO createTicket(
+    TicketResponseDTO createTicket(
             CreateTicketRequestDTO request,
             List<MultipartFile> attachments)
             throws IOException;
@@ -50,28 +49,28 @@ public interface TicketService {
             Long departmentId
     );
 
-    TicketUpdateResponseDTO updateTicket(
+    TicketResponseDTO updateTicket(
             Long ticketId,
             UpdateTicketRequestDTO request
     );
 
-    TicketUpdateResponseDTO assignTicketByManager(Long ticketId, Long agentId);
+    TicketResponseDTO assignTicketByManager(Long ticketId, Long agentId);
 
-    TicketUpdateResponseDTO withdrawTicket(Long ticketId, WithdrawRequestDTO withdrawRequest);
+    TicketResponseDTO withdrawTicket(Long ticketId, WithdrawRequestDTO withdrawRequest);
 
-    TicketUpdateResponseDTO startTicket(Long ticketId);
+    TicketResponseDTO startTicket(Long ticketId);
 
-    TicketUpdateResponseDTO holdTicket(Long ticketId, HoldTicketRequestDTO request);
+    TicketResponseDTO holdTicket(Long ticketId, HoldTicketRequestDTO request);
 
-    TicketUpdateResponseDTO resumeTicket(Long ticketId);
+    TicketResponseDTO resumeTicket(Long ticketId);
 
-    TicketUpdateResponseDTO resolveTicket(Long ticketId, ResolveTicketRequestDTO request);
+    TicketResponseDTO resolveTicket(Long ticketId, ResolveTicketRequestDTO request);
 
-    TicketUpdateResponseDTO reopenTicket(Long ticketId, ReopenRequestDTO request);
+    TicketResponseDTO reopenTicket(Long ticketId, ReopenRequestDTO request);
 
     // feedback
 
-    TicketFeedbackCreateResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request);
+    TicketFeedbackResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request);
 
     TicketFeedbackResponseDTO getFeedback(Long ticketId);
 }

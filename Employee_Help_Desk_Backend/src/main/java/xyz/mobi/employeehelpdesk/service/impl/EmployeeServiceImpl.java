@@ -12,7 +12,6 @@ import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
-import xyz.mobi.employeehelpdesk.dto.employee.EmployeeCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.UpdateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
@@ -67,7 +66,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Transactional
     @Override
-    public EmployeeCreateResponseDTO createEmployee(CreateEmployeeRequestDTO request) {
+    public EmployeeResponseDTO createEmployee(CreateEmployeeRequestDTO request) {
 
         // 1. Get currently logged-in employee
         Long currentEmployeeId = authService.getCurrentEmployeeId();
@@ -501,7 +500,22 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     private EmployeeResponseDTO toResponse(Employee employee) {
+        return toResponseBuilder(employee).build();
+    }
 
+    private EmployeeResponseDTO toCreateResponse(Employee employee) {
+        return toResponseBuilder(employee)
+                .createdAt(employee.getCreatedAt())
+                .build();
+    }
+
+    private EmployeeResponseDTO toUpdateResponse(Employee employee) {
+        return toResponseBuilder(employee)
+                .updatedAt(employee.getUpdatedAt())
+                .build();
+    }
+
+    private EmployeeResponseDTO.EmployeeResponseDTOBuilder toResponseBuilder(Employee employee) {
         return EmployeeResponseDTO.builder()
                 .id(employee.getId())
                 .employeeCode(employee.getEmployeeCode())
@@ -522,35 +536,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .role(employee.getRole())
                 .dateOfJoining(employee.getDateOfJoining())
                 .dateOfExit(employee.getDateOfExit())
-                .timezone(employee.getTimezone())
-                .build();
-    }
-
-    private EmployeeCreateResponseDTO toCreateResponse(Employee employee) {
-
-        return EmployeeCreateResponseDTO.builder()
-                .id(employee.getId())
-                .employeeCode(employee.getEmployeeCode())
-                .firstName(employee.getFirstName())
-                .lastName(employee.getLastName())
-                .email(employee.getEmail())
-                .phone(employee.getPhone())
-                .designation(employee.getDesignation())
-                .departmentId(
-                        employee.getDepartment() != null
-                                ? employee.getDepartment().getId()
-                                : null)
-                .departmentName(
-                        employee.getDepartment() != null
-                                ? employee.getDepartment().getName()
-                                : null)
-                .employmentStatus(employee.getEmploymentStatus())
-                .role(employee.getRole())
-                .dateOfJoining(employee.getDateOfJoining())
-                .dateOfExit(employee.getDateOfExit())
-                .timezone(employee.getTimezone())
-                .createdAt(employee.getCreatedAt())
-                .build();
+                .timezone(employee.getTimezone());
     }
 
     @Transactional
@@ -711,7 +697,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee savedEmployee = employeeRepository.save(employee);
         log.info("Employee updated successfully: employeeId={}", savedEmployee.getId());
 
-        return toResponse(savedEmployee);
+        return toUpdateResponse(savedEmployee);
     }
 
     private boolean hasActiveTickets(DepartmentAgent agent) {

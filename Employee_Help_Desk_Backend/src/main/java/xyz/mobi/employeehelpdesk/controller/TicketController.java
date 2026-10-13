@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
@@ -36,13 +35,13 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<TicketCreateResponseDTO> createTicket(
+    public ResponseEntity<TicketResponseDTO> createTicket(
             @Valid @RequestPart("request") CreateTicketRequestDTO request,
             @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments
     ) throws IOException {
 
 
-        TicketCreateResponseDTO response = ticketService.createTicket(
+        TicketResponseDTO response = ticketService.createTicket(
                 request,
                 attachments
         );
@@ -54,7 +53,7 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PatchMapping("/{ticketId}")
-    public ResponseEntity<TicketUpdateResponseDTO> updateTicket(
+    public ResponseEntity<TicketResponseDTO> updateTicket(
             @PathVariable Long ticketId,
             @Valid @RequestBody UpdateTicketRequestDTO request
     ) {
@@ -162,12 +161,12 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping("/{ticketId}/feedback")
-    public ResponseEntity<TicketFeedbackCreateResponseDTO> createFeedback(
+    public ResponseEntity<TicketFeedbackResponseDTO> createFeedback(
             @PathVariable Long ticketId,
             @Valid @RequestBody TicketFeedbackRequestDTO request
     ) {
 
-        TicketFeedbackCreateResponseDTO response =
+        TicketFeedbackResponseDTO response =
                 ticketService.createFeedback(
                         ticketId,
                         request

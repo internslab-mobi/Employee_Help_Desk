@@ -3,7 +3,6 @@ package xyz.mobi.employeehelpdesk.mapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO;
-import xyz.mobi.employeehelpdesk.dto.message.TicketMessageCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.TicketMessage;
@@ -20,8 +19,9 @@ public interface TicketMessageMapper {
     @Mapping(source = "message.content", target = "content")
     @Mapping(source = "message.seen", target = "seen")
     @Mapping(source = "message.createdAt", target = "createdAt")
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(source = "attachments", target = "attachments")
-    TicketMessageCreateResponseDTO toCreateResponse(TicketMessage message, List<TicketAttachmentResponseDTO> attachments);
+    TicketMessageResponseDTO toCreateResponse(TicketMessage message, List<TicketAttachmentResponseDTO> attachments);
 
     @Mapping(source = "message.id", target = "id")
     @Mapping(source = "message.ticket.id", target = "ticketId")
@@ -29,6 +29,8 @@ public interface TicketMessageMapper {
     @Mapping(target = "senderName", expression = "java(mapSenderName(message.getSender()))")
     @Mapping(source = "message.content", target = "content")
     @Mapping(source = "message.seen", target = "seen")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(source = "attachments", target = "attachments")
     TicketMessageResponseDTO toResponse(TicketMessage message, List<TicketAttachmentResponseDTO> attachments);
 

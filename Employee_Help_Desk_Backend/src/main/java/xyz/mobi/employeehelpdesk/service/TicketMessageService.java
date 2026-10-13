@@ -3,7 +3,6 @@ package xyz.mobi.employeehelpdesk.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
-import xyz.mobi.employeehelpdesk.dto.message.TicketMessageCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
 
@@ -12,7 +11,7 @@ import java.util.List;
 
 public interface TicketMessageService {
 
-    TicketMessageCreateResponseDTO createMessage(
+    TicketMessageResponseDTO createMessage(
             Long ticketId,
             String content,
             List<MultipartFile> attachments

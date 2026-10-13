@@ -13,7 +13,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.message.CreateTicketMessageRequestDTO;
-import xyz.mobi.employeehelpdesk.dto.message.TicketMessageCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
 import xyz.mobi.employeehelpdesk.service.TicketMessageService;
@@ -30,22 +29,22 @@ public class TicketMessageController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping(value = "/{ticketId}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<TicketMessageCreateResponseDTO> createMessageMultipart(
+    public ResponseEntity<TicketMessageResponseDTO> createMessageMultipart(
             @PathVariable Long ticketId,
             @RequestParam("content") String content,
             @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments
     ) throws IOException {
-        TicketMessageCreateResponseDTO response = ticketMessageService.createMessage(ticketId, content, attachments);
+        TicketMessageResponseDTO response = ticketMessageService.createMessage(ticketId, content, attachments);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PostMapping(value = "/{ticketId}/messages", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<TicketMessageCreateResponseDTO> createMessageJson(
+    public ResponseEntity<TicketMessageResponseDTO> createMessageJson(
             @PathVariable Long ticketId,
             @Valid @RequestBody CreateTicketMessageRequestDTO request
     ) throws IOException {
-        TicketMessageCreateResponseDTO response = ticketMessageService.createMessage(ticketId, request.content(), null);
+        TicketMessageResponseDTO response = ticketMessageService.createMessage(ticketId, request.content(), null);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

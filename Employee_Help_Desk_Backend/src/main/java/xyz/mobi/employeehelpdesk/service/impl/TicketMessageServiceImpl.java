@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO;
-import xyz.mobi.employeehelpdesk.dto.message.TicketMessageCreateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
@@ -55,7 +54,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public TicketMessageCreateResponseDTO createMessage(
+    public TicketMessageResponseDTO createMessage(
             Long ticketId,
             String content,
             List<MultipartFile> attachments

@@ -50,18 +50,22 @@ public interface DepartmentAgentRepository
             @Param("departmentId") Long departmentId
     );
 
-    /* Find all agents belonging to a particular department whose employee is currently ACTIVE and role is AGENT */
+    /* Find all agents belonging to a particular department whose employee is currently ACTIVE and role is AGENT,
+       and who are associated with the requested category (or any category if categoryId is null) */
     @Query("""
-        SELECT da
+        SELECT DISTINCT da
         FROM DepartmentAgent da
         JOIN FETCH da.employee e
         LEFT JOIN FETCH e.department
         LEFT JOIN FETCH e.manager
+        LEFT JOIN da.categories c
         WHERE e.department.id = :departmentId
           AND e.employmentStatus = xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus.ACTIVE
           AND e.role = xyz.mobi.employeehelpdesk.entity.enums.UserRole.AGENT
+          AND (:categoryId IS NULL OR c.id = :categoryId)
     """)
     List<DepartmentAgent> findEligibleAgents(
-            @Param("departmentId") Long departmentId
+            @Param("departmentId") Long departmentId,
+            @Param("categoryId") Long categoryId
     );
 }
