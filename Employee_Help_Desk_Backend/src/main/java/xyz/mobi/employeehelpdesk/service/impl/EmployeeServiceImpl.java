@@ -34,6 +34,7 @@ import xyz.mobi.employeehelpdesk.repository.TicketAttachmentRepository;
 import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.service.EmployeeService;
 import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
+import xyz.mobi.employeehelpdesk.util.TimezoneUtil;
 import xyz.mobi.employeehelpdesk.validator.TicketAttachmentValidator;
 
 import java.io.IOException;
@@ -265,6 +266,10 @@ public class EmployeeServiceImpl implements EmployeeService {
                         ? request.dateOfJoining()
                         : LocalDate.now()
         );
+
+        if (!TimezoneUtil.isValidTimezone(request.timezone())) {
+            throw new BadRequestException("Invalid timezone ID. Must be a valid IANA timezone (e.g. UTC, Asia/Kolkata, America/New_York)");
+        }
 
         employee.setTimezone(
                 request.timezone() != null
@@ -642,6 +647,9 @@ public class EmployeeServiceImpl implements EmployeeService {
             if (effectiveRequest.timezone() != null) {
                 if (effectiveRequest.timezone().trim().isBlank()) {
                     throw new BadRequestException("Timezone cannot be blank");
+                }
+                if (!TimezoneUtil.isValidTimezone(effectiveRequest.timezone())) {
+                    throw new BadRequestException("Invalid timezone ID. Must be a valid IANA timezone (e.g. UTC, Asia/Kolkata, America/New_York)");
                 }
                 employee.setTimezone(effectiveRequest.timezone().trim());
             }

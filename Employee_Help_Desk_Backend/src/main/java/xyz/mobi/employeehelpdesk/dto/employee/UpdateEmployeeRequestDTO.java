@@ -1,11 +1,13 @@
 package xyz.mobi.employeehelpdesk.dto.employee;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
-import xyz.mobi.employeehelpdesk.validator.ValidTimezone;
+import xyz.mobi.employeehelpdesk.util.TimezoneUtil;
 
 import java.time.LocalDate;
 
@@ -33,7 +35,11 @@ public record UpdateEmployeeRequestDTO(
 
         UserRole role,
 
-        @ValidTimezone
         String timezone
 ) {
+    @JsonIgnore
+    @AssertTrue(message = "Invalid timezone ID. Must be a valid IANA timezone (e.g. UTC, Asia/Kolkata, America/New_York)")
+    public boolean isTimezoneValid() {
+        return TimezoneUtil.isValidTimezone(timezone);
+    }
 }
