@@ -68,9 +68,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     timezone = "UTC";
                 }
 
-                List<SimpleGrantedAuthority> authorities = Collections.singletonList(
-                        new SimpleGrantedAuthority("ROLE_" + role.name())
-                );
+                List<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
 
                 UserPrincipal principal = new UserPrincipal(
                         employeeId,

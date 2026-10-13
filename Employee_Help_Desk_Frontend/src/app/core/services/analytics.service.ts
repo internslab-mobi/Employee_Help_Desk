@@ -1,14 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { API_ENDPOINTS } from '../config/api.config';
 import { DashboardAnalyticsResponse } from '../models/dashboard.models';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AnalyticsService {
-  private readonly baseUrl = `${environment.backendUrl}/analytics`;
+  private readonly baseUrl = API_ENDPOINTS.analytics.base;
 
   constructor(private http: HttpClient) {}
 

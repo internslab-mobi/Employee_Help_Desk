@@ -12,7 +12,7 @@ import xyz.mobi.employeehelpdesk.dto.notification.UnreadNotificationCountRespons
 import xyz.mobi.employeehelpdesk.service.NotificationService;
 
 @RestController
-@RequestMapping("/notifications")
+@RequestMapping("/helpdesk/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 

@@ -23,7 +23,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping("/helpdesk/reports")
 @RequiredArgsConstructor
 public class ReportController {
 
