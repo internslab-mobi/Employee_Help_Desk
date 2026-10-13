@@ -12,7 +12,7 @@ import xyz.mobi.employeehelpdesk.service.helperservice.ErrorCodeCacheService;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/error-codes")
+@RequestMapping("/helpdesk/error-codes")
 @RequiredArgsConstructor
 public class ErrorCodeController {
 

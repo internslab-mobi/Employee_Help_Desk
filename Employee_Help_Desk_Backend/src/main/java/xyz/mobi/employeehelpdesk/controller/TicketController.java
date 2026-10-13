@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/tickets")
+@RequestMapping("/helpdesk/tickets")
 @RequiredArgsConstructor
 public class TicketController {
 

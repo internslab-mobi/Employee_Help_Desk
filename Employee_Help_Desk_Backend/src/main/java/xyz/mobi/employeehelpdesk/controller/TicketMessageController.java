@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/tickets")
+@RequestMapping("/helpdesk/tickets")
 @RequiredArgsConstructor
 public class TicketMessageController {
 

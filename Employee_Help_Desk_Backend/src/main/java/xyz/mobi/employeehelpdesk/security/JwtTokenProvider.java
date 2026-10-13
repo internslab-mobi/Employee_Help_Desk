@@ -33,38 +33,6 @@ public class JwtTokenProvider {
     @Value("${security.jwt.refresh-expiration-ms:2700000}")
     private long refreshExpirationMs;
 
-    public String generateToken(Long employeeId, UserRole role, String timezone) {
-        try {
-            Date now = new Date();
-            Date expiryDate = new Date(now.getTime() + expirationMs);
-
-            String resolvedTimezone = (timezone != null && !timezone.isBlank()) ? timezone.trim() : "UTC";
-            // Validate that resolvedTimezone is a valid IANA ZoneId
-            java.time.ZoneId.of(resolvedTimezone);
-
-            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                    .subject(employeeId.toString())
-                    .claim("role", role != null ? role.name() : UserRole.EMPLOYEE.name())
-                    .claim("timezone", resolvedTimezone)
-                    .issueTime(now)
-                    .expirationTime(expiryDate)
-                    .build();
-
-            SignedJWT signedJWT = new SignedJWT(
-                    new JWSHeader(JWSAlgorithm.HS256),
-                    claimsSet
-            );
-
-            JWSSigner signer = new MACSigner(getSigningKey());
-            signedJWT.sign(signer);
-
-            return signedJWT.serialize();
-        } catch (Exception ex) {
-            log.error("Could not generate JWT token: {}", ex.getMessage(), ex);
-            throw new UnauthorizedException("Authentication failed");
-        }
-    }
-
     public boolean validateToken(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
@@ -103,10 +71,18 @@ public class JwtTokenProvider {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
             String roleStr = signedJWT.getJWTClaimsSet().getStringClaim("role");
-            return roleStr != null ? UserRole.valueOf(roleStr) : UserRole.EMPLOYEE;
+            if (roleStr == null || roleStr.isBlank()) {
+                throw new UnauthorizedException("Token missing role claim");
+            }
+            return UserRole.valueOf(roleStr.trim());
+        } catch (IllegalArgumentException ex) {
+            log.warn("Invalid role claim in token: {}", ex.getMessage());
+            throw new UnauthorizedException("Invalid role claim in token");
+        } catch (UnauthorizedException ex) {
+            throw ex;
         } catch (Exception ex) {
             log.warn("Could not extract role from token: {}", ex.getMessage());
-            return UserRole.EMPLOYEE;
+            throw new UnauthorizedException("Invalid token");
         }
     }
 
