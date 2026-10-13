@@ -1,17 +1,16 @@
-# Standalone Notification Microservice
+# Standalone Email Notification Microservice
 
-A standalone Spring Boot microservice for notification management (in-app notifications and email notifications) within the Employee Help Desk ecosystem.
+A standalone Spring Boot microservice for email notification delivery within the Employee Help Desk ecosystem.
 
 ---
 
 ## 1. Overview & Isolation
 
-This microservice is completely standalone and contains only the equivalent notification and email logic from the main project:
+This microservice is completely standalone and dedicated exclusively to email notifications:
 - **Zero Coupling**: It does not depend on, call, or import `Employee_Help_Desk_Backend` or `Employee_Help_Desk_Report_Service`.
-- **In-App & Email Channels**: Replicates the dual notification channel logic from the main project:
-  - Notifications are persisted in the service's own MySQL database (`employee_helpdesk_notifications`).
-  - If a recipient email address is provided, a notification email is dispatched asynchronously via Spring Boot Mail (`JavaMailSender`).
-- **Clean REST Controller**: Exposes the exact equivalent notification endpoints (`GET /notifications`, `GET /notifications/unread`, `GET /notifications/unread/count`, `PATCH /notifications/{notificationId}/read`) and `POST /notifications` for standalone notification dispatch.
+- **Email Only**: In-app notifications are managed directly by the core application; this microservice focuses strictly on email dispatch.
+- **Stateless & Database-Free**: No database or persistence layer required. All email deliveries are handled through Spring Boot Mail (`JavaMailSender`) asynchronously.
+- **Flexible REST Endpoints**: Exposes endpoints for email dispatch supporting both clean email request payloads (`to`, `subject`, `body`) and notification format payloads (`recipientEmail`, `title`, `message`).
 
 ---
 
@@ -19,11 +18,9 @@ This microservice is completely standalone and contains only the equivalent noti
 
 - **Java**: 21 LTS
 - **Framework**: Spring Boot 3.3.4
-- **Persistence**: Spring Data JPA & Hibernate
-- **Database**: MySQL 8.x
 - **Email Delivery**: Spring Boot Mail (`JavaMailSender`, Jakarta Mail)
 - **Validation**: Jakarta Validation (`spring-boot-starter-validation`)
-- **JSON Serialization**: Jackson with `@JsonInclude(JsonInclude.Include.NON_NULL)`
+- **JSON Serialization**: Jackson with `@JsonInclude(JsonInclude.Include.NON_NULL)` and `@JsonAlias`
 - **Build Tool**: Apache Maven with Maven Wrapper (`./mvnw`)
 
 ---
@@ -48,92 +45,80 @@ Employee_Help_Desk_Notification_Service/
         │           └── notificationservice/
         │               ├── NotificationServiceApplication.java
         │               ├── controller/
-        │               │   └── NotificationController.java
+        │               │   └── EmailController.java
         │               ├── dto/
-        │               │   ├── CreateNotificationRequestDTO.java
-        │               │   ├── NotificationResponseDTO.java
-        │               │   └── UnreadNotificationCountResponseDTO.java
-        │               ├── entity/
-        │               │   ├── BaseEntity.java
-        │               │   ├── Notification.java
-        │               │   └── enums/
-        │               │       └── NotificationType.java
+        │               │   ├── EmailRequestDTO.java
+        │               │   └── EmailResponseDTO.java
         │               ├── exception/
         │               │   ├── BadRequestException.java
         │               │   ├── ErrorResponse.java
         │               │   ├── GlobalExceptionHandler.java
         │               │   ├── NotificationServiceException.java
         │               │   └── ResourceNotFoundException.java
-        │               ├── mapper/
-        │               │   └── NotificationMapper.java
-        │               ├── repository/
-        │               │   └── NotificationRepository.java
         │               └── service/
         │                   ├── EmailService.java
-        │                   ├── NotificationService.java
         │                   └── impl/
-        │                       └── NotificationServiceImpl.java
+        │                       └── EmailServiceImpl.java
         └── resources/
-            ├── application.yaml
-            └── schema.sql
+            └── application.yaml
 ```
 
 ---
 
-## 4. Database Setup & DDL
-
-### Database Schema
-```sql
-CREATE DATABASE IF NOT EXISTS employee_helpdesk_notifications;
-USE employee_helpdesk_notifications;
-```
-
-### Table DDL
-```sql
-CREATE TABLE IF NOT EXISTS hd_notifications (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    recipient_id BIGINT NOT NULL,
-    ticket_id BIGINT NULL,
-    ticket_number VARCHAR(50) NULL,
-    type VARCHAR(50) NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    is_read BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at DATETIME(6) NOT NULL,
-    updated_at DATETIME(6) NOT NULL,
-    INDEX idx_notification_recipient (recipient_id),
-    INDEX idx_notification_recipient_read_created (recipient_id, is_read, created_at),
-    INDEX idx_notification_recipient_created (recipient_id, created_at),
-    INDEX idx_notification_ticket (ticket_id),
-    INDEX idx_notification_created (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
-
----
-
-## 5. Configuration & Environment Variables
+## 4. Configuration & Environment Variables
 
 | Variable | Default Value | Description |
 |---|---|---|
 | `NOTIFICATION_SERVICE_PORT` | `8085` | HTTP Server Port |
-| `DB_URL` | `jdbc:mysql://localhost:3306/employee_helpdesk_notifications?...` | JDBC database URL |
-| `DB_USERNAME` | `root` | Database username |
-| `DB_PASSWORD` | `""` (empty) | Database password |
-| `HIBERNATE_DDL_AUTO` | `update` | Hibernate DDL mode |
 | `MAIL_HOST` | `smtp.gmail.com` | SMTP host |
 | `MAIL_PORT` | `587` | SMTP port |
 | `MAIL_USERNAME` | `""` (empty) | SMTP username / address |
 | `MAIL_PASSWORD` | `""` (empty) | SMTP password / app password |
 | `MAIL_FROM` | `helpdesk@example.com` | From header for notification emails |
+| `MAIL_SMTP_AUTH` | `true` | SMTP Authentication flag |
+| `MAIL_SMTP_STARTTLS_ENABLE` | `true` | SMTP STARTTLS flag |
+| `MAIL_TIMEOUT_MS` | `5000` | SMTP Connection, Read, and Write Timeout (ms) |
 
 ---
 
-## 6. REST API Reference
+## 5. REST API Reference
+
+### Endpoints
 
 | HTTP Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/notifications` | Create notification (in-app persistence + async email dispatch if `recipientEmail` provided) |
-| `GET` | `/notifications` | List notifications (paginated, optional `recipientId` filter) |
-| `GET` | `/notifications/unread` | List unread notifications (paginated, optional `recipientId` filter) |
-| `GET` | `/notifications/unread/count` | Get count of unread notifications (optional `recipientId` filter) |
-| `PATCH` | `/notifications/{notificationId}/read` | Mark a notification as read |
+| `POST` | `/emails` | Dispatch notification email |
+| `POST` | `/emails/send` | Dispatch notification email (alias) |
+| `POST` | `/notifications` | Dispatch notification email (compatible endpoint) |
+| `POST` | `/notifications/email` | Dispatch notification email (alias) |
+
+### Request Payload Format
+
+#### Standard Email Format
+```json
+{
+  "to": "employee@example.com",
+  "subject": "Ticket Resolved: HD-1001",
+  "body": "Your ticket HD-1001 has been marked as resolved."
+}
+```
+
+#### Notification Format (Supported via `@JsonAlias`)
+```json
+{
+  "recipientEmail": "employee@example.com",
+  "title": "Ticket Resolved: HD-1001",
+  "message": "Your ticket HD-1001 has been marked as resolved."
+}
+```
+
+### Response Payload Format (`200 OK`)
+```json
+{
+  "status": "SUCCESS",
+  "message": "Email notification accepted for delivery",
+  "success": true,
+  "recipient": "employee@example.com",
+  "timestamp": "2026-10-13T10:00:00Z"
+}
+```

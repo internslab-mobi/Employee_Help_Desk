@@ -2,7 +2,8 @@ package xyz.mobi.employeehelpdesk.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import xyz.mobi.employeehelpdesk.dto.ticket.*;
+import xyz.mobi.employeehelpdesk.dto.ticket.IdNameResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.ticket.TicketResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.*;
 
 @Mapper(
