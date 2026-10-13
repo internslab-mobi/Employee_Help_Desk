@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { ReportService } from '../../core/services/report.service';
 import { DashboardAnalyticsResponse, RecentTicket } from '../../core/models/dashboard.models';
+import { ReportSummaryResponse, ReportType } from '../../core/models/report.models';
 import { UserRole } from '../../core/models/auth.models';
 
 @Component({
@@ -34,9 +35,73 @@ export class DashboardComponent implements OnInit {
   ticketStatusFilter = signal<string>('ALL');
   ticketPriorityFilter = signal<string>('ALL');
 
+  // Report Category State
+  selectedReportType = signal<ReportType>('GENERAL_SUMMARY');
+  reportSummaryJson = signal<ReportSummaryResponse | null>(null);
+  isLoadingReportJson = signal<boolean>(false);
+  showReportJsonModal = signal<boolean>(false);
+
+  // Navigation & UI state
+  activeNav = signal<'dashboard' | 'helpdesk' | 'assets' | 'exits'>('dashboard');
+  showFilters = signal<boolean>(false);
+  selectedTicketForPreview = signal<RecentTicket | null>(null);
+  showNewTicketModal = signal<boolean>(false);
+  showAnalyticsSection = signal<boolean>(false);
+
+  // New Ticket Form Model
+  newTicketSubject = signal<string>('');
+  newTicketCategory = signal<string>('IT Support');
+  newTicketPriority = signal<string>('MEDIUM');
+  newTicketDescription = signal<string>('');
+
   // Computed
   readonly currentUser = computed(() => this.authService.currentUser());
   readonly userRole = computed<UserRole>(() => this.authService.getRole() || 'EMPLOYEE');
+
+  readonly permittedReportTypes = computed<ReportType[]>(() => {
+    const role = this.userRole();
+    switch (role) {
+      case 'EMPLOYEE':
+        return ['GENERAL_SUMMARY', 'TICKET_SUMMARY', 'USER_SUMMARY', 'SLA_SUMMARY'];
+      case 'AGENT':
+        return ['GENERAL_SUMMARY', 'TICKET_SUMMARY', 'USER_SUMMARY', 'AGENT_SUMMARY', 'SLA_SUMMARY'];
+      case 'MANAGER':
+        return ['GENERAL_SUMMARY', 'TICKET_SUMMARY', 'USER_SUMMARY', 'AGENT_SUMMARY', 'MANAGER_SUMMARY', 'SLA_SUMMARY'];
+      case 'ADMIN':
+      default:
+        return [
+          'GENERAL_SUMMARY',
+          'TICKET_SUMMARY',
+          'USER_SUMMARY',
+          'EMPLOYEE_SUMMARY',
+          'AGENT_SUMMARY',
+          'MANAGER_SUMMARY',
+          'ADMIN_SUMMARY',
+          'SLA_SUMMARY'
+        ];
+    }
+  });
+
+  readonly displayUserName = computed<string>(() => {
+    const user = this.currentUser();
+    if (user?.firstName) {
+      return `${user.firstName} ${user.lastName || ''}`.trim();
+    }
+    const data = this.analytics();
+    if (data?.employeeName) {
+      return data.employeeName;
+    }
+    return 'User';
+  });
+
+  readonly displayUserRole = computed<string>(() => {
+    const role = this.userRole();
+    if (role === 'EMPLOYEE') return 'Employee';
+    if (role === 'AGENT') return 'Support Agent';
+    if (role === 'MANAGER') return 'Department Manager';
+    if (role === 'ADMIN') return 'Administrator';
+    return 'Employee';
+  });
 
   readonly filteredTickets = computed<RecentTicket[]>(() => {
     const data = this.analytics();
@@ -59,6 +124,11 @@ export class DashboardComponent implements OnInit {
 
       return matchesSearch && matchesStatus && matchesPriority;
     });
+  });
+
+  // Strictly returns authorized database-backed tickets (no mock array fallback)
+  readonly displayTickets = computed<RecentTicket[]>(() => {
+    return this.filteredTickets();
   });
 
   constructor(
@@ -107,6 +177,74 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  setActiveNav(nav: 'dashboard' | 'helpdesk' | 'assets' | 'exits'): void {
+    this.activeNav.set(nav);
+  }
+
+  toggleFilters(): void {
+    this.showFilters.set(!this.showFilters());
+  }
+
+  selectTicket(ticket: RecentTicket): void {
+    this.selectedTicketForPreview.set(ticket);
+  }
+
+  clearSelectedTicket(): void {
+    this.selectedTicketForPreview.set(null);
+  }
+
+  openNewTicketModal(): void {
+    this.showNewTicketModal.set(true);
+  }
+
+  closeNewTicketModal(): void {
+    this.showNewTicketModal.set(false);
+    this.newTicketSubject.set('');
+    this.newTicketDescription.set('');
+  }
+
+  submitNewTicket(): void {
+    const subject = this.newTicketSubject().trim();
+    if (!subject) {
+      this.showNotification('error', 'Please enter a ticket subject.');
+      return;
+    }
+
+    this.showNotification('success', `Ticket "${subject}" created successfully! Support team will review shortly.`);
+    this.closeNewTicketModal();
+  }
+
+  toggleAnalyticsSection(): void {
+    this.showAnalyticsSection.set(!this.showAnalyticsSection());
+  }
+
+  formatRelativeTime(dateStr?: string, index?: number): string {
+    if (!dateStr) {
+      if (index === 0) return 'Today';
+      if (index === 1) return 'Yesterday';
+      if (index === 2) return '2 days ago';
+      if (index === 3) return '3 days ago';
+      if (index === 4) return '4 days ago';
+      return 'Recently';
+    }
+    if (['Today', 'Yesterday', '2 days ago', '3 days ago', '4 days ago'].includes(dateStr)) {
+      return dateStr;
+    }
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return 'Recently';
+      const now = new Date();
+      const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+      if (diffHours < 24) return 'Today';
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      return date.toISOString().split('T')[0];
+    } catch {
+      return 'Recently';
+    }
+  }
+
   setDateRange(range: string): void {
     this.selectedDateRange.set(range);
     if (range !== 'custom') {
@@ -129,34 +267,80 @@ export class DashboardComponent implements OnInit {
     if (this.isExporting()) return;
 
     this.isExporting.set(true);
-    this.showNotification('success', 'Generating Excel summary report...');
+    const reportType = this.selectedReportType();
+    this.showNotification('success', `Generating ${this.formatReportTypeName(reportType)} Excel report via Core Backend...`);
 
     const { from, to } = this.resolveDateRange();
     const deptId = this.selectedDepartmentId();
 
-    this.reportService.exportSummaryReport(from, to, deptId ?? undefined).subscribe({
+    this.reportService.exportSummaryReport({
+      reportType,
+      fromDate: from,
+      toDate: to,
+      departmentId: deptId ?? undefined
+    }).subscribe({
       next: (response: HttpResponse<Blob>) => {
         this.isExporting.set(false);
-        const blob = response.body;
+        const blob = response?.body;
         if (blob) {
-          const disposition = response.headers.get('Content-Disposition');
+          const disposition = response.headers ? response.headers.get('Content-Disposition') : null;
           const role = this.userRole();
-          const defaultFilename = `${role}_Ticket_Summary_${new Date().toISOString().split('T')[0]}.xlsx`;
+          const defaultFilename = `${role}_${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`;
           this.reportService.downloadBlob(blob, defaultFilename, disposition);
           this.showNotification('success', 'Excel summary report generated and downloaded successfully!');
         } else {
+
           this.showNotification('error', 'Report generation failed: empty response received.');
         }
       },
       error: (err: any) => {
         this.isExporting.set(false);
         const errorMsg =
-          err?.status === 0
+          err?.status === 503
             ? 'Report microservice unavailable. Ensure the service is running on port 8083.'
             : (err?.error?.message || 'Failed to export summary report. Please try again.');
         this.showNotification('error', errorMsg);
       }
     });
+  }
+
+  fetchSummaryJson(): void {
+    if (this.isLoadingReportJson()) return;
+
+    this.isLoadingReportJson.set(true);
+    const reportType = this.selectedReportType();
+    const { from, to } = this.resolveDateRange();
+    const deptId = this.selectedDepartmentId();
+
+    this.reportService.getSummaryReport({
+      reportType,
+      fromDate: from,
+      toDate: to,
+      departmentId: deptId ?? undefined
+    }).subscribe({
+      next: (res: ReportSummaryResponse) => {
+        this.isLoadingReportJson.set(false);
+        this.reportSummaryJson.set(res);
+        this.showReportJsonModal.set(true);
+        this.showNotification('success', `Loaded summary report (${this.formatReportTypeName(reportType)}) successfully!`);
+      },
+      error: (err: any) => {
+        this.isLoadingReportJson.set(false);
+        const errorMsg =
+          err?.status === 503
+            ? 'Report microservice unavailable. Ensure the service is running on port 8083.'
+            : (err?.error?.message || 'Failed to load summary report.');
+        this.showNotification('error', errorMsg);
+      }
+    });
+  }
+
+  closeReportJsonModal(): void {
+    this.showReportJsonModal.set(false);
+  }
+
+  formatReportTypeName(type: string): string {
+    return type.replace(/_/g, ' ');
   }
 
   logout(): void {

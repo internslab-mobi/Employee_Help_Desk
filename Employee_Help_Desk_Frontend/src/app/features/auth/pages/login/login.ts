@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
@@ -40,6 +41,10 @@ export class Login {
   }
 
   onLogin(): void {
+    if (this.isLoading) {
+      return;
+    }
+
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
@@ -48,17 +53,36 @@ export class Login {
     this.isLoading = true;
     this.errorMessage = '';
 
-    this.authService.login(this.loginForm.value).subscribe({
-      next: () => {
-        this.isLoading = false;
-        this.router.navigate(['/dashboard']);
-      },
-      error: (err) => {
-        this.isLoading = false;
-        this.errorMessage =
-          err?.error?.message ||
-          'Invalid work email or password. Please try again.';
-      }
-    });
+    const credentials = {
+      email: this.loginForm.value.email?.trim() || '',
+      password: this.loginForm.value.password || ''
+    };
+
+    this.authService
+      .login(credentials)
+      .pipe(
+        finalize(() => {
+          this.isLoading = false;
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.router.navigate(['/dashboard']);
+        },
+        error: (err) => {
+          if (err?.status === 0) {
+            this.errorMessage =
+              'Unable to connect to the authentication server. Please ensure the backend is running.';
+          } else if (err?.status === 401) {
+            this.errorMessage =
+              err?.error?.message ||
+              'Invalid work email or password. Please try again.';
+          } else {
+            this.errorMessage =
+              err?.error?.message ||
+              'Authentication failed. Please try again.';
+          }
+        }
+      });
   }
-}
+}

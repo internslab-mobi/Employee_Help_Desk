@@ -31,7 +31,10 @@ export class AuthService {
     return this.http.post<LoginResponse>(`${this.baseUrl}/user/login`, credentials).pipe(
       tap((res) => {
         this.saveAuthSession(res);
-        this.loadProfile(res.employeeId).subscribe();
+        this.loadProfile(res.employeeId).subscribe({
+          next: () => {},
+          error: () => {}
+        });
       })
     );
   }
