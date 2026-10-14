@@ -85,12 +85,19 @@ public interface TicketRepository
     FROM Ticket t
     WHERE t.requester.id = :requesterId
       AND (:status IS NULL OR t.status = :status)
+      AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
       AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
       AND (
           :search IS NULL OR :search = ''
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (t.requester IS NOT NULL AND (
+              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
       )
       AND (
           :unassigned IS NULL
@@ -116,12 +123,19 @@ public interface TicketRepository
     FROM Ticket t
     WHERE t.requester.id = :requesterId
       AND (:status IS NULL OR t.status = :status)
+      AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
       AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
       AND (
           :search IS NULL OR :search = ''
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (t.requester IS NOT NULL AND (
+              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
       )
       AND (
           :unassigned IS NULL
@@ -146,6 +160,7 @@ public interface TicketRepository
     Page<Ticket> findCreatedTicketsWithFilters(
             @Param("requesterId") Long requesterId,
             @Param("status") TicketStatus status,
+            @Param("priority") Priority priority,
             @Param("from") Instant from,
             @Param("to") Instant to,
             @Param("search") String search,
@@ -161,12 +176,19 @@ public interface TicketRepository
     FROM Ticket t
     WHERE t.assignedAgent.id = :agentId
       AND (:status IS NULL OR t.status = :status)
+      AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
       AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
       AND (
           :search IS NULL OR :search = ''
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (t.requester IS NOT NULL AND (
+              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
       )
       AND (
           :unassigned IS NULL
@@ -192,12 +214,19 @@ public interface TicketRepository
     FROM Ticket t
     WHERE t.assignedAgent.id = :agentId
       AND (:status IS NULL OR t.status = :status)
+      AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
       AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
       AND (
           :search IS NULL OR :search = ''
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (t.requester IS NOT NULL AND (
+              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
       )
       AND (
           :unassigned IS NULL
@@ -222,6 +251,7 @@ public interface TicketRepository
     Page<Ticket> findAssignedTicketsWithFilters(
             @Param("agentId") Long agentId,
             @Param("status") TicketStatus status,
+            @Param("priority") Priority priority,
             @Param("from") Instant from,
             @Param("to") Instant to,
             @Param("search") String search,
@@ -236,13 +266,25 @@ public interface TicketRepository
     SELECT t
     FROM Ticket t
     WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (:agentId IS NULL OR (t.assignedAgent IS NOT NULL AND t.assignedAgent.id = :agentId))
       AND (:status IS NULL OR t.status = :status)
+      AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
       AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
       AND (
           :search IS NULL OR :search = ''
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (t.requester IS NOT NULL AND (
+              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
+          OR (t.assignedAgent IS NOT NULL AND t.assignedAgent.employee IS NOT NULL AND (
+              LOWER(t.assignedAgent.employee.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(t.assignedAgent.employee.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
       )
       AND (
           :unassigned IS NULL
@@ -267,13 +309,25 @@ public interface TicketRepository
     SELECT COUNT(t)
     FROM Ticket t
     WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (:agentId IS NULL OR (t.assignedAgent IS NOT NULL AND t.assignedAgent.id = :agentId))
       AND (:status IS NULL OR t.status = :status)
+      AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
       AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
       AND (
           :search IS NULL OR :search = ''
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (t.requester IS NOT NULL AND (
+              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
+          OR (t.assignedAgent IS NOT NULL AND t.assignedAgent.employee IS NOT NULL AND (
+              LOWER(t.assignedAgent.employee.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(t.assignedAgent.employee.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
       )
       AND (
           :unassigned IS NULL
@@ -297,7 +351,9 @@ public interface TicketRepository
     """)
     Page<Ticket> findDepartmentTicketsWithFilters(
             @Param("departmentId") Long departmentId,
+            @Param("agentId") Long agentId,
             @Param("status") TicketStatus status,
+            @Param("priority") Priority priority,
             @Param("from") Instant from,
             @Param("to") Instant to,
             @Param("search") String search,
@@ -423,6 +479,20 @@ public interface TicketRepository
     """)
     List<Object[]> countAssignedAndUnassignedTickets(
             @Param("departmentId") Long departmentId,
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @Query("""
+    SELECT COUNT(t)
+    FROM Ticket t
+    WHERE t.requester.id = :requesterId
+      AND t.assignedAgent IS NOT NULL
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+    """)
+    long countAssignedTicketsForRequester(
+            @Param("requesterId") Long requesterId,
             @Param("from") Instant from,
             @Param("to") Instant to
     );

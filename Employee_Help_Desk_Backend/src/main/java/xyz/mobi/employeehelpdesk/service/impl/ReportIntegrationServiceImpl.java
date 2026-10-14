@@ -18,6 +18,9 @@ import xyz.mobi.employeehelpdesk.service.AnalyticsService;
 import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.service.ReportIntegrationService;
 
+import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
+
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
@@ -30,6 +33,7 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
     private final EmployeeRepository employeeRepository;
     private final AnalyticsService analyticsService;
     private final ReportServiceClient reportServiceClient;
+    private final EmailService emailService;
 
     @Override
     @Transactional(readOnly = true)
@@ -54,7 +58,53 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
     @Transactional(readOnly = true)
     public ResponseEntity<byte[]> getSummaryReportExcel(ReportSummaryRequestDTO request, String rawAuthHeader) {
         ReportGenerationPayloadDTO payload = prepareAuthorizedPayload(request, ReportFormat.EXCEL);
-        return reportServiceClient.generateExcelReport(payload, rawAuthHeader);
+        ResponseEntity<byte[]> response = reportServiceClient.generateExcelReport(payload, rawAuthHeader);
+
+        byte[] excelBytes = response.getBody();
+        if (excelBytes != null && excelBytes.length > 0 && payload.requesterEmail() != null) {
+            String filename = resolveFilename(response, payload);
+            String reportName = formatReportTypeName(payload.reportType());
+            String subject = "Exported Help Desk Report - " + reportName;
+            String body = "Dear " + (payload.requesterName() != null ? payload.requesterName() : "Employee") + ",\n\n"
+                    + "Your requested " + reportName + " Excel report has been successfully generated.\n"
+                    + "Please find the report attached to this email.\n\n"
+                    + "Report Details:\n"
+                    + "- Report Category: " + reportName + "\n"
+                    + "- Requested By: " + payload.requesterName() + " (" + payload.requestedByRole() + ")\n"
+                    + "- Date Generated: " + LocalDate.now() + "\n\n"
+                    + "Best regards,\n"
+                    + "Employee Help Desk System";
+
+            log.info("Dispatching exported Excel report email to registered user: {}", payload.requesterEmail());
+            emailService.sendReportEmailWithAttachment(
+                    payload.requesterEmail(),
+                    payload.requesterName(),
+                    subject,
+                    body,
+                    filename,
+                    excelBytes
+            );
+        }
+
+        return response;
+    }
+
+    private String resolveFilename(ResponseEntity<byte[]> response, ReportGenerationPayloadDTO payload) {
+        try {
+            if (response.getHeaders().getContentDisposition() != null
+                    && response.getHeaders().getContentDisposition().getFilename() != null) {
+                return response.getHeaders().getContentDisposition().getFilename();
+            }
+        } catch (Exception ignored) {
+        }
+        String todayStr = LocalDate.now().toString();
+        String rolePrefix = payload.requestedByRole() != null ? payload.requestedByRole() : "Report";
+        String typePrefix = payload.reportType() != null ? payload.reportType().name() : "Summary";
+        return rolePrefix + "_" + typePrefix + "_" + todayStr + ".xlsx";
+    }
+
+    private String formatReportTypeName(ReportType type) {
+        return type != null ? type.name().replace('_', ' ') : "Summary";
     }
 
     /**
