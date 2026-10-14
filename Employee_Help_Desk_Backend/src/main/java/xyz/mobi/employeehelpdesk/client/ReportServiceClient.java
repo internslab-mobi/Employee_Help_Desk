@@ -41,7 +41,7 @@ public class ReportServiceClient {
      * Request JSON summary calculation from Report Microservice.
      */
     public ReportSummaryResponseDTO generateJsonSummary(ReportGenerationPayloadDTO payload, String rawToken) {
-        String url = baseUrl + "/api/reports/generate";
+        String url = baseUrl + "/helpdesk/reports/generate";
 
         HttpHeaders headers = createHeaders(rawToken);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
@@ -81,7 +81,7 @@ public class ReportServiceClient {
      * Request Excel workbook generation from Report Microservice.
      */
     public ResponseEntity<byte[]> generateExcelReport(ReportGenerationPayloadDTO payload, String rawToken) {
-        String url = baseUrl + "/api/reports/generate";
+        String url = baseUrl + "/helpdesk/reports/generate";
 
         HttpHeaders headers = createHeaders(rawToken);
         headers.setAccept(List.of(

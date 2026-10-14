@@ -27,18 +27,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public String getCurrentUserEmail() {
-        return getAuthenticatedPrincipal().getEmail();
-    }
-
-    @Override
     public String getCurrentUserTimezone() {
         return getAuthenticatedPrincipal().getTimezone();
-    }
-
-    @Override
-    public java.time.ZoneId getCurrentUserZoneId() {
-        return getAuthenticatedPrincipal().getZoneId();
     }
 
     private UserPrincipal getAuthenticatedPrincipal() {
