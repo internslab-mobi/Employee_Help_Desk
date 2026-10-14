@@ -67,20 +67,15 @@ export class Login {
       )
       .subscribe({
         next: () => {
-          this.router.navigate(['/dashboard/employee']);
+          this.router.navigate(['/dashboard']);
         },
         error: (err) => {
           if (err?.status === 0) {
-            this.errorMessage =
-              'Unable to connect to the authentication server. Please ensure the backend is running.';
+            this.errorMessage = 'Unable to connect to the authentication server. Please ensure the backend is running.';
           } else if (err?.status === 401) {
-            this.errorMessage =
-              err?.error?.message ||
-              'Invalid work email or password. Please try again.';
+            this.errorMessage = err?.error?.message || 'Invalid work email or password. Please try again.';
           } else {
-            this.errorMessage =
-              err?.error?.message ||
-              'Authentication failed. Please try again.';
+            this.errorMessage =err?.error?.message || 'Authentication failed. Please try again.';
           }
         }
       });

@@ -39,7 +39,7 @@ public class BackendClientService {
             String rawToken, LocalDate fromDate, LocalDate toDate, Long departmentId
     ) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder
-                .fromHttpUrl(backendBaseUrl + "/analytics/dashboard");
+                .fromHttpUrl(backendBaseUrl + "/helpdesk/analytics/dashboard");
 
         if (fromDate != null) uriBuilder.queryParam("fromDate", fromDate.toString());
         if (toDate != null) uriBuilder.queryParam("toDate", toDate.toString());
@@ -72,7 +72,7 @@ public class BackendClientService {
             String rawToken, LocalDate fromDate, LocalDate toDate, Long departmentId
     ) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder
-                .fromHttpUrl(backendBaseUrl + "/analytics/export-data");
+                .fromHttpUrl(backendBaseUrl + "/helpdesk/analytics/export-data");
 
         if (fromDate != null) uriBuilder.queryParam("fromDate", fromDate.toString());
         if (toDate != null) uriBuilder.queryParam("toDate", toDate.toString());

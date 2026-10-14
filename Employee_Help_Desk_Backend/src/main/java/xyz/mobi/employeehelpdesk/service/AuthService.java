@@ -8,9 +8,5 @@ public interface AuthService {
 
     UserRole getCurrentUserRole();
 
-    String getCurrentUserEmail();
-
     String getCurrentUserTimezone();
-
-    java.time.ZoneId getCurrentUserZoneId();
 }
