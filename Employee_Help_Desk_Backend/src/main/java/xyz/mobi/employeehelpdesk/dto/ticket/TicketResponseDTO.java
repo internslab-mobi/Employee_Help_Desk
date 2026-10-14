@@ -31,6 +31,8 @@ public class TicketResponseDTO {
 
     private Integer reopenCount;
 
+    private Instant createdAt;
+    private Instant updatedAt;
     private Instant resolvedAt;
     private Instant reopenedAt;
     private Instant assignedAt;

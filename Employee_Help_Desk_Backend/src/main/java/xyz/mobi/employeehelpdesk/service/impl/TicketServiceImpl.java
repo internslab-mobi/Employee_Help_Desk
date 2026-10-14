@@ -274,6 +274,38 @@ public class TicketServiceImpl implements TicketService {
             SlaStatus slaStatus,
             Pageable pageable
     ) {
+        return searchTickets(
+                view,
+                employeeId,
+                null,
+                null,
+                status,
+                null,
+                fromDate,
+                toDate,
+                search,
+                unassigned,
+                slaStatus,
+                pageable
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TicketResponseDTO> searchTickets(
+            TicketView view,
+            Long employeeId,
+            Long departmentId,
+            Long agentId,
+            TicketStatus status,
+            Priority priority,
+            LocalDate fromDate,
+            LocalDate toDate,
+            String search,
+            Boolean unassigned,
+            SlaStatus slaStatus,
+            Pageable pageable
+    ) {
         if (view == null) {
             throw new BadRequestException("TicketView is required");
         }
@@ -300,6 +332,7 @@ public class TicketServiceImpl implements TicketService {
                 yield ticketRepository.findCreatedTicketsWithFilters(
                         targetEmployee.getId(),
                         status,
+                        priority,
                         dateRange.from(),
                         dateRange.toExclusive(),
                         trimmedSearch,
@@ -313,6 +346,7 @@ public class TicketServiceImpl implements TicketService {
                 yield ticketRepository.findAssignedTicketsWithFilters(
                         agent.getId(),
                         status,
+                        priority,
                         dateRange.from(),
                         dateRange.toExclusive(),
                         trimmedSearch,
@@ -322,10 +356,12 @@ public class TicketServiceImpl implements TicketService {
                 );
             }
             case DEPARTMENT -> {
-                Long departmentId = resolveDepartmentForManager(employeeId, currentEmployee);
+                Long targetDeptId = resolveDepartmentForSearch(departmentId, employeeId, currentEmployee);
                 yield ticketRepository.findDepartmentTicketsWithFilters(
-                        departmentId,
+                        targetDeptId,
+                        agentId,
                         status,
+                        priority,
                         dateRange.from(),
                         dateRange.toExclusive(),
                         trimmedSearch,
@@ -337,6 +373,32 @@ public class TicketServiceImpl implements TicketService {
         };
 
         return buildTicketResponse(tickets);
+    }
+
+    private Long resolveDepartmentForSearch(Long requestedDeptId, Long employeeId, Employee currentEmployee) {
+        if (currentEmployee.getRole() != UserRole.MANAGER && currentEmployee.getRole() != UserRole.ADMIN) {
+            throw new AccessDeniedException("Only managers and admins can view department tickets");
+        }
+
+        if (currentEmployee.getRole() == UserRole.MANAGER) {
+            if (currentEmployee.getDepartment() == null) {
+                throw new BadRequestException("Manager is not assigned to a department");
+            }
+            return currentEmployee.getDepartment().getId();
+        }
+
+        // ADMIN role
+        if (requestedDeptId != null) {
+            return requestedDeptId;
+        }
+
+        if (employeeId != null) {
+            Employee targetEmployee = employeeRepository.findById(employeeId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + employeeId));
+            return targetEmployee.getDepartment() != null ? targetEmployee.getDepartment().getId() : null;
+        }
+
+        return null;
     }
 
     @Override

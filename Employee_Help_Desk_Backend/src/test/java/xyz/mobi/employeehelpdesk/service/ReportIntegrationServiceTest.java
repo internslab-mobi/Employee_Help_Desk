@@ -22,6 +22,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import xyz.mobi.employeehelpdesk.exception.UnauthorizedException;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
+import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
 import xyz.mobi.employeehelpdesk.service.impl.ReportIntegrationServiceImpl;
 
 import java.time.Instant;
@@ -48,6 +49,9 @@ public class ReportIntegrationServiceTest {
 
     @Mock
     private ReportServiceClient reportServiceClient;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private ReportIntegrationServiceImpl reportIntegrationService;
@@ -261,5 +265,14 @@ public class ReportIntegrationServiceTest {
         assertNotNull(response.getBody());
         assertEquals(5, response.getBody().length);
         assertEquals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", response.getHeaders().getContentType().toString());
+
+        verify(emailService, times(1)).sendReportEmailWithAttachment(
+                eq("admin@company.com"),
+                eq("Admin Super"),
+                contains("ADMIN SUMMARY"),
+                contains("Dear Admin Super"),
+                eq("Admin_Summary_2026-10-12.xlsx"),
+                eq(mockExcel)
+        );
     }
 }

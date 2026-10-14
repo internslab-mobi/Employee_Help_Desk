@@ -115,7 +115,10 @@ public class TicketController {
     public ResponseEntity<Page<TicketResponseDTO>> searchTickets(
             @RequestParam TicketView view,
             @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long agentId,
             @RequestParam(required = false) TicketStatus status,
+            @RequestParam(required = false) xyz.mobi.employeehelpdesk.entity.enums.Priority priority,
             @RequestParam(required = false) LocalDate fromDate,
             @RequestParam(required = false) LocalDate toDate,
             @RequestParam(required = false) String search,
@@ -132,7 +135,10 @@ public class TicketController {
                 ticketService.searchTickets(
                         view,
                         employeeId,
+                        departmentId,
+                        agentId,
                         status,
+                        priority,
                         fromDate,
                         toDate,
                         search,

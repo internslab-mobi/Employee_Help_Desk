@@ -77,6 +77,8 @@ public interface TicketMapper {
     @Mapping(source = "slaInstance.status", target = "slaStatus")
     @Mapping(source = "ticket.assignedAt", target = "assignedAt")
     @Mapping(source = "ticket.status", target = "status")
+    @Mapping(source = "ticket.createdAt", target = "createdAt")
+    @Mapping(source = "ticket.updatedAt", target = "updatedAt")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
     TicketResponseDTO toResponse(Ticket ticket, SlaInstance slaInstance);
