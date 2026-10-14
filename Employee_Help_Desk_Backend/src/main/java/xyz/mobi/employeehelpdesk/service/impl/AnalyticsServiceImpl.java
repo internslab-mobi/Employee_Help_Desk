@@ -190,6 +190,12 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 assignedCount = r[0] != null ? ((Number) r[0]).longValue() : 0;
                 unassignedCount = r[1] != null ? ((Number) r[1]).longValue() : 0;
             }
+        } else if (role == UserRole.AGENT) {
+            assignedCount = totalTickets;
+            unassignedCount = 0;
+        } else if (role == UserRole.EMPLOYEE && requesterId != null) {
+            assignedCount = ticketRepository.countAssignedTicketsForRequester(requesterId, from, to);
+            unassignedCount = Math.max(0, totalTickets - assignedCount);
         }
 
         DashboardSummaryDTO summary = DashboardSummaryDTO.builder()

@@ -41,6 +41,21 @@ public interface TicketService {
             Pageable pageable
     );
 
+    Page<TicketResponseDTO> searchTickets(
+            TicketView view,
+            Long employeeId,
+            Long departmentId,
+            Long agentId,
+            TicketStatus status,
+            xyz.mobi.employeehelpdesk.entity.enums.Priority priority,
+            LocalDate fromDate,
+            LocalDate toDate,
+            String search,
+            Boolean unassigned,
+            xyz.mobi.employeehelpdesk.entity.enums.SlaStatus slaStatus,
+            Pageable pageable
+    );
+
     List<AssignableAgentResponseDTO> getAssignableAgents(Long ticketId);
 
     Map<String, Integer> getTicketSummary(
