@@ -1,3 +1,4 @@
+
 <div class="dashboard-layout">
 
   <!-- Sidebar -->
@@ -28,9 +29,9 @@
     </a>
 
     <div class="sidebar-footer">
-      <div class="agent-avatar">D</div>
+      <div class="agent-avatar">{{ getInitials(agentName) }}</div>
       <div class="agent-info">
-        <strong>Support Agent</strong>
+        <strong>{{ agentName }}</strong>
         <small>Agent Account</small>
       </div>
     </div>
@@ -48,11 +49,12 @@
       </div>
 
       <div class="topbar-actions">
-        <button type="button" class="icon-button" aria-label="Notifications">
+        <button type="button" class="icon-button"
+                aria-label="Notifications" (click)="loadAgentData()" title="Refresh data">
           <i class="bi bi-bell"></i>
         </button>
 
-        <div class="profile-avatar">D</div>
+        <div class="profile-avatar">{{ getInitials(agentName) }}</div>
       </div>
     </header>
 
@@ -118,9 +120,9 @@
           <p>Tickets assigned to you for resolution.</p>
         </div>
 
-        <button type="button" class="refresh-button">
+        <button type="button" class="refresh-button" (click)="loadAgentData()" [disabled]="isLoading">
           <i class="bi bi-arrow-clockwise"></i>
-          Refresh
+          {{ isLoading ? 'Refreshing...' : 'Refresh' }}
         </button>
       </div>
 
@@ -129,10 +131,14 @@
 
         <div class="search-box">
           <i class="bi bi-search"></i>
-          <input type="text" placeholder="Search ticket number or description" aria-label="Search assigned tickets">
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            placeholder="Search ticket number or description"
+            aria-label="Search assigned tickets">
         </div>
 
-        <select aria-label="Filter by status">
+        <select [(ngModel)]="statusFilter" aria-label="Filter by status">
           <option value="">All Statuses</option>
           <option value="NEW">New</option>
           <option value="IN_PROGRESS">In Progress</option>
@@ -143,7 +149,7 @@
           <option value="REOPENED">Reopened</option>
         </select>
 
-        <select aria-label="Filter by priority">
+        <select [(ngModel)]="priorityFilter" aria-label="Filter by priority">
           <option value="">All Priorities</option>
           <option value="CRITICAL">Critical</option>
           <option value="HIGH">High</option>
@@ -169,76 +175,43 @@
           </thead>
 
           <tbody>
-
-            <tr>
-              <td>
-                <strong>HD_1042</strong>
-                <small>Priya</small>
-              </td>
-              <td>Laptop is not starting</td>
-              <td>
-                <span class="priority critical">Critical</span>
-              </td>
-              <td>
-                <span class="status in-progress">In Progress</span>
-              </td>
-              <td>Example deadline</td>
-              <td>
-                <button type="button" class="view-button">
-                  View
-                </button>
-              </td>
-            </tr>
-
-            <tr>
-              <td>
-                <strong>HD_1043</strong>
-                <small>Rahul</small>
-              </td>
-              <td>Password reset request</td>
-              <td>
-                <span class="priority high">High</span>
-              </td>
-              <td>
-                <span class="status new">New</span>
-              </td>
-              <td>Example deadline</td>
-              <td>
-                <button type="button" class="view-button">
-                  View
-                </button>
-              </td>
-            </tr>
-
-            <tr>
-              <td>
-                <strong>HD_1044</strong>
-                <small>Ananya</small>
-              </td>
-              <td>Access card is not working</td>
-              <td>
-                <span class="priority medium">Medium</span>
-              </td>
-              <td>
-                <span class="status waiting">Waiting for Employee</span>
-              </td>
-              <td>Example deadline</td>
-              <td>
-                <button type="button" class="view-button">
-                  View
-                </button>
-              </td>
-            </tr>
-
+            @if (filteredTickets.length > 0) {
+              @for (ticket of filteredTickets; track ticket.id) {
+                <tr>
+                  <td>
+                    <strong>{{ ticket.ticketNumber }}</strong>
+                    <small>{{ ticket.requesterName || 'Employee' }}</small>
+                  </td>
+                  <td>{{ ticket.subject }}</td>
+                  <td>
+                    <span class="priority {{ ticket.priority ? ticket.priority.toLowerCase() : 'medium' }}">
+                      {{ ticket.priority || 'Medium' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="status {{ getStatusCssClass(ticket.status) }}">
+                      {{ formatStatus(ticket.status) }}
+                    </span>
+                  </td>
+                  <td>{{ ticket.currentDeadlineAt ? (ticket.currentDeadlineAt | slice:0:10) : 'Within SLA' }}</td>
+                  <td>
+                    <button type="button" class="view-button" (click)="viewTicket(ticket)">
+                      View
+                    </button>
+                  </td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 24px; color: #64748b;">
+                  {{ isLoading ? 'Loading tickets...' : 'No assigned tickets found.' }}
+                </td>
+              </tr>
+            }
           </tbody>
 
         </table>
       </div>
-
-      <p class="demo-note">
-        Sample data for UI development only. Live ticket data will come
-        from the backend API.
-      </p>
 
     </section>
 
