@@ -196,4 +196,28 @@ public class TicketController {
 
         return ResponseEntity.ok(response);
     }
+
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
+    @GetMapping("/{ticketId}/history")
+    public ResponseEntity<List<TicketHistoryResponseDTO>> getTicketHistory(
+            @PathVariable Long ticketId
+    ) {
+        return ResponseEntity.ok(ticketService.getTicketHistory(ticketId));
+    }
+
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
+    @GetMapping("/{ticketId}/sla")
+    public ResponseEntity<TicketSlaResponseDTO> getTicketSla(
+            @PathVariable Long ticketId
+    ) {
+        return ResponseEntity.ok(ticketService.getTicketSla(ticketId));
+    }
+
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
+    @GetMapping("/{ticketId}/attachments")
+    public ResponseEntity<List<xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO>> getTicketAttachments(
+            @PathVariable Long ticketId
+    ) {
+        return ResponseEntity.ok(ticketService.getTicketAttachments(ticketId));
+    }
 }

@@ -14,4 +14,6 @@ public interface TicketAttachmentRepository
     List<TicketAttachment> findByMessageIdIn(Collection<Long> messageIds);
 
     Optional<TicketAttachment> findByEmployeeIdAndAttachmentType(Long employeeId, AttachmentType attachmentType);
+
+    List<TicketAttachment> findByTicketId(Long ticketId);
 }
