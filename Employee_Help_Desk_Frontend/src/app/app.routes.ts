@@ -13,11 +13,12 @@ export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'login', component: Login },
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
+  { path: 'tickets', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'verify-otp', component: VerifyOtp, canActivate: [verifyOtpGuard] },
   { path: 'reset-password', component: ResetPassword, canActivate: [resetPasswordGuard] },
   { path: 'change-password', component: ChangePassword },
   { path: 'dashboard/employee', redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: 'dashboard/agent', redirectTo: 'dashboard', pathMatch: 'full' },
+  { path: 'dashboard/agent', component: AgentDashboard, canActivate: [authGuard] },
   { path: '**', redirectTo: 'login' }
 ];
