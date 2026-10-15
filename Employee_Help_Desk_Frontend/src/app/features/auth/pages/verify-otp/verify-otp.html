@@ -1,0 +1,139 @@
+<div class="verify-otp-page">
+  <!-- Background Decorative Circles -->
+  <div class="decor-circle circle-one" aria-hidden="true"></div>
+  <div class="decor-circle circle-two" aria-hidden="true"></div>
+  <div class="decor-circle circle-three" aria-hidden="true"></div>
+
+  <!-- Top Branding Header -->
+  <header class="brand-header">
+    <h1 class="brand-title">Employee Help Desk</h1>
+  </header>
+
+  <!-- OTP Verification Card -->
+  <main class="card-container">
+    <div class="card">
+
+      <!-- Header Icon -->
+      <div class="icon-wrapper" aria-hidden="true">
+        <svg class="shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <path d="m9 12 2 2 4-4"></path>
+        </svg>
+      </div>
+
+      <div class="card-header">
+        <h2 class="card-title">OTP Verification</h2>
+        <p class="card-subtitle">
+          Enter the 6-digit verification code sent to<br />
+          <strong class="highlight-email">{{ maskedEmail() || 'your work email' }}</strong>
+        </p>
+      </div>
+
+      <!-- Dev-only Mock OTP Badge -->
+      <div class="mock-otp-badge" role="note">
+        <span class="badge-tag">Dev Mode</span>
+        <span class="badge-text">Mock OTP is <strong>123456</strong></span>
+      </div>
+
+      <!-- Verification Attempts Indicator -->
+      <div class="attempts-indicator" [class.attempts-warning]="remainingAttempts() === 1" [class.attempts-exhausted]="isLocked()">
+        <span class="attempts-icon" aria-hidden="true">●</span>
+        <span class="attempts-text">
+          @if (isLocked()) {
+            0 verification attempts remaining — Access locked
+          } @else {
+            You have {{ remainingAttempts() }} of 3 verification attempts remaining
+          }
+        </span>
+      </div>
+
+      <!-- Green Success Notification -->
+      @if (successMessage()) {
+        <div class="success-banner" role="alert" aria-live="polite">
+          <div class="success-icon-wrapper">
+            <svg class="success-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="success-content">
+            <h3 class="success-heading">{{ successMessage() }}</h3>
+          </div>
+        </div>
+      }
+
+      <!-- Red Error Notification -->
+      @if (errorMessage()) {
+        <div class="error-banner" role="alert" aria-live="polite">
+          <svg class="error-banner-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+          <span class="error-banner-text">{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <!-- Six Digit OTP Inputs -->
+      <div class="otp-inputs-wrapper" (paste)="onPaste($event)">
+        @for (digit of otpDigits(); track $index) {
+          <input
+            [id]="'otp-input-' + $index"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="1"
+            autocomplete="one-time-code"
+            class="otp-digit-box"
+            [class.is-invalid]="errorMessage() && !isLocked()"
+            [class.is-locked]="isLocked()"
+            [class.has-value]="digit.length > 0"
+            [value]="digit"
+            [disabled]="isLocked() || isVerifying()"
+            (input)="onInput($event, $index)"
+            (keydown)="onKeyDown($event, $index)"
+            [attr.aria-label]="'Digit ' + ($index + 1) + ' of 6'"
+          />
+        }
+      </div>
+
+      <!-- Action Button -->
+      <button
+        type="button"
+        class="btn-submit"
+        [disabled]="!isComplete() || isLocked() || isVerifying()"
+        (click)="onVerify()"
+      >
+        @if (isVerifying()) {
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Verifying OTP...</span>
+        } @else {
+          <span>Verify OTP</span>
+        }
+      </button>
+
+      <!-- Resend OTP Option with 30s Countdown -->
+      <div class="resend-section">
+        <span class="resend-label">Didn't receive code?</span>
+        @if (countdown() > 0) {
+          <span class="resend-countdown">
+            Resend OTP in <strong>{{ countdown() }}s</strong>
+          </span>
+        } @else {
+          <button
+            type="button"
+            class="btn-resend-active"
+            (click)="onResend()"
+          >
+            Resend OTP
+          </button>
+        }
+      </div>
+
+      <!-- Back to Forgot Password Link -->
+      <div class="signin-footer">
+        <a routerLink="/forgot-password" class="back-to-forgot">
+          ← Back to Forgot Password
+        </a>
+      </div>
+
+    </div>
+  </main>
+</div>
