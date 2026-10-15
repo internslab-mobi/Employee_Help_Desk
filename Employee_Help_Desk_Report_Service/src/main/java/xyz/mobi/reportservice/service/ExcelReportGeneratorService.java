@@ -31,30 +31,53 @@ public class ExcelReportGeneratorService {
             List<ExportTicketDetailDTO> tickets,
             String requesterTimezone
     ) throws IOException {
+        return generateSummaryWorkbook(analytics, tickets, requesterTimezone, ReportType.GENERAL_SUMMARY);
+    }
+
+    public byte[] generateSummaryWorkbook(
+            DashboardAnalyticsResponseDTO analytics,
+            List<ExportTicketDetailDTO> tickets,
+            String requesterTimezone,
+            ReportType reportType
+    ) throws IOException {
+        ReportType type = reportType != null ? reportType : ReportType.GENERAL_SUMMARY;
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             ZoneId zoneId = ZoneId.of(requesterTimezone != null && !requesterTimezone.isBlank() ? requesterTimezone.trim() : "UTC");
             DateTimeFormatter dtFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(zoneId);
 
             StylePalette styles = createStylePalette(workbook);
 
-            // 1. Executive Summary Sheet
-            createExecutiveSummarySheet(workbook, analytics, styles, dtFormatter);
-
-            // 2. Status & Priority Sheet
-            createStatusPrioritySheet(workbook, analytics, styles);
-
-            // 3. Department & Category Sheet (Admin & Manager)
-            if ("ADMIN".equalsIgnoreCase(analytics.role()) || "MANAGER".equalsIgnoreCase(analytics.role())) {
-                createDepartmentCategorySheet(workbook, analytics, styles);
+            switch (type) {
+                case TICKET_SUMMARY -> {
+                    createTicketOverviewSheet(workbook, analytics, styles, dtFormatter);
+                    createTicketRecordsSheet(workbook, tickets, styles, dtFormatter);
+                }
+                case USER_SUMMARY -> {
+                    createUserOverviewSheet(workbook, analytics, styles, dtFormatter);
+                    if (analytics != null && analytics.departmentDistribution() != null && !analytics.departmentDistribution().isEmpty()) {
+                        createDepartmentCategorySheet(workbook, analytics, styles);
+                    }
+                    if (analytics != null && analytics.agentWorkload() != null && !analytics.agentWorkload().isEmpty()) {
+                        createAgentWorkloadSheet(workbook, analytics, styles);
+                    }
+                }
+                case SLA_SUMMARY -> {
+                    createSlaSummarySheet(workbook, analytics, styles, dtFormatter);
+                    createSlaTicketRecordsSheet(workbook, tickets, styles, dtFormatter);
+                }
+                default -> {
+                    // GENERAL_SUMMARY and others
+                    createExecutiveSummarySheet(workbook, analytics, styles, dtFormatter);
+                    createStatusPrioritySheet(workbook, analytics, styles);
+                    if (analytics != null && ("ADMIN".equalsIgnoreCase(analytics.role()) || "MANAGER".equalsIgnoreCase(analytics.role()))) {
+                        createDepartmentCategorySheet(workbook, analytics, styles);
+                    }
+                    if (analytics != null && analytics.agentWorkload() != null && !analytics.agentWorkload().isEmpty()) {
+                        createAgentWorkloadSheet(workbook, analytics, styles);
+                    }
+                    createTicketRecordsSheet(workbook, tickets, styles, dtFormatter);
+                }
             }
-
-            // 4. Agent Workload Sheet (Admin & Manager)
-            if (analytics.agentWorkload() != null && !analytics.agentWorkload().isEmpty()) {
-                createAgentWorkloadSheet(workbook, analytics, styles);
-            }
-
-            // 5. Ticket Detail Records Sheet
-            createTicketRecordsSheet(workbook, tickets, styles, dtFormatter);
 
             // Auto-size all sheets safely
             for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
@@ -483,6 +506,217 @@ public class ExcelReportGeneratorService {
             Cell c = emptyRow.createCell(0);
             c.setCellValue("No tickets match the selected filters");
             c.setCellStyle(s.regularStyle);
+        }
+    }
+
+    private void createTicketOverviewSheet(
+            XSSFWorkbook wb, DashboardAnalyticsResponseDTO data, StylePalette s, DateTimeFormatter dtf
+    ) {
+        Sheet sheet = wb.createSheet("Ticket Overview");
+        sheet.setDisplayGridlines(true);
+
+        int rowNum = 0;
+        Row titleRow = sheet.createRow(rowNum++);
+        titleRow.setHeightInPoints(34);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("EMPLOYEE HELP DESK - TICKET SUMMARY REPORT");
+        titleCell.setCellStyle(s.titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 5));
+
+        rowNum++;
+        Row infoRow = sheet.createRow(rowNum++);
+        infoRow.createCell(0).setCellValue("Generated At:");
+        infoRow.getCell(0).setCellStyle(s.boldLabelStyle);
+        infoRow.createCell(1).setCellValue(dtf.format(Instant.now()));
+        infoRow.getCell(1).setCellStyle(s.regularStyle);
+
+        DashboardSummaryDTO sm = data != null ? data.summary() : null;
+        Object[][] metrics = {
+                {"Total Tickets Logged", sm != null ? sm.totalTickets() : 0L},
+                {"Open Tickets", sm != null ? sm.openTickets() : 0L},
+                {"In-Progress Tickets", sm != null ? sm.inProgressTickets() : 0L},
+                {"Resolved Tickets", sm != null ? sm.resolvedTickets() : 0L},
+                {"On Hold Tickets", sm != null ? sm.onHoldTickets() : 0L},
+                {"Average Resolution Hours", (sm != null ? sm.avgResolutionHours() : 0.0) + " hrs"}
+        };
+        for (Object[] m : metrics) {
+            Row r = sheet.createRow(rowNum++);
+            Cell c0 = r.createCell(0);
+            c0.setCellValue((String) m[0]);
+            c0.setCellStyle(s.boldLabelStyle);
+            Cell c1 = r.createCell(1);
+            c1.setCellValue(String.valueOf(m[1]));
+            c1.setCellStyle(s.regularStyle);
+        }
+
+        if (data != null && data.categoryDistribution() != null && !data.categoryDistribution().isEmpty()) {
+            rowNum += 2;
+            Row catHeader = sheet.createRow(rowNum++);
+            catHeader.setHeightInPoints(22);
+            Cell chCell = catHeader.createCell(0);
+            chCell.setCellValue("CATEGORY BREAKDOWN");
+            chCell.setCellStyle(s.sectionHeaderStyle);
+            sheet.addMergedRegion(new CellRangeAddress(rowNum - 1, rowNum - 1, 0, 2));
+
+            Row colH = sheet.createRow(rowNum++);
+            colH.createCell(0).setCellValue("Category Name");
+            colH.getCell(0).setCellStyle(s.headerStyle);
+            colH.createCell(1).setCellValue("Ticket Count");
+            colH.getCell(1).setCellStyle(s.headerStyle);
+            colH.createCell(2).setCellValue("Share (%)");
+            colH.getCell(2).setCellStyle(s.headerStyle);
+
+            for (int i = 0; i < data.categoryDistribution().size(); i++) {
+                DistributionItemDTO item = data.categoryDistribution().get(i);
+                Row r = sheet.createRow(rowNum++);
+                CellStyle rowStyle = i % 2 == 0 ? s.zebraStyle : s.regularStyle;
+                Cell c0 = r.createCell(0);
+                c0.setCellValue(item.label());
+                c0.setCellStyle(rowStyle);
+                Cell c1 = r.createCell(1);
+                c1.setCellValue(item.count());
+                c1.setCellStyle(rowStyle);
+                Cell c2 = r.createCell(2);
+                c2.setCellValue(item.percentage() + "%");
+                c2.setCellStyle(rowStyle);
+            }
+        }
+    }
+
+    private void createUserOverviewSheet(
+            XSSFWorkbook wb, DashboardAnalyticsResponseDTO data, StylePalette s, DateTimeFormatter dtf
+    ) {
+        Sheet sheet = wb.createSheet("User Overview");
+        sheet.setDisplayGridlines(true);
+
+        int rowNum = 0;
+        Row titleRow = sheet.createRow(rowNum++);
+        titleRow.setHeightInPoints(34);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("EMPLOYEE HELP DESK - USER & WORKLOAD REPORT");
+        titleCell.setCellStyle(s.titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 4));
+
+        rowNum++;
+        Row infoRow = sheet.createRow(rowNum++);
+        infoRow.createCell(0).setCellValue("Generated At:");
+        infoRow.getCell(0).setCellStyle(s.boldLabelStyle);
+        infoRow.createCell(1).setCellValue(dtf.format(Instant.now()));
+        infoRow.getCell(1).setCellStyle(s.regularStyle);
+
+        DashboardSummaryDTO sm = data != null ? data.summary() : null;
+        Object[][] userMetrics = {
+                {"Authorized Role", data != null ? data.role() : "N/A"},
+                {"Department Name", data != null && data.departmentName() != null ? data.departmentName() : "Organization-Wide"},
+                {"Total Tickets In Scope", sm != null ? sm.totalTickets() : 0L},
+                {"Assigned Tickets", sm != null ? sm.assignedTickets() : 0L},
+                {"Unassigned Tickets", sm != null ? sm.unassignedTickets() : 0L}
+        };
+        for (Object[] m : userMetrics) {
+            Row r = sheet.createRow(rowNum++);
+            Cell c0 = r.createCell(0);
+            c0.setCellValue((String) m[0]);
+            c0.setCellStyle(s.boldLabelStyle);
+            Cell c1 = r.createCell(1);
+            c1.setCellValue(String.valueOf(m[1]));
+            c1.setCellStyle(s.regularStyle);
+        }
+    }
+
+    private void createSlaSummarySheet(
+            XSSFWorkbook wb, DashboardAnalyticsResponseDTO data, StylePalette s, DateTimeFormatter dtf
+    ) {
+        Sheet sheet = wb.createSheet("SLA Performance");
+        sheet.setDisplayGridlines(true);
+
+        int rowNum = 0;
+        Row titleRow = sheet.createRow(rowNum++);
+        titleRow.setHeightInPoints(34);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("EMPLOYEE HELP DESK - SLA PERFORMANCE SUMMARY");
+        titleCell.setCellStyle(s.titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 4));
+
+        rowNum++;
+        DashboardSummaryDTO sm = data != null ? data.summary() : null;
+        Object[][] slaKpis = {
+                {"Total Tickets Tracked", sm != null ? sm.totalTickets() : 0L},
+                {"SLA Compliant Tickets", sm != null ? sm.slaCompliantTickets() : 0L},
+                {"SLA Breached Tickets", sm != null ? sm.slaBreachedTickets() : 0L},
+                {"SLA Warning Tickets", sm != null ? sm.slaWarningTickets() : 0L},
+                {"SLA Compliance Rate (%)", (sm != null ? sm.slaComplianceRate() : 100.0) + "%"},
+                {"Average Resolution Time", (sm != null ? sm.avgResolutionHours() : 0.0) + " hrs"}
+        };
+        for (Object[] kpi : slaKpis) {
+            Row r = sheet.createRow(rowNum++);
+            Cell c0 = r.createCell(0);
+            c0.setCellValue((String) kpi[0]);
+            c0.setCellStyle(s.boldLabelStyle);
+            Cell c1 = r.createCell(1);
+            c1.setCellValue(String.valueOf(kpi[1]));
+            c1.setCellStyle(s.regularStyle);
+        }
+    }
+
+    private void createSlaTicketRecordsSheet(
+            XSSFWorkbook wb, List<ExportTicketDetailDTO> tickets, StylePalette s, DateTimeFormatter dtf
+    ) {
+        Sheet sheet = wb.createSheet("SLA Ticket Records");
+        sheet.setDisplayGridlines(true);
+
+        int rowNum = 0;
+        Row colRow = sheet.createRow(rowNum++);
+        colRow.setHeightInPoints(24);
+        String[] headers = {
+                "Ticket #", "Subject", "Department", "Priority", "Status",
+                "SLA Status", "Target Deadline", "Resolved At", "Requester", "Assigned Agent"
+        };
+        for (int i = 0; i < headers.length; i++) {
+            Cell c = colRow.createCell(i);
+            c.setCellValue(headers[i]);
+            c.setCellStyle(s.headerStyle);
+        }
+
+        if (tickets != null && !tickets.isEmpty()) {
+            for (int i = 0; i < tickets.size(); i++) {
+                ExportTicketDetailDTO t = tickets.get(i);
+                Row r = sheet.createRow(rowNum++);
+                CellStyle rowStyle = i % 2 == 0 ? s.zebraStyle : s.regularStyle;
+
+                r.createCell(0).setCellValue(t.ticketNumber() != null ? t.ticketNumber() : "#" + t.id());
+                r.getCell(0).setCellStyle(rowStyle);
+
+                r.createCell(1).setCellValue(t.subject() != null ? t.subject() : "");
+                r.getCell(1).setCellStyle(rowStyle);
+
+                r.createCell(2).setCellValue(t.departmentName() != null ? t.departmentName() : "-");
+                r.getCell(2).setCellStyle(rowStyle);
+
+                r.createCell(3).setCellValue(t.priority() != null ? t.priority() : "-");
+                r.getCell(3).setCellStyle(rowStyle);
+
+                r.createCell(4).setCellValue(t.status() != null ? t.status() : "-");
+                r.getCell(4).setCellStyle(rowStyle);
+
+                r.createCell(5).setCellValue(t.slaStatus() != null ? t.slaStatus() : "COMPLIANT");
+                r.getCell(5).setCellStyle(rowStyle);
+
+                r.createCell(6).setCellValue(t.deadlineAt() != null ? dtf.format(t.deadlineAt()) : "-");
+                r.getCell(6).setCellStyle(rowStyle);
+
+                r.createCell(7).setCellValue(t.resolvedAt() != null ? dtf.format(t.resolvedAt()) : "-");
+                r.getCell(7).setCellStyle(rowStyle);
+
+                r.createCell(8).setCellValue(t.requesterName() != null ? t.requesterName() : "-");
+                r.getCell(8).setCellStyle(rowStyle);
+
+                r.createCell(9).setCellValue(t.assignedAgentName() != null ? t.assignedAgentName() : "Unassigned");
+                r.getCell(9).setCellStyle(rowStyle);
+            }
+        } else {
+            Row r = sheet.createRow(rowNum++);
+            r.createCell(0).setCellValue("No SLA ticket records available");
+            r.getCell(0).setCellStyle(s.regularStyle);
         }
     }
 
