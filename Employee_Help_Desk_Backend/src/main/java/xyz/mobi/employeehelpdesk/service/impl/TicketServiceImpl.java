@@ -58,6 +58,7 @@ public class TicketServiceImpl implements TicketService {
     private final ObjectMapper objectMapper;
     private final DepartmentAgentRepository departmentAgentRepository;
     private final TicketHistoryService ticketHistoryService;
+    private final TicketHistoryRepository ticketHistoryRepository;
     private final NotificationService notificationService;
     private final AuthService authService;
     private final TicketFeedbackRepository ticketFeedbackRepository;
@@ -153,10 +154,7 @@ public class TicketServiceImpl implements TicketService {
         return ticketMapper.toCreateResponse(ticket, slaInstance);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public TicketResponseDTO getTicket(Long ticketId) {
-
+    private Ticket getAuthorizedTicket(Long ticketId) {
         Long currentEmployeeId = authService.getCurrentEmployeeId();
 
         Employee currentEmployee = employeeRepository
@@ -176,19 +174,19 @@ public class TicketServiceImpl implements TicketService {
 
         // 1. Admin
         if (currentEmployee.getRole() == UserRole.ADMIN) {
-            return buildTicketResponse(ticket);
+            return ticket;
         }
 
         // 2. Ticket requester
         if (ticket.getRequester() != null && ticket.getRequester().getId().equals(currentEmployeeId)) {
-            return buildTicketResponse(ticket);
+            return ticket;
         }
 
         // 3. Assigned agent
         if (ticket.getAssignedAgent() != null
                 && ticket.getAssignedAgent().getEmployee() != null
                 && ticket.getAssignedAgent().getEmployee().getId().equals(currentEmployeeId)) {
-            return buildTicketResponse(ticket);
+            return ticket;
         }
 
         // 4. Manager of the relevant department
@@ -198,25 +196,91 @@ public class TicketServiceImpl implements TicketService {
             if (ticket.getRequester() != null
                     && ticket.getRequester().getDepartment() != null
                     && managerDeptId.equals(ticket.getRequester().getDepartment().getId())) {
-                return buildTicketResponse(ticket);
+                return ticket;
             }
 
             if (ticket.getAssignedAgent() != null
                     && ticket.getAssignedAgent().getEmployee() != null
                     && ticket.getAssignedAgent().getEmployee().getDepartment() != null
                     && managerDeptId.equals(ticket.getAssignedAgent().getEmployee().getDepartment().getId())) {
-                return buildTicketResponse(ticket);
+                return ticket;
             }
 
             if (ticket.getDepartment() != null
                     && managerDeptId.equals(ticket.getDepartment().getId())) {
-                return buildTicketResponse(ticket);
+                return ticket;
             }
         }
 
         throw new AccessDeniedException(
                 "You are not authorized to view this ticket"
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TicketResponseDTO getTicket(Long ticketId) {
+        Ticket ticket = getAuthorizedTicket(ticketId);
+        return buildTicketResponse(ticket);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TicketHistoryResponseDTO> getTicketHistory(Long ticketId) {
+        Ticket ticket = getAuthorizedTicket(ticketId);
+        List<TicketHistory> historyList = ticketHistoryRepository.findByTicketIdOrderByCreatedAtAsc(ticket.getId());
+        return historyList.stream().map(h -> new TicketHistoryResponseDTO(
+                h.getId(),
+                h.getEventType(),
+                h.getOldValue(),
+                h.getNewValue(),
+                h.getCreatedAt()
+        )).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TicketSlaResponseDTO getTicketSla(Long ticketId) {
+        Ticket ticket = getAuthorizedTicket(ticketId);
+        SlaInstance sla = slaInstanceRepository.findLatestByTicketId(ticket.getId());
+        if (sla == null) {
+            return null;
+        }
+        String policyName = "Standard SLA";
+        if (sla.getSlaPolicy() != null) {
+            if (sla.getSlaPolicy().getSubCategory() != null) {
+                policyName = sla.getSlaPolicy().getSubCategory().getName() + " SLA";
+            } else if (sla.getSlaPolicy().getDepartment() != null) {
+                policyName = sla.getSlaPolicy().getDepartment().getName() + " SLA";
+            }
+        }
+        return new TicketSlaResponseDTO(
+                sla.getId(),
+                policyName,
+                sla.getCycleNumber(),
+                sla.getAllocatedMinutes(),
+                sla.getSlaStartAt(),
+                sla.getOriginalDeadlineAt(),
+                sla.getCurrentDeadlineAt(),
+                sla.getWarningAt(),
+                sla.getStatus(),
+                sla.getPausedAt(),
+                sla.getBreachedAt()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO> getTicketAttachments(Long ticketId) {
+        Ticket ticket = getAuthorizedTicket(ticketId);
+        List<TicketAttachment> attachments = ticketAttachmentRepository.findByTicketId(ticket.getId());
+        return attachments.stream().map(a -> new xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO(
+                a.getId(),
+                a.getOriginalFilename(),
+                a.getMimeType(),
+                a.getFileSize(),
+                a.getAttachmentType()
+        )).toList();
     }
 
     @Override
