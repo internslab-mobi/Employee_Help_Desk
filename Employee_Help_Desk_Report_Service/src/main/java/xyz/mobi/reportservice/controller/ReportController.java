@@ -52,7 +52,8 @@ public class ReportController {
                 byte[] excelBytes = excelReportGeneratorService.generateSummaryWorkbook(
                         payload.analytics(),
                         payload.tickets() != null ? payload.tickets() : Collections.emptyList(),
-                        payload.requesterTimezone()
+                        payload.requesterTimezone(),
+                        payload.reportType()
                 );
 
                 String todayStr = LocalDate.now().format(DateTimeFormatter.ISO_DATE);

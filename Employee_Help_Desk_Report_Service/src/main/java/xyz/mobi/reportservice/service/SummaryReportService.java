@@ -62,6 +62,7 @@ public class SummaryReportService {
                             .statusDistribution(analytics.statusDistribution());
                 }
             }
+
             case EMPLOYEE_SUMMARY -> {
                 if (analytics != null) {
                     builder.employeeStats(analytics.employeeStats())
@@ -94,9 +95,13 @@ public class SummaryReportService {
                             .trends(analytics.trends());
                 }
             }
+
             case USER_SUMMARY -> {
                 if (analytics != null) {
-                    builder.statusDistribution(analytics.statusDistribution())
+                    builder.employeeStats(analytics.employeeStats())
+                            .agentWorkload(analytics.agentWorkload())
+                            .departmentDistribution(analytics.departmentDistribution())
+                            .statusDistribution(analytics.statusDistribution())
                             .priorityDistribution(analytics.priorityDistribution())
                             .trends(analytics.trends());
                 }

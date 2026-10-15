@@ -86,4 +86,69 @@ public class ExcelReportGeneratorServiceTest {
             assertNotNull(parsed.getSheet("Ticket Records"));
         }
     }
+
+    @Test
+    public void testGenerateTicketSummaryReport() throws IOException {
+        DashboardSummaryDTO summary = new DashboardSummaryDTO(
+                5, 1, 1, 0, 3, 0, 0, 0, 0, 0, 5, 100.0, 2.0, 5, 0
+        );
+
+        DashboardAnalyticsResponseDTO analytics = new DashboardAnalyticsResponseDTO(
+                "EMPLOYEE", 1L, "Employee One", "emp@helpdesk.com", "Engineer", "IT", 1L,
+                summary, Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyList(), null, Collections.emptyList(),
+                Instant.now(), "2026-10-01", "2026-10-10"
+        );
+
+        byte[] bytes = generatorService.generateSummaryWorkbook(analytics, Collections.emptyList(), "UTC", ReportType.TICKET_SUMMARY);
+        assertNotNull(bytes);
+        try (XSSFWorkbook parsed = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            assertNotNull(parsed.getSheet("Ticket Overview"));
+            assertNotNull(parsed.getSheet("Ticket Records"));
+        }
+    }
+
+    @Test
+    public void testGenerateSlaSummaryReport() throws IOException {
+        DashboardSummaryDTO summary = new DashboardSummaryDTO(
+                8, 2, 2, 0, 4, 0, 0, 1, 1, 0, 7, 87.5, 3.2, 8, 0
+        );
+
+        DashboardAnalyticsResponseDTO analytics = new DashboardAnalyticsResponseDTO(
+                "AGENT", 2L, "Agent Two", "agent@helpdesk.com", "Support Agent", "IT", 1L,
+                summary, Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyList(), null, Collections.emptyList(),
+                Instant.now(), "2026-10-01", "2026-10-10"
+        );
+
+        byte[] bytes = generatorService.generateSummaryWorkbook(analytics, Collections.emptyList(), "UTC", ReportType.SLA_SUMMARY);
+        assertNotNull(bytes);
+        try (XSSFWorkbook parsed = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            assertNotNull(parsed.getSheet("SLA Performance"));
+            assertNotNull(parsed.getSheet("SLA Ticket Records"));
+        }
+    }
+
+    @Test
+    public void testGenerateUserSummaryReport() throws IOException {
+        DashboardSummaryDTO summary = new DashboardSummaryDTO(
+                12, 3, 3, 0, 6, 0, 0, 0, 0, 0, 12, 100.0, 1.5, 10, 2
+        );
+
+        DashboardAnalyticsResponseDTO analytics = new DashboardAnalyticsResponseDTO(
+                "MANAGER", 3L, "Manager Three", "mgr@helpdesk.com", "Department Head", "IT", 1L,
+                summary, Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyList(), new EmployeeStatsDTO(10, 8, 1, 1), Collections.emptyList(),
+                Instant.now(), "2026-10-01", "2026-10-10"
+        );
+
+        byte[] bytes = generatorService.generateSummaryWorkbook(analytics, Collections.emptyList(), "UTC", ReportType.USER_SUMMARY);
+        assertNotNull(bytes);
+        try (XSSFWorkbook parsed = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            assertNotNull(parsed.getSheet("User Overview"));
+        }
+    }
 }
