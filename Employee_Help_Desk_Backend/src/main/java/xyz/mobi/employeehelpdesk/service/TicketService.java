@@ -89,4 +89,10 @@ public interface TicketService {
     TicketFeedbackCreateResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request);
 
     TicketFeedbackResponseDTO getFeedback(Long ticketId);
+
+    List<TicketHistoryResponseDTO> getTicketHistory(Long ticketId);
+
+    TicketSlaResponseDTO getTicketSla(Long ticketId);
+
+    List<xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO> getTicketAttachments(Long ticketId);
 }

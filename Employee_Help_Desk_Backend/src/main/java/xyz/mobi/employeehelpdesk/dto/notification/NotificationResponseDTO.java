@@ -2,6 +2,8 @@ package xyz.mobi.employeehelpdesk.dto.notification;
 
 import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
 
+import java.time.Instant;
+
 public record NotificationResponseDTO(
         Long id,
         Long recipientId,
@@ -10,6 +12,7 @@ public record NotificationResponseDTO(
         NotificationType type,
         String title,
         String message,
-        Boolean read
+        Boolean read,
+        Instant createdAt
 ) {
 }

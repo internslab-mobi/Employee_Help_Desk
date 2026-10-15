@@ -38,4 +38,9 @@ public class TicketResponseDTO {
     private Instant assignedAt;
 
     private SlaStatus slaStatus;
+
+    private String resolutionSummary;
+    private String holdReason;
+    private String withdrawalReason;
+    private String reopenReason;
 }

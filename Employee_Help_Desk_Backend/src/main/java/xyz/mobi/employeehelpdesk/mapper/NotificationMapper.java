@@ -28,5 +28,6 @@ public interface NotificationMapper {
     @Mapping(source = "title", target = "title")
     @Mapping(source = "message", target = "message")
     @Mapping(source = "read", target = "read")
+    @Mapping(source = "createdAt", target = "createdAt")
     NotificationResponseDTO toResponse(Notification notification);
 }

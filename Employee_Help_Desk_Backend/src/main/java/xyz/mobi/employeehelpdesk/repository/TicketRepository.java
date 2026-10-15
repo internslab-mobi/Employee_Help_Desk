@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
+import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 

@@ -29,6 +29,7 @@ public interface TicketMessageMapper {
     @Mapping(target = "senderName", expression = "java(mapSenderName(message.getSender()))")
     @Mapping(source = "message.content", target = "content")
     @Mapping(source = "message.seen", target = "seen")
+    @Mapping(source = "message.createdAt", target = "createdAt")
     @Mapping(source = "attachments", target = "attachments")
     TicketMessageResponseDTO toResponse(TicketMessage message, List<TicketAttachmentResponseDTO> attachments);
 

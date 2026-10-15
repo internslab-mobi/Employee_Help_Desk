@@ -81,6 +81,10 @@ public interface TicketMapper {
     @Mapping(source = "ticket.updatedAt", target = "updatedAt")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
+    @Mapping(source = "ticket.resolutionSummary", target = "resolutionSummary")
+    @Mapping(source = "ticket.holdReason", target = "holdReason")
+    @Mapping(source = "ticket.withdrawalReason", target = "withdrawalReason")
+    @Mapping(source = "ticket.reopenReason", target = "reopenReason")
     TicketResponseDTO toResponse(Ticket ticket, SlaInstance slaInstance);
 
     @Mapping(target = "id", source = "id")

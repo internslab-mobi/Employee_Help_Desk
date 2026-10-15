@@ -61,6 +61,7 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
         ResponseEntity<byte[]> response = reportServiceClient.generateExcelReport(payload, rawAuthHeader);
 
         byte[] excelBytes = response.getBody();
+
         if (excelBytes != null && excelBytes.length > 0 && payload.requesterEmail() != null) {
             String filename = resolveFilename(response, payload);
             String reportName = formatReportTypeName(payload.reportType());

@@ -1,5 +1,6 @@
 package xyz.mobi.employeehelpdesk.dto.message;
 
+import java.time.Instant;
 import java.util.List;
 
 public record TicketMessageResponseDTO(
@@ -9,6 +10,7 @@ public record TicketMessageResponseDTO(
         String senderName,
         String content,
         Boolean seen,
+        Instant createdAt,
         List<TicketAttachmentResponseDTO> attachments
 ) {
 }
