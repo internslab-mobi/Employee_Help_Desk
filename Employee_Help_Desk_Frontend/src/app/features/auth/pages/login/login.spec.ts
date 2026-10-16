@@ -122,4 +122,43 @@ describe('Login Component', () => {
     component.togglePassword();
     expect(component.showPassword).toBe(false);
   });
+
+  it('should display raw string error message returned directly from backend', () => {
+    authServiceSpy.login.mockReturnValue(
+      throwError(() => ({
+        status: 403,
+        error: 'Your account is deactivated. Please contact support.'
+      }))
+    );
+
+    component.loginForm.setValue({
+      email: 'divibalakrishnan2005@gmail.com',
+      password: 'SomePassword123'
+    });
+
+    component.onLogin();
+
+    expect(component.isLoading).toBe(false);
+    expect(component.errorMessage).toBe('Your account is deactivated. Please contact support.');
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should display error field when backend returns { error: "..." }', () => {
+    authServiceSpy.login.mockReturnValue(
+      throwError(() => ({
+        status: 400,
+        error: { error: 'Bad credentials' }
+      }))
+    );
+
+    component.loginForm.setValue({
+      email: 'divibalakrishnan2005@gmail.com',
+      password: 'SomePassword123'
+    });
+
+    component.onLogin();
+
+    expect(component.isLoading).toBe(false);
+    expect(component.errorMessage).toBe('Bad credentials');
+  });
 });

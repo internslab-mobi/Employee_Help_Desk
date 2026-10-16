@@ -15,7 +15,7 @@ import xyz.mobi.Employee_Help_Desk_Auth.service.AuthService;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/auth/user", "/user", "/helpdesk/auth/user"})
+@RequestMapping({"/helpdesk/auth/user", "/user", "/auth/user"})
 @RequiredArgsConstructor
 @Slf4j
 public class AuthController {

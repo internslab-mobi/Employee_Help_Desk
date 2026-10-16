@@ -25,9 +25,10 @@ export class VerifyOtp implements OnInit, OnDestroy {
   readonly isVerifying = signal<boolean>(false);
   readonly errorMessage = signal<string>('');
   readonly successMessage = signal<string>('');
-  readonly countdown = signal<number>(30);
+  readonly countdown = signal<number>(120);
 
   private countdownInterval: any = null;
+  private redirectTimeout: any = null;
 
   readonly remainingAttempts = this.flowService.remainingAttempts;
   readonly maskedEmail = this.flowService.maskedEmail;
@@ -38,7 +39,7 @@ export class VerifyOtp implements OnInit, OnDestroy {
   });
 
   readonly canResend = computed(() => {
-    return this.countdown() === 0 && !this.isVerifying();
+    return this.countdown() === 0 && !this.isVerifying() && !this.isLocked();
   });
 
   ngOnInit(): void {
@@ -58,11 +59,15 @@ export class VerifyOtp implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopCountdown();
+    if (this.redirectTimeout) {
+      clearTimeout(this.redirectTimeout);
+      this.redirectTimeout = null;
+    }
   }
 
   startCountdown(): void {
     this.stopCountdown();
-    this.countdown.set(30);
+    this.countdown.set(120);
 
     this.countdownInterval = setInterval(() => {
       const current = this.countdown();
@@ -71,6 +76,9 @@ export class VerifyOtp implements OnInit, OnDestroy {
       } else {
         this.countdown.set(0);
         this.stopCountdown();
+        if (!this.flowService.isOtpVerified()) {
+          this.errorMessage.set('OTP has expired. Please request a new OTP.');
+        }
       }
     }, 1000);
   }
@@ -184,6 +192,14 @@ export class VerifyOtp implements OnInit, OnDestroy {
 
   onVerify(): void {
     if (this.isLocked() || this.isVerifying() || !this.isComplete()) {
+      if (this.isLocked()) {
+        this.errorMessage.set('Maximum retry exceeded');
+        if (!this.redirectTimeout) {
+          this.redirectTimeout = setTimeout(() => {
+            this.router.navigate(['/forgot-password']);
+          }, 1500);
+        }
+      }
       return;
     }
 
@@ -193,26 +209,32 @@ export class VerifyOtp implements OnInit, OnDestroy {
 
     const code = this.otpDigits().join('');
 
-    setTimeout(() => {
-      const result = this.flowService.verifyOtp(code);
-      this.isVerifying.set(false);
-
-      if (result.success) {
+    this.flowService.verifyOtp(code).subscribe({
+      next: () => {
+        this.isVerifying.set(false);
         this.successMessage.set('OTP verified successfully!');
         setTimeout(() => {
           this.router.navigate(['/reset-password']);
         }, 600);
-      } else {
-        this.errorMessage.set(result.message);
-        if (result.isLocked) {
-          // Lock state triggered
-        } else {
-          // Clear inputs for convenient re-entry
+      },
+      error: (err) => {
+        this.isVerifying.set(false);
+        const errorMsg = err.error?.message || 'Invalid OTP. Please try again.';
+        this.errorMessage.set(errorMsg);
+
+        if(errorMsg.includes('Manimum retry exceeded') || this.isLocked()){
+          this.errorMessage.set('max retry exceeded');
+          if (!this.redirectTimeout) {
+            this.redirectTimeout = setTimeout(() => {
+              this.router.navigate(['/forgot-password']);
+            }, 1500);
+          }
+        } else{
           this.otpDigits.set(['', '', '', '', '', '']);
           this.focusInput(0);
         }
       }
-    }, 400);
+    })
   }
 
   onResend(): void {
@@ -220,14 +242,23 @@ export class VerifyOtp implements OnInit, OnDestroy {
       return;
     }
 
-    this.flowService.resendOtp();
-    this.otpDigits.set(['', '', '', '', '', '']);
-    this.errorMessage.set('');
-    this.successMessage.set('A new OTP has been sent to your email.');
-    this.startCountdown();
-
-    setTimeout(() => {
-      this.focusInput(0);
-    }, 100);
+    this.isVerifying.set(true);
+    this.flowService.resendOtp().subscribe({
+      next: () => {
+        this.isVerifying.set(false);
+        this.otpDigits.set(['', '', '', '', '', '']);
+        this.errorMessage.set('');
+        this.successMessage.set('A new OTP has been sent to your email.');
+        this.startCountdown();
+        setTimeout(() => {
+          this.focusInput(0);
+        }, 100);
+      },
+      error: (err) => {
+        this.isVerifying.set(false);
+        this.errorMessage.set(err.error?.message || 'Failed to resend OTP. Please try again.');
+      }
+    });
+    
   }
 }

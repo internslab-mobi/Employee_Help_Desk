@@ -63,12 +63,14 @@ describe('PasswordResetFlowService', () => {
     expect(res3.success).toBe(false);
     expect(res3.remainingAttempts).toBe(0);
     expect(res3.isLocked).toBe(true);
+    expect(res3.message).toBe('max retry exceeded');
     expect(service.remainingAttempts()).toBe(0);
 
     // Attempt 4 while locked
     const res4 = service.verifyOtp('123456');
     expect(res4.success).toBe(false);
     expect(res4.isLocked).toBe(true);
+    expect(res4.message).toBe('max retry exceeded');
   });
 
   it('should reset attempts and unlock session on resendOtp', () => {

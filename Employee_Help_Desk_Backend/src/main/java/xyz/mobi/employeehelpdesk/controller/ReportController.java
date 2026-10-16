@@ -16,7 +16,7 @@ import xyz.mobi.employeehelpdesk.service.ReportIntegrationService;
 @Slf4j
 @Tag(name = "Reports", description = "Summary Report Generation & Excel Export Integration APIs")
 @RestController
-@RequestMapping({"/api/reports", "/reports", "/helpdesk/reports"})
+@RequestMapping("/helpdesk/reports")
 @RequiredArgsConstructor
 public class ReportController {
 

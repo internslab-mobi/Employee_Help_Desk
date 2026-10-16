@@ -30,6 +30,7 @@ export class ForgotPasswordComponent {
   readonly isLoading = signal(false);
   readonly isSubmittedSuccess = signal(false);
   readonly submittedEmail = signal('');
+  readonly errorMessage = signal('');
 
   get emailControl() {
     return this.forgotPasswordForm.get('email');
@@ -54,6 +55,7 @@ export class ForgotPasswordComponent {
 
   onSubmit(): void {
     this.isSubmitted.set(true);
+    this.errorMessage.set('');
 
     if (this.forgotPasswordForm.invalid) {
       this.forgotPasswordForm.markAllAsTouched();
@@ -63,24 +65,27 @@ export class ForgotPasswordComponent {
     this.isLoading.set(true);
     const emailValue = this.forgotPasswordForm.value.email?.trim() ?? '';
 
-    // Initialize mock verification session with 3 attempts in the flow service
-    this.flowService.startResetSession(emailValue);
-    this.submittedEmail.set(emailValue);
-
-    // Simulate OTP dispatch and navigate to OTP verification page
-    setTimeout(() => {
-      this.isLoading.set(false);
-      this.isSubmittedSuccess.set(true);
-
-      setTimeout(() => {
-        this.router.navigate(['/verify-otp']);
-      }, 500);
-    }, 400);
+    this.flowService.requestOtp(emailValue).subscribe({
+      next: () =>{
+        this.isLoading.set(false);
+        this.submittedEmail.set(emailValue);
+        this.isSubmittedSuccess.set(true);
+        setTimeout(() => {
+          this.router.navigate(['/verify-otp']);
+        }, 800);
+      },
+      error: (error) => {
+        this.isLoading.set(false);
+        const backendMessage = error.error?.message || 'Unable to send OTP. Please check your email and try again.';
+        this.errorMessage.set(backendMessage);
+      }
+    })
   }
 
   onResetForm(): void {
     this.isSubmittedSuccess.set(false);
     this.isSubmitted.set(false);
+    this.errorMessage.set('');
     this.forgotPasswordForm.reset();
   }
 }

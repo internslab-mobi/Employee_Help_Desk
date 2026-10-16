@@ -20,7 +20,7 @@ describe('VerifyOtp Component', () => {
     router = TestBed.inject(Router);
 
     // Initialize mock session
-    flowService.startResetSession('jane.doe@company.com');
+    flowService.resetSession('jane.doe@company.com');
 
     fixture = TestBed.createComponent(VerifyOtp);
     component = fixture.componentInstance;
@@ -120,11 +120,36 @@ describe('VerifyOtp Component', () => {
 
     expect(component.remainingAttempts()).toBe(0);
     expect(component.isLocked()).toBe(true);
-    expect(component.errorMessage()).toContain('exhausted all 3 attempts');
+    expect(component.errorMessage()).toContain('max retry exceeded');
 
     const el = fixture.nativeElement as HTMLElement;
     const verifyBtn = el.querySelector('.btn-submit') as HTMLButtonElement;
     expect(verifyBtn.disabled).toBe(true);
+
+    vi.useRealTimers();
+  });
+
+  it('should redirect to /forgot-password when retries are exceeded', async () => {
+    vi.useFakeTimers();
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    component.otpDigits.set(['1', '1', '1', '1', '1', '1']);
+    component.onVerify();
+    vi.advanceTimersByTime(500);
+
+    component.otpDigits.set(['2', '2', '2', '2', '2', '2']);
+    component.onVerify();
+    vi.advanceTimersByTime(500);
+
+    component.otpDigits.set(['3', '3', '3', '3', '3', '3']);
+    component.onVerify();
+    vi.advanceTimersByTime(500);
+
+    expect(component.errorMessage()).toBe('max retry exceeded');
+
+    // Wait for redirect timeout
+    vi.advanceTimersByTime(1600);
+    expect(navigateSpy).toHaveBeenCalledWith(['/forgot-password']);
 
     vi.useRealTimers();
   });
