@@ -14,6 +14,13 @@ export interface LoginResponse {
   role: UserRole;
 }
 
+export interface TokenRefreshResponse {
+  accessToken: string;
+  refreshToken?: string;
+  tokenType: string;
+  expiresIn: number;
+}
+
 export interface EmployeeProfile {
   id: number;
   employeeCode?: string;
@@ -27,4 +34,28 @@ export interface EmployeeProfile {
   employmentStatus: string;
   role: UserRole;
   timezone?: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  resetToken: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  resetToken: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
+export interface AuthApiResponse {
+  message: string;
 }

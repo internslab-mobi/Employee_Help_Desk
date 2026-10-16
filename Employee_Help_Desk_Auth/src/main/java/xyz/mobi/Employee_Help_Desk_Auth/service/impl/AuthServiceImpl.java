@@ -8,22 +8,21 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.mobi.Employee_Help_Desk_Auth.client.NotificationClient;
 import xyz.mobi.Employee_Help_Desk_Auth.dto.auth.*;
 import xyz.mobi.Employee_Help_Desk_Auth.entity.Employee;
 import xyz.mobi.Employee_Help_Desk_Auth.entity.PasswordResetOtp;
 import xyz.mobi.Employee_Help_Desk_Auth.entity.RefreshToken;
 import xyz.mobi.Employee_Help_Desk_Auth.entity.enums.EmploymentStatus;
 import xyz.mobi.Employee_Help_Desk_Auth.entity.enums.UserRole;
-import xyz.mobi.Employee_Help_Desk_Auth.exception.BadRequestException;
-import xyz.mobi.Employee_Help_Desk_Auth.exception.ResourceNotFoundException;
-import xyz.mobi.Employee_Help_Desk_Auth.exception.UnauthorizedException;
+import xyz.mobi.Employee_Help_Desk_Auth.exception.*;
 import xyz.mobi.Employee_Help_Desk_Auth.repository.EmployeeRepository;
 import xyz.mobi.Employee_Help_Desk_Auth.repository.PasswordResetOtpRepository;
 import xyz.mobi.Employee_Help_Desk_Auth.repository.RefreshTokenRepository;
 import xyz.mobi.Employee_Help_Desk_Auth.security.JwtTokenProvider;
 import xyz.mobi.Employee_Help_Desk_Auth.security.UserPrincipal;
 import xyz.mobi.Employee_Help_Desk_Auth.service.AuthService;
-import xyz.mobi.Employee_Help_Desk_Auth.service.EmailService;
+import xyz.mobi.Employee_Help_Desk_Auth.service.PasswordResetOtpPersistenceService;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -41,7 +40,8 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetOtpRepository passwordResetOtpRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-    private final EmailService emailService;
+    private final NotificationClient notificationClient;
+    private final PasswordResetOtpPersistenceService otpPersistenceService;
 
     private static final String PASSWORD_PATTERN = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{8,}$";
 
@@ -207,7 +207,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public void requestForgotPasswordOtp(ForgotPasswordOtpRequestDTO request) {
 
         if (request == null || request.email() == null || request.email().isBlank()) {
@@ -230,28 +229,22 @@ public class AuthServiceImpl implements AuthService {
         SecureRandom random = new SecureRandom();
         String otp = String.format("%06d", random.nextInt(1_000_000));
 
-        passwordResetOtpRepository.deleteByEmail(email);
+        PasswordResetOtp savedOtp = otpPersistenceService.saveOtp(email, otp);
 
-        PasswordResetOtp resetOtp = PasswordResetOtp.builder()
-                .email(email)
-                .otpHash(passwordEncoder.encode(otp))
-                .otpExpiresAt(Instant.now().plus(10, ChronoUnit.MINUTES))
-                .otpAttemptCount(0)
-                .otpVerified(false)
-                .resetTokenHash(null)
-                .resetTokenExpiresAt(null)
-                .resetTokenUsed(false)
-                .build();
-
-        passwordResetOtpRepository.save(resetOtp);
-
-        emailService.sendNotificationEmail(
-                email,
-                "Password Reset OTP",
-                "Your OTP for password reset is: " + otp + ". This OTP is valid for 10 minutes."
-        );
-
-        log.info("Password reset OTP generated and sent to email={}", email);
+        try {
+            notificationClient.sendNotificationEmail(email, "Password reset OTP",
+                    "Your OTP for the password reset is: " + otp + ". This OTP is valid for only 2 minutes.");
+            log.info("Password reset OTP notification accepted for email={}", email);
+        }
+        catch (RestClientException ex){
+            try{
+                otpPersistenceService.invalidateOtp(savedOtp.getId());
+            }
+            catch (Exception cleanupException){
+                log.error("Failed to invalidate OTP after notification failure, otpId {}", savedOtp.getId(), cleanupException);
+            }
+            throw new NotificationException("Unable to send OTP email. Please try again");
+        }
     }
 
     @Override
@@ -287,7 +280,7 @@ public class AuthServiceImpl implements AuthService {
 
         if (resetOtp.getOtpAttemptCount() >= 3) {
             log.warn("OTP verification rejected for email={}: maximum attempts exceeded", email);
-            throw new BadRequestException("Maximum OTP attempts exceeded. Please request a new OTP.");
+            throw new BadRequestException("Maximum retry exceeded");
         }
 
         if (!passwordEncoder.matches(otp, resetOtp.getOtpHash())) {
@@ -298,7 +291,7 @@ public class AuthServiceImpl implements AuthService {
             log.warn("OTP verification attempt failed for email={}, attempts={}", email, newAttemptCount);
 
             if (newAttemptCount >= 3) {
-                throw new BadRequestException("Maximum OTP attempts exceeded. Please request a new OTP.");
+                throw new BadRequestException("Maximum retry exceeded");
             }
 
             int remainingAttempts = 3 - newAttemptCount;
@@ -439,4 +432,5 @@ public class AuthServiceImpl implements AuthService {
 
         throw new UnauthorizedException("Invalid authentication principal");
     }
+
 }

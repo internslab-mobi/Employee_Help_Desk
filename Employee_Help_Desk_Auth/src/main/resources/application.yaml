@@ -69,3 +69,7 @@ logging:
     root: INFO
     xyz.mobi.Employee_Help_Desk_Auth: DEBUG
     org.springframework.security: WARN
+
+notification:
+  service:
+    base-url: http://localhost:8085

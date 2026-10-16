@@ -43,15 +43,6 @@ spring:
                 - RemoveResponseHeader=access-control-allow-origin
                 - RemoveResponseHeader=access-control-allow-credentials
                 - RemoveResponseHeader=access-control-expose-headers
-      routes:
-        - id: auth-service
-          uri: http://localhost:8081
-          predicates:
-            - Path=/user/**, /helpdesk/auth/**, /auth/user/**, /api/user/**, /api/helpdesk/auth/**, /api/auth/**
-        - id: backend-service
-          uri: http://localhost:8082
-          predicates:
-            - Path=/helpdesk/**, /tickets/**, /analytics/**, /reports/**, /notifications/**, /api/helpdesk/**, /api/tickets/**, /api/analytics/**, /api/reports/**, /api/notifications/**
       globalcors:
         cors-configurations:
           '[/**]':

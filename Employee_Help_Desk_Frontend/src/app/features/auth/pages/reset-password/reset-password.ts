@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -6,8 +6,9 @@ import {
   ValidationErrors,
   Validators
 } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { PasswordResetFlowService } from '../../services/password-reset-flow.service';
 
-import { RouterLink } from '@angular/router';
 @Component({
   selector: 'app-reset-password',
   imports: [ReactiveFormsModule, RouterLink],
@@ -16,6 +17,14 @@ import { RouterLink } from '@angular/router';
 })
 export class ResetPassword {
 
+  private readonly router = inject(Router);
+  private readonly flowService = inject(PasswordResetFlowService);
+  private readonly fb = inject(FormBuilder);
+
+  readonly isSubmitting = signal(false);
+  readonly errorMessage = signal('');
+  readonly successMessage = signal('');
+
   resetPasswordForm;
 
   passwordStrength: 'low' | 'medium' | 'strong' | '' = '';
@@ -23,7 +32,7 @@ export class ResetPassword {
   private readonly passwordPattern =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
-  constructor(private fb: FormBuilder) {
+  constructor() {
 
     this.resetPasswordForm = this.fb.group(
       {
@@ -53,9 +62,7 @@ export class ResetPassword {
   }
 
 
-  passwordMatchValidator(
-    control: AbstractControl
-  ): ValidationErrors | null {
+  passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
 
     const newPassword = control.get('newPassword')?.value;
     const confirmPassword = control.get('confirmPassword')?.value;
@@ -144,14 +151,31 @@ export class ResetPassword {
 
   onSubmit(): void {
 
-    if (this.resetPasswordForm.invalid) {
+    if (this.resetPasswordForm.invalid || this.isSubmitting()) {
       this.resetPasswordForm.markAllAsTouched();
       return;
     }
 
-    console.log('Password is valid');
-    console.log(this.resetPasswordForm.value);
+    this.isSubmitting.set(true);
+    this.errorMessage.set('');
+    this.successMessage.set('');
 
-    // Backend API integration will be added later.
+    const newPass = this.resetPasswordForm.value.newPassword!;
+    const confirmPass = this.resetPasswordForm.value.confirmPassword!;
+
+    this.flowService.resetPassword(newPass, confirmPass).subscribe({
+      next: (res) => {
+        this.isSubmitting.set(false);
+        this.successMessage.set(res.message || 'Password reset successfully! Redirecting to login...');
+        setTimeout(() => {
+          this.router.navigate(['/login']);
+        }, 1500);
+      },
+      error: (err) => {
+        this.isSubmitting.set(false);
+        const msg = err.error?.message || 'Failed to reset password. Please try again.';
+        this.errorMessage.set(msg);
+      }
+    })
   }
 }
