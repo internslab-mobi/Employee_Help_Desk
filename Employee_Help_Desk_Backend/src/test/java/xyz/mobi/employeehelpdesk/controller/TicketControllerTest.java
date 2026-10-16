@@ -74,7 +74,7 @@ public class TicketControllerTest {
 
         when(ticketService.getTicket(101L)).thenReturn(responseDTO);
 
-        mockMvc.perform(get("/tickets/101"))
+        mockMvc.perform(get("/helpdesk/tickets/101"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(101L))
                 .andExpect(jsonPath("$.ticketNumber").value("TKT-20261010-001"))
@@ -95,7 +95,7 @@ public class TicketControllerTest {
         when(ticketService.searchTickets(eq(TicketView.CREATED), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(responseDTO), org.springframework.data.domain.PageRequest.of(0, 10), 1));
 
-        mockMvc.perform(get("/tickets/search")
+        mockMvc.perform(get("/helpdesk/tickets/search")
                         .param("view", "CREATED")
                         .param("search", "Network")
                         .param("page", "0")
@@ -117,7 +117,7 @@ public class TicketControllerTest {
 
         when(ticketService.getTicketHistory(101L)).thenReturn(List.of(historyDTO));
 
-        mockMvc.perform(get("/tickets/101/history"))
+        mockMvc.perform(get("/helpdesk/tickets/101/history"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1L))
                 .andExpect(jsonPath("$[0].eventType").value("STATUS_CHANGED"))
@@ -142,7 +142,7 @@ public class TicketControllerTest {
 
         when(ticketService.getTicketSla(101L)).thenReturn(slaDTO);
 
-        mockMvc.perform(get("/tickets/101/sla"))
+        mockMvc.perform(get("/helpdesk/tickets/101/sla"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.policyName").value("High Priority SLA"))
@@ -162,7 +162,7 @@ public class TicketControllerTest {
 
         when(ticketService.getTicketAttachments(101L)).thenReturn(List.of(attDTO));
 
-        mockMvc.perform(get("/tickets/101/attachments"))
+        mockMvc.perform(get("/helpdesk/tickets/101/attachments"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(5L))
                 .andExpect(jsonPath("$[0].originalFilename").value("vpn_error.png"))
@@ -195,7 +195,7 @@ public class TicketControllerTest {
                 new byte[]{1, 2, 3}
         );
 
-        TicketCreateResponseDTO createResponse = TicketCreateResponseDTO.builder()
+        TicketResponseDTO createResponse = TicketResponseDTO.builder()
                 .id(202L)
                 .ticketNumber("TKT-20261014-001")
                 .subject("Laptop Screen Flicker")
@@ -208,7 +208,7 @@ public class TicketControllerTest {
         when(ticketService.createTicket(any(CreateTicketRequestDTO.class), any()))
                 .thenReturn(createResponse);
 
-        mockMvc.perform(multipart("/tickets")
+        mockMvc.perform(multipart("/helpdesk/tickets")
                         .file(requestPart)
                         .file(filePart))
                 .andExpect(status().isCreated())

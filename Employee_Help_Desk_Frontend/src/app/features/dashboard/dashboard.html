@@ -96,7 +96,7 @@
         </button>
 
         <!-- User Profile Area -->
-        <div class="profile-chip">
+        <div id="dashboard-profile-chip" class="profile-chip" (click)="navigateToProfile()" role="button" tabindex="0" (keydown.enter)="navigateToProfile()" title="View User Profile">
           <div class="profile-avatar">
             {{ getInitials(displayUserName()) }}
           </div>

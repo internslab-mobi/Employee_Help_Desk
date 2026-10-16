@@ -144,4 +144,10 @@ export class AgentDashboard implements OnInit {
       this.router.navigate(['/dashboard']);
     }
   }
+
+  navigateToProfile(): void {
+    if (this.router) {
+      this.router.navigate(['/profile']);
+    }
+  }
 }

@@ -410,6 +410,10 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  navigateToProfile(): void {
+    this.router.navigate(['/profile']);
+  }
+
   navigateToTicketsWithFilter(filters: { status?: string; priority?: string; view?: TicketViewType }): void {
     if (filters.status) {
       this.ticketStatusFilter.set(filters.status);

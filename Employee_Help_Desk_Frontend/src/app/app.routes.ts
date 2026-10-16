@@ -6,6 +6,7 @@ import { Login } from './features/auth/pages/login/login';
 import { AgentDashboard } from './features/dashboard/agent-dashboard/agent-dashboard';
 import { ChangePassword } from './features/auth/pages/change-password/change-password';
 import { DashboardComponent } from './features/dashboard/dashboard';
+import { ProfileComponent } from './features/profile/profile';
 import { resetPasswordGuard, verifyOtpGuard } from './features/auth/guards/auth-flow.guard';
 import { authGuard } from './core/guards/auth.guard';
 
@@ -14,6 +15,7 @@ export const routes: Routes = [
   { path: 'login', component: Login },
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'tickets', component: DashboardComponent, canActivate: [authGuard] },
+  { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'verify-otp', component: VerifyOtp, canActivate: [verifyOtpGuard] },
   { path: 'reset-password', component: ResetPassword, canActivate: [resetPasswordGuard] },
