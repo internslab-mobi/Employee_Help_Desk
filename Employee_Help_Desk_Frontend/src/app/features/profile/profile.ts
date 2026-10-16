@@ -65,12 +65,12 @@ export class ProfileComponent implements OnInit {
     this.successMessage.set(null);
 
     this.authService.getProfile().subscribe({
-      next: (profileData) => {
+      next: (profileData: EmployeeProfile) => {
         this.profile.set(profileData);
         this.populateForm(profileData);
         this.isLoading.set(false);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isLoading.set(false);
         this.errorMessage.set(
           err?.error?.message || 'Failed to load profile details from server. Please try again.'
@@ -144,7 +144,7 @@ export class ProfileComponent implements OnInit {
     };
 
     this.authService.updateProfile(patchPayload, this.selectedImage() || undefined).subscribe({
-      next: (updatedProfile) => {
+      next: (updatedProfile: EmployeeProfile) => {
         this.profile.set(updatedProfile);
         this.populateForm(updatedProfile);
         this.isSaving.set(false);
@@ -153,7 +153,7 @@ export class ProfileComponent implements OnInit {
         this.imagePreviewUrl.set(null);
         this.successMessage.set('Profile updated successfully!');
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isSaving.set(false);
         this.errorMessage.set(
           err?.error?.message || 'Failed to update profile. Please verify your inputs and try again.'
