@@ -3,13 +3,18 @@ package xyz.mobi.Employee_Help_Desk_Auth.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.mobi.Employee_Help_Desk_Auth.dto.auth.*;
+import xyz.mobi.Employee_Help_Desk_Auth.exception.UnauthorizedException;
+import xyz.mobi.Employee_Help_Desk_Auth.security.JwtTokenProvider;
 import xyz.mobi.Employee_Help_Desk_Auth.service.AuthService;
 
 import java.util.Map;
@@ -21,6 +26,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(
@@ -28,15 +34,58 @@ public class AuthController {
     ) {
         log.info("Auth microservice login reached for email={}", request.email());
         LoginResponseDTO response = authService.login(request);
-        return ResponseEntity.ok(response);
+
+        ResponseCookie refreshCookie = createRefreshTokenCookie(
+                response.refreshToken(),
+                jwtTokenProvider.getRefreshExpirationMs() / 1000
+        );
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(response);
     }
 
     @PostMapping("/refresh-token")
     public ResponseEntity<TokenRefreshResponseDTO> refreshToken(
-            @Valid @RequestBody RefreshTokenRequestDTO request
+            @CookieValue(name = "refreshToken", required = false) String cookieRefreshToken,
+            @RequestBody(required = false) RefreshTokenRequestDTO request
     ) {
-        TokenRefreshResponseDTO response = authService.refreshToken(request);
-        return ResponseEntity.ok(response);
+        String tokenToUse = (cookieRefreshToken != null && !cookieRefreshToken.isBlank())
+                ? cookieRefreshToken
+                : (request != null ? request.refreshToken() : null);
+
+        if (tokenToUse == null || tokenToUse.isBlank()) {
+            throw new UnauthorizedException("Refresh token is required");
+        }
+
+        TokenRefreshResponseDTO response = authService.refreshToken(new RefreshTokenRequestDTO(tokenToUse));
+
+        ResponseCookie refreshCookie = createRefreshTokenCookie(
+                response.refreshToken(),
+                jwtTokenProvider.getRefreshExpirationMs() / 1000
+        );
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout() {
+        ResponseCookie clearCookie = createRefreshTokenCookie("", 0);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                .body(Map.of("message", "Logged out successfully"));
+    }
+
+    private ResponseCookie createRefreshTokenCookie(String tokenValue, long maxAgeSeconds) {
+        return ResponseCookie.from("refreshToken", tokenValue != null ? tokenValue : "")
+                .httpOnly(true)
+                .secure(false) // Set to false for HTTP on localhost; can be true behind HTTPS
+                .path("/")
+                .maxAge(maxAgeSeconds)
+                .sameSite("Lax")
+                .build();
     }
 
     @PreAuthorize("isAuthenticated()")

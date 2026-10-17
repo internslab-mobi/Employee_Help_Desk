@@ -8,6 +8,7 @@ export const API_BASE_URL = '/api';
 export const API_ENDPOINTS = {
   auth: {
     login: `${API_BASE_URL}/user/login`,
+    logout: `${API_BASE_URL}/user/logout`,
     refreshToken: `${API_BASE_URL}/user/refresh-token`,
     changePassword: `${API_BASE_URL}/user/change-password`,
     forgotPasswordRequestOtp: `${API_BASE_URL}/user/forgot-password/request-otp`,

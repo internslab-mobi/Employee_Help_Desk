@@ -53,7 +53,7 @@ export class AuthService {
   }
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(API_ENDPOINTS.auth.login, credentials).pipe(
+    return this.http.post<LoginResponse>(API_ENDPOINTS.auth.login, credentials, { withCredentials: true }).pipe(
       tap((res) => {
         this.saveAuthSession(res);
         this.loadProfile(res.employeeId).subscribe({
@@ -106,11 +106,22 @@ export class AuthService {
     );
   }
 
-  logout(): void {
+  logout(notifyServer = true): void {
     this.clearAllTimers();
 
     this.isRefreshing = false;
     this.refreshTokenSubject.next(null);
+
+    if (notifyServer && this.token()) {
+      try {
+        this.http.post(API_ENDPOINTS.auth.logout, {}, { withCredentials: true }).subscribe({
+          next: () => {},
+          error: () => {}
+        });
+      } catch {
+        // Ignore network errors on logout
+      }
+    }
 
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
@@ -132,12 +143,6 @@ export class AuthService {
   }
 
   refreshToken(): Observable<TokenRefreshResponse> {
-    const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
-      this.logout();
-      return throwError(() => new Error('No refresh token available'));
-    }
-
     const currentCount = this.getRefreshCount();
     if (currentCount >= MAX_REFRESH_ATTEMPTS) {
       this.logout();
@@ -150,8 +155,11 @@ export class AuthService {
       return throwError(() => new Error('Maximum session duration of 45 minutes exceeded'));
     }
 
+    const refreshToken = this.getRefreshToken();
+    const body = refreshToken ? { refreshToken } : {};
+
     return this.http
-      .post<TokenRefreshResponse>(API_ENDPOINTS.auth.refreshToken, { refreshToken })
+      .post<TokenRefreshResponse>(API_ENDPOINTS.auth.refreshToken, body, { withCredentials: true })
       .pipe(
         tap((res) => {
           localStorage.setItem(TOKEN_KEY, res.accessToken);
