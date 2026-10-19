@@ -13,6 +13,7 @@ import { ReportSummaryResponse, ReportType } from '../../core/models/report.mode
 import { NotificationItem } from '../../core/models/notification.models';
 import { UserRole } from '../../core/models/auth.models';
 import {
+  AssignableAgentResponse,
   CategoryResponse,
   DepartmentResponse,
   StatusTimelineStep,
@@ -66,6 +67,35 @@ export class DashboardComponent implements OnInit {
   ticketCurrentPage = signal<number>(0);
   ticketPageSize = signal<number>(10);
 
+  // Agent Assigned Tickets State
+  assignedTickets = signal<TicketResponse[]>([]);
+  isLoadingAssignedTickets = signal<boolean>(false);
+  assignedSearchTerm = signal<string>('');
+  assignedStatusFilter = signal<string>('ALL');
+  assignedPriorityFilter = signal<string>('ALL');
+  assignedCurrentPage = signal<number>(0);
+  assignedTotalPages = signal<number>(1);
+  assignedTotalElements = signal<number>(0);
+
+  // Agent Modals & Action State
+  showHoldModal = signal<boolean>(false);
+  selectedTicketForHold = signal<TicketResponse | RecentTicket | null>(null);
+  holdReasonInput = signal<string>('Waiting for additional information from employee');
+
+  showResolveModal = signal<boolean>(false);
+  selectedTicketForResolve = signal<TicketResponse | RecentTicket | null>(null);
+  resolutionSummaryInput = signal<string>('');
+
+  isSubmittingAction = signal<boolean>(false);
+
+  // Manager Breached Tickets State
+  breachedTickets = signal<TicketResponse[]>([]);
+  isLoadingBreachedTickets = signal<boolean>(false);
+  assignableAgentsMap = signal<Record<number, AssignableAgentResponse[]>>({});
+  selectedAgentForTicket = signal<Record<number, number>>({});
+  isAssigningTicket = signal<Record<number, boolean>>({});
+  isLoadingAgents = signal<Record<number, boolean>>({});
+
   // Report Category State (for Excel & JSON summary reports)
   selectedReportType = signal<ReportType>('GENERAL_SUMMARY');
   reportSummaryJson = signal<ReportSummaryResponse | null>(null);
@@ -73,7 +103,7 @@ export class DashboardComponent implements OnInit {
   showReportJsonModal = signal<boolean>(false);
 
   // Navigation & UI state
-  activeNav = signal<'dashboard' | 'helpdesk' | 'assets' | 'exits'>('dashboard');
+  activeNav = signal<'dashboard' | 'my-tickets' | 'assigned-tickets' | 'assign' | 'helpdesk' | 'assets' | 'exits'>('dashboard');
   showFilters = signal<boolean>(false);
   showAnalyticsSection = signal<boolean>(false);
 
@@ -318,12 +348,9 @@ export class DashboardComponent implements OnInit {
     });
   });
 
-  // Returns server-loaded tickets if loaded, or filtered recent tickets
+  // Returns server-loaded tickets strictly without dummy/mock fallbacks
   readonly displayTickets = computed<any[]>(() => {
-    if (this.serverTickets().length > 0) {
-      return this.serverTickets();
-    }
-    return this.filteredTickets();
+    return this.serverTickets();
   });
 
   constructor(
@@ -342,26 +369,30 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    // Set activeNav based on current URL path
-    if (this.router.url.includes('/tickets')) {
-      this.activeNav.set('helpdesk');
-    } else {
-      this.activeNav.set('dashboard');
-    }
-
-    // Set initial ticket view based on user role
     const role = this.userRole();
-    if (role === 'AGENT') {
-      this.selectedTicketView.set('ASSIGNED');
-    } else if (role === 'ADMIN' || role === 'MANAGER') {
-      this.selectedTicketView.set('DEPARTMENT');
-    } else {
-      this.selectedTicketView.set('CREATED');
-    }
 
-    // Listen to query parameters for KPI deep links
+    // Check query parameters for tab switching & KPI deep links
     this.route.queryParams.subscribe((params) => {
       let filterChanged = false;
+      if (params['tab']) {
+        const tab = params['tab'];
+        if (tab === 'assigned' && (role === 'AGENT' || role === 'ADMIN')) {
+          this.activeNav.set('assigned-tickets');
+          this.loadAssignedTickets(0);
+        } else if (tab === 'assign' && (role === 'MANAGER' || role === 'ADMIN')) {
+          this.activeNav.set('assign');
+          this.loadBreachedTickets();
+        } else if (tab === 'my-tickets') {
+          this.activeNav.set('my-tickets');
+          this.selectedTicketView.set('CREATED');
+          this.loadTicketsPage(0);
+        }
+      } else if (this.router.url.includes('/tickets')) {
+        this.activeNav.set('my-tickets');
+      } else {
+        this.activeNav.set('dashboard');
+      }
+
       if (params['status']) {
         this.ticketStatusFilter.set(params['status']);
         filterChanged = true;
@@ -374,8 +405,7 @@ export class DashboardComponent implements OnInit {
         this.selectedTicketView.set(params['view'] as TicketViewType);
         filterChanged = true;
       }
-      if (this.router.url.includes('/tickets')) {
-        this.activeNav.set('helpdesk');
+      if (this.router.url.includes('/tickets') || this.activeNav() === 'my-tickets' || this.activeNav() === 'helpdesk') {
         if (filterChanged) {
           this.loadTicketsPage(0);
         }
@@ -390,21 +420,42 @@ export class DashboardComponent implements OnInit {
         error: () => {}
       });
     }
+    // Always fetch latest profile photo from database (hd_ticket_attachments) for current user
+    this.authService.loadProfilePhoto();
 
     this.loadDashboardData();
     this.loadTicketsPage(0);
     this.loadDepartments();
     this.loadUnreadCount();
+
+    if (role === 'AGENT' || role === 'ADMIN') {
+      this.loadAssignedTickets(0);
+    }
+    if (role === 'MANAGER' || role === 'ADMIN') {
+      this.loadBreachedTickets();
+    }
   }
 
   // ===================== NAVIGATION & KPI DEEP LINKS =====================
 
-  navigateToNav(nav: 'dashboard' | 'tickets'): void {
+  navigateToNav(nav: 'dashboard' | 'my-tickets' | 'assigned-tickets' | 'assign' | 'tickets' | 'helpdesk'): void {
     if (nav === 'dashboard') {
       this.activeNav.set('dashboard');
       this.router.navigate(['/dashboard']);
+    } else if (nav === 'assigned-tickets') {
+      this.activeNav.set('assigned-tickets');
+      this.router.navigate(['/dashboard'], { queryParams: { tab: 'assigned' } });
+      this.loadAssignedTickets(0);
+    } else if (nav === 'assign') {
+      this.activeNav.set('assign');
+      this.router.navigate(['/dashboard'], { queryParams: { tab: 'assign' } });
+      this.loadBreachedTickets();
     } else {
-      this.activeNav.set('helpdesk');
+      this.activeNav.set('my-tickets');
+      this.selectedTicketView.set('CREATED');
+      this.ticketStatusFilter.set('ALL');
+      this.ticketPriorityFilter.set('ALL');
+      this.ticketSearchTerm.set('');
       this.router.navigate(['/tickets']);
       this.loadTicketsPage(0);
     }
@@ -522,10 +573,18 @@ export class DashboardComponent implements OnInit {
     this.selectedAnalyticsView.set(view);
   }
 
-  setActiveNav(nav: 'dashboard' | 'helpdesk' | 'assets' | 'exits'): void {
+  setActiveNav(nav: 'dashboard' | 'my-tickets' | 'assigned-tickets' | 'assign' | 'helpdesk' | 'assets' | 'exits'): void {
     this.activeNav.set(nav);
-    if (nav === 'helpdesk') {
+    if (nav === 'helpdesk' || nav === 'my-tickets') {
+      this.selectedTicketView.set('CREATED');
+      this.ticketStatusFilter.set('ALL');
+      this.ticketPriorityFilter.set('ALL');
+      this.ticketSearchTerm.set('');
       this.loadTicketsPage(0);
+    } else if (nav === 'assigned-tickets') {
+      this.loadAssignedTickets(0);
+    } else if (nav === 'assign') {
+      this.loadBreachedTickets();
     }
   }
 
@@ -1080,6 +1139,47 @@ export class DashboardComponent implements OnInit {
       .substring(0, 2);
   }
 
+  formatNotificationTime(dateStr?: string): string {
+    if (!dateStr) return '';
+    try {
+      let sanitized = dateStr;
+      if (!sanitized.endsWith('Z') && !sanitized.includes('+') && !sanitized.includes('-') && sanitized.includes('T')) {
+        sanitized += 'Z';
+      }
+      const date = new Date(sanitized);
+      if (isNaN(date.getTime())) {
+        const fallback = new Date(dateStr);
+        if (isNaN(fallback.getTime())) return '';
+        return fallback.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+      }
+
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
+
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday = date.toDateString() === yesterday.toDateString();
+
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+
+      if (isToday) {
+        return `Today, ${timeStr}`;
+      } else if (isYesterday) {
+        return `Yesterday, ${timeStr}`;
+      } else {
+        const isCurrentYear = date.getFullYear() === now.getFullYear();
+        const datePart = date.toLocaleDateString([], {
+          month: 'short',
+          day: 'numeric',
+          ...(isCurrentYear ? {} : { year: 'numeric' })
+        });
+        return `${datePart}, ${timeStr}`;
+      }
+    } catch {
+      return '';
+    }
+  }
+
   formatRelativeTime(dateStr?: string, index?: number): string {
     if (!dateStr) {
       if (index === 0) return 'Today';
@@ -1209,5 +1309,263 @@ export class DashboardComponent implements OnInit {
 
   getPreviewReopenCount(ticket: RecentTicket | TicketResponse | null): number {
     return this.fullSelectedTicket()?.reopenCount ?? (ticket as any)?.reopenCount ?? 0;
+  }
+
+  // ===================== AGENT WORKFLOW ACTIONS =====================
+
+  loadAssignedTickets(page = 0): void {
+    this.isLoadingAssignedTickets.set(true);
+    this.assignedCurrentPage.set(page);
+    this.ticketService
+      .searchTickets({
+        view: 'ASSIGNED',
+        search: this.assignedSearchTerm().trim() || undefined,
+        status: this.assignedStatusFilter() !== 'ALL' ? this.assignedStatusFilter() : undefined,
+        priority: this.assignedPriorityFilter() !== 'ALL' ? this.assignedPriorityFilter() : undefined,
+        page: page,
+        size: this.ticketPageSize()
+      })
+      .subscribe({
+        next: (res) => {
+          this.isLoadingAssignedTickets.set(false);
+          if (res && res.content) {
+            this.assignedTickets.set(res.content);
+            this.assignedTotalElements.set(res.totalElements ?? res.content.length);
+            this.assignedTotalPages.set(res.totalPages ?? 1);
+          } else {
+            this.assignedTickets.set([]);
+            this.assignedTotalElements.set(0);
+            this.assignedTotalPages.set(1);
+          }
+        },
+        error: () => {
+          this.isLoadingAssignedTickets.set(false);
+          this.assignedTickets.set([]);
+        }
+      });
+  }
+
+  onAssignedSearchInput(term: string): void {
+    this.assignedSearchTerm.set(term);
+    this.loadAssignedTickets(0);
+  }
+
+  onAssignedStatusFilter(status: string): void {
+    this.assignedStatusFilter.set(status);
+    this.loadAssignedTickets(0);
+  }
+
+  onAssignedPriorityFilter(priority: string): void {
+    this.assignedPriorityFilter.set(priority);
+    this.loadAssignedTickets(0);
+  }
+
+  nextAssignedPage(): void {
+    if (this.assignedCurrentPage() + 1 < this.assignedTotalPages()) {
+      this.loadAssignedTickets(this.assignedCurrentPage() + 1);
+    }
+  }
+
+  prevAssignedPage(): void {
+    if (this.assignedCurrentPage() > 0) {
+      this.loadAssignedTickets(this.assignedCurrentPage() - 1);
+    }
+  }
+
+  startWorkingTicket(ticket: TicketResponse | RecentTicket | null): void {
+    if (!ticket) return;
+    this.isSubmittingAction.set(true);
+    this.ticketService.updateTicket(ticket.id, { status: 'IN_PROGRESS' }).subscribe({
+      next: () => {
+        this.isSubmittingAction.set(false);
+        this.notification.set({ type: 'success', message: `Ticket #${ticket.ticketNumber} is now IN PROGRESS. SLA calculation started.` });
+        this.updateLocalTicketStatus(ticket.id, 'IN_PROGRESS');
+        this.loadDashboardData();
+        if (this.selectedTicketForPreview()?.id === ticket.id) {
+          this.loadTicketFullDetail(ticket.id);
+        }
+      },
+      error: (err) => {
+        this.isSubmittingAction.set(false);
+        this.notification.set({ type: 'error', message: err?.error?.message || 'Failed to start working on ticket' });
+      }
+    });
+  }
+
+  openHoldModal(ticket: TicketResponse | RecentTicket | null): void {
+    if (!ticket) return;
+    this.selectedTicketForHold.set(ticket);
+    this.holdReasonInput.set('Waiting for additional information from employee');
+    this.showHoldModal.set(true);
+  }
+
+  closeHoldModal(): void {
+    this.showHoldModal.set(false);
+    this.selectedTicketForHold.set(null);
+  }
+
+  confirmHoldTicket(): void {
+    const ticket = this.selectedTicketForHold();
+    const reason = this.holdReasonInput().trim();
+    if (!ticket || !reason) return;
+    this.isSubmittingAction.set(true);
+    this.ticketService.updateTicket(ticket.id, { status: 'ON_HOLD', reason }).subscribe({
+      next: () => {
+        this.isSubmittingAction.set(false);
+        this.closeHoldModal();
+        this.notification.set({ type: 'success', message: `Ticket #${ticket.ticketNumber} is ON HOLD awaiting employee response.` });
+        this.updateLocalTicketStatus(ticket.id, 'ON_HOLD');
+        this.loadDashboardData();
+        if (this.selectedTicketForPreview()?.id === ticket.id) {
+          this.loadTicketFullDetail(ticket.id);
+        }
+      },
+      error: (err) => {
+        this.isSubmittingAction.set(false);
+        this.notification.set({ type: 'error', message: err?.error?.message || 'Failed to request employee / put on hold' });
+      }
+    });
+  }
+
+  resumeTicketAction(ticket: TicketResponse | RecentTicket | null): void {
+    if (!ticket) return;
+    this.isSubmittingAction.set(true);
+    this.ticketService.updateTicket(ticket.id, { status: 'RESUME' }).subscribe({
+      next: () => {
+        this.isSubmittingAction.set(false);
+        this.notification.set({ type: 'success', message: `Ticket #${ticket.ticketNumber} resumed. Status changed back to IN PROGRESS.` });
+        this.updateLocalTicketStatus(ticket.id, 'IN_PROGRESS');
+        this.loadDashboardData();
+        if (this.selectedTicketForPreview()?.id === ticket.id) {
+          this.loadTicketFullDetail(ticket.id);
+        }
+      },
+      error: (err) => {
+        this.isSubmittingAction.set(false);
+        this.notification.set({ type: 'error', message: err?.error?.message || 'Failed to resume ticket' });
+      }
+    });
+  }
+
+  openResolveModal(ticket: TicketResponse | RecentTicket | null): void {
+    if (!ticket) return;
+    this.selectedTicketForResolve.set(ticket);
+    this.resolutionSummaryInput.set('');
+    this.showResolveModal.set(true);
+  }
+
+  closeResolveModal(): void {
+    this.showResolveModal.set(false);
+    this.selectedTicketForResolve.set(null);
+  }
+
+  confirmResolveTicket(): void {
+    const ticket = this.selectedTicketForResolve();
+    const resolution = this.resolutionSummaryInput().trim();
+    if (!ticket || !resolution) return;
+    this.isSubmittingAction.set(true);
+    this.ticketService.updateTicket(ticket.id, { status: 'RESOLVED', resolution }).subscribe({
+      next: () => {
+        this.isSubmittingAction.set(false);
+        this.closeResolveModal();
+        this.notification.set({ type: 'success', message: `Ticket #${ticket.ticketNumber} has been resolved successfully.` });
+        this.updateLocalTicketStatus(ticket.id, 'RESOLVED');
+        this.loadDashboardData();
+        if (this.selectedTicketForPreview()?.id === ticket.id) {
+          this.loadTicketFullDetail(ticket.id);
+        }
+      },
+      error: (err) => {
+        this.isSubmittingAction.set(false);
+        this.notification.set({ type: 'error', message: err?.error?.message || 'Failed to resolve ticket' });
+      }
+    });
+  }
+
+  updateLocalTicketStatus(ticketId: number, newStatus: string): void {
+    this.assignedTickets.update((list) =>
+      list.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
+    );
+    this.serverTickets.update((list) =>
+      list.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
+    );
+    const prev = this.selectedTicketForPreview();
+    if (prev && prev.id === ticketId) {
+      this.selectedTicketForPreview.set({ ...prev, status: newStatus });
+    }
+    const full = this.fullSelectedTicket();
+    if (full && full.id === ticketId) {
+      this.fullSelectedTicket.set({ ...full, status: newStatus });
+    }
+  }
+
+  // ===================== MANAGER ASSIGN WORKFLOW =====================
+
+  loadBreachedTickets(): void {
+    this.isLoadingBreachedTickets.set(true);
+    this.ticketService
+      .searchTickets({
+        view: 'DEPARTMENT',
+        slaStatus: 'BREACHED',
+        page: 0,
+        size: 50
+      })
+      .subscribe({
+        next: (res) => {
+          this.isLoadingBreachedTickets.set(false);
+          const list = res?.content || [];
+          this.breachedTickets.set(list);
+          for (const t of list) {
+            this.loadAssignableAgentsForTicket(t.id);
+          }
+        },
+        error: () => {
+          this.isLoadingBreachedTickets.set(false);
+          this.breachedTickets.set([]);
+        }
+      });
+  }
+
+  loadAssignableAgentsForTicket(ticketId: number): void {
+    this.isLoadingAgents.update((m) => ({ ...m, [ticketId]: true }));
+    this.ticketService.getAssignableAgents(ticketId).subscribe({
+      next: (agents) => {
+        this.isLoadingAgents.update((m) => ({ ...m, [ticketId]: false }));
+        this.assignableAgentsMap.update((m) => ({ ...m, [ticketId]: agents }));
+        if (agents && agents.length > 0 && !this.selectedAgentForTicket()[ticketId]) {
+          this.selectedAgentForTicket.update((m) => ({ ...m, [ticketId]: agents[0].agentId }));
+        }
+      },
+      error: () => {
+        this.isLoadingAgents.update((m) => ({ ...m, [ticketId]: false }));
+        this.assignableAgentsMap.update((m) => ({ ...m, [ticketId]: [] }));
+      }
+    });
+  }
+
+  onSelectAgentForTicket(ticketId: number, event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const agentId = Number(select.value);
+    if (!isNaN(agentId) && agentId > 0) {
+      this.selectedAgentForTicket.update((m) => ({ ...m, [ticketId]: agentId }));
+    }
+  }
+
+  assignAgentToTicket(ticketId: number): void {
+    const agentId = this.selectedAgentForTicket()[ticketId];
+    if (!agentId) return;
+    this.isAssigningTicket.update((m) => ({ ...m, [ticketId]: true }));
+    this.ticketService.updateTicket(ticketId, { status: 'ASSIGN', agentId }).subscribe({
+      next: () => {
+        this.isAssigningTicket.update((m) => ({ ...m, [ticketId]: false }));
+        this.notification.set({ type: 'success', message: 'Ticket assigned successfully. Newly assigned agent can now start working.' });
+        this.loadBreachedTickets();
+        this.loadDashboardData();
+      },
+      error: (err) => {
+        this.isAssigningTicket.update((m) => ({ ...m, [ticketId]: false }));
+        this.notification.set({ type: 'error', message: err?.error?.message || 'Failed to assign ticket' });
+      }
+    });
   }
 }

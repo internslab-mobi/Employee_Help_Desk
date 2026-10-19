@@ -29,7 +29,7 @@ spring:
             - id: backend-service
               uri: http://localhost:8082
               predicates:
-                - Path=/helpdesk/**, /tickets/**, /analytics/**, /reports/**, /notifications/**
+                - Path=/helpdesk/**, /tickets/**, /analytics/**, /reports/**, /notifications/**, /departments/**, /categories/**, /sub-categories/**
               filters:
                 - RemoveResponseHeader=access-control-allow-origin
                 - RemoveResponseHeader=access-control-allow-credentials
@@ -37,7 +37,7 @@ spring:
             - id: backend-service-api
               uri: http://localhost:8082
               predicates:
-                - Path=/api/helpdesk/**, /api/tickets/**, /api/analytics/**, /api/reports/**, /api/notifications/**
+                - Path=/api/helpdesk/**, /api/tickets/**, /api/analytics/**, /api/reports/**, /api/notifications/**, /api/departments/**, /api/categories/**, /api/sub-categories/**
               filters:
                 - StripPrefix=1
                 - RemoveResponseHeader=access-control-allow-origin

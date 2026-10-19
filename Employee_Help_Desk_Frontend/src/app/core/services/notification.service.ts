@@ -7,12 +7,14 @@ import {
   NotificationPageResponse,
   UnreadNotificationCountResponse
 } from '../models/notification.models';
+import { API_ENDPOINTS } from '../config/api.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class NotificationService {
-  private readonly baseUrl = `${environment.backendUrl}/notifications`;
+  // private readonly baseUrl = `${environment.backendUrl}/helpdesk/notifications`;
+  private readonly baseUrl = API_ENDPOINTS.notifications.base;
 
   constructor(private http: HttpClient) {}
 

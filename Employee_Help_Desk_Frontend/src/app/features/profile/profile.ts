@@ -39,9 +39,12 @@ export class ProfileComponent implements OnInit {
     return 'Employee';
   });
 
+  // Role and auth signals
+  readonly userRole = computed<UserRole>(() => this.authService.getRole() || 'EMPLOYEE');
+
   constructor(
     private fb: FormBuilder,
-    private authService: AuthService,
+    public authService: AuthService,
     private router: Router
   ) {}
 
@@ -168,6 +171,14 @@ export class ProfileComponent implements OnInit {
 
   navigateToTickets(): void {
     this.router.navigate(['/tickets']);
+  }
+
+  navigateToAssigned(): void {
+    this.router.navigate(['/dashboard'], { queryParams: { tab: 'assigned' } });
+  }
+
+  navigateToAssign(): void {
+    this.router.navigate(['/dashboard'], { queryParams: { tab: 'assign' } });
   }
 
   logout(): void {

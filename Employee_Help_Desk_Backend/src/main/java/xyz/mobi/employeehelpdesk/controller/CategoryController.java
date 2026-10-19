@@ -12,7 +12,7 @@ import java.util.List;
 
 @Tag(name = "Categories", description = "Master Data: Category retrieval endpoints")
 @RestController
-@RequestMapping("/categories")
+@RequestMapping("/helpdesk/categories")
 @RequiredArgsConstructor
 public class CategoryController {
 

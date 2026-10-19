@@ -16,8 +16,8 @@ public interface NotificationMapper {
     @Mapping(source = "title", target = "title")
     @Mapping(source = "message", target = "message")
     @Mapping(source = "read", target = "read")
+    @Mapping(source = "createdAt", target = "createdAt")
     @Mapping(source = "updatedAt", target = "updatedAt")
-    @Mapping(target = "createdAt", ignore = true)
     NotificationResponseDTO toUpdateResponse(Notification notification);
 
     @Mapping(source = "id", target = "id")
@@ -28,7 +28,7 @@ public interface NotificationMapper {
     @Mapping(source = "title", target = "title")
     @Mapping(source = "message", target = "message")
     @Mapping(source = "read", target = "read")
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(source = "createdAt", target = "createdAt")
+    @Mapping(source = "updatedAt", target = "updatedAt")
     NotificationResponseDTO toResponse(Notification notification);
 }

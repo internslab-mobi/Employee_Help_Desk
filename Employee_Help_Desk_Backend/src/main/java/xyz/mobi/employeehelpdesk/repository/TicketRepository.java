@@ -84,6 +84,8 @@ public interface TicketRepository
     @Query(value = """
     SELECT t
     FROM Ticket t
+    LEFT JOIN t.category c
+    LEFT JOIN t.requester req
     WHERE t.requester.id = :requesterId
       AND (:status IS NULL OR t.status = :status)
       AND (:priority IS NULL OR t.priority = :priority)
@@ -94,10 +96,10 @@ public interface TicketRepository
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
-          OR (t.requester IS NOT NULL AND (
-              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (c IS NOT NULL AND LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (req IS NOT NULL AND (
+              LOWER(req.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(req.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
           ))
       )
       AND (
@@ -122,6 +124,8 @@ public interface TicketRepository
     """, countQuery = """
     SELECT COUNT(t)
     FROM Ticket t
+    LEFT JOIN t.category c
+    LEFT JOIN t.requester req
     WHERE t.requester.id = :requesterId
       AND (:status IS NULL OR t.status = :status)
       AND (:priority IS NULL OR t.priority = :priority)
@@ -132,10 +136,10 @@ public interface TicketRepository
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
-          OR (t.requester IS NOT NULL AND (
-              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (c IS NOT NULL AND LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (req IS NOT NULL AND (
+              LOWER(req.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(req.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
           ))
       )
       AND (
@@ -175,6 +179,8 @@ public interface TicketRepository
     @Query(value = """
     SELECT t
     FROM Ticket t
+    LEFT JOIN t.category c
+    LEFT JOIN t.requester req
     WHERE t.assignedAgent.id = :agentId
       AND (:status IS NULL OR t.status = :status)
       AND (:priority IS NULL OR t.priority = :priority)
@@ -185,10 +191,10 @@ public interface TicketRepository
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
-          OR (t.requester IS NOT NULL AND (
-              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (c IS NOT NULL AND LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (req IS NOT NULL AND (
+              LOWER(req.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(req.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
           ))
       )
       AND (
@@ -213,6 +219,8 @@ public interface TicketRepository
     """, countQuery = """
     SELECT COUNT(t)
     FROM Ticket t
+    LEFT JOIN t.category c
+    LEFT JOIN t.requester req
     WHERE t.assignedAgent.id = :agentId
       AND (:status IS NULL OR t.status = :status)
       AND (:priority IS NULL OR t.priority = :priority)
@@ -223,10 +231,10 @@ public interface TicketRepository
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
-          OR (t.requester IS NOT NULL AND (
-              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (c IS NOT NULL AND LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (req IS NOT NULL AND (
+              LOWER(req.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(req.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
           ))
       )
       AND (
@@ -266,8 +274,12 @@ public interface TicketRepository
     @Query(value = """
     SELECT t
     FROM Ticket t
+    LEFT JOIN t.category c
+    LEFT JOIN t.requester req
+    LEFT JOIN t.assignedAgent ag
+    LEFT JOIN ag.employee age
     WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
-      AND (:agentId IS NULL OR (t.assignedAgent IS NOT NULL AND t.assignedAgent.id = :agentId))
+      AND (:agentId IS NULL OR ag.id = :agentId)
       AND (:status IS NULL OR t.status = :status)
       AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
@@ -277,14 +289,14 @@ public interface TicketRepository
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
-          OR (t.requester IS NOT NULL AND (
-              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (c IS NOT NULL AND LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (req IS NOT NULL AND (
+              LOWER(req.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(req.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
           ))
-          OR (t.assignedAgent IS NOT NULL AND t.assignedAgent.employee IS NOT NULL AND (
-              LOWER(t.assignedAgent.employee.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(t.assignedAgent.employee.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (age IS NOT NULL AND (
+              LOWER(age.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(age.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
           ))
       )
       AND (
@@ -309,8 +321,12 @@ public interface TicketRepository
     """, countQuery = """
     SELECT COUNT(t)
     FROM Ticket t
+    LEFT JOIN t.category c
+    LEFT JOIN t.requester req
+    LEFT JOIN t.assignedAgent ag
+    LEFT JOIN ag.employee age
     WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
-      AND (:agentId IS NULL OR (t.assignedAgent IS NOT NULL AND t.assignedAgent.id = :agentId))
+      AND (:agentId IS NULL OR ag.id = :agentId)
       AND (:status IS NULL OR t.status = :status)
       AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
@@ -320,14 +336,14 @@ public interface TicketRepository
           OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
           OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
-          OR (t.category IS NOT NULL AND LOWER(t.category.name) LIKE LOWER(CONCAT('%', :search, '%')))
-          OR (t.requester IS NOT NULL AND (
-              LOWER(t.requester.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(t.requester.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (c IS NOT NULL AND LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (req IS NOT NULL AND (
+              LOWER(req.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(req.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
           ))
-          OR (t.assignedAgent IS NOT NULL AND t.assignedAgent.employee IS NOT NULL AND (
-              LOWER(t.assignedAgent.employee.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(t.assignedAgent.employee.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (age IS NOT NULL AND (
+              LOWER(age.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(age.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
           ))
       )
       AND (

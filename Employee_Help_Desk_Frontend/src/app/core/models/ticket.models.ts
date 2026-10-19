@@ -155,3 +155,19 @@ export interface TicketSearchParams {
   size?: number;
   sort?: string;
 }
+
+export interface AssignableAgentResponse {
+  agentId: number;
+  employeeId?: number;
+  employeeCode?: string;
+  firstName: string;
+  lastName?: string;
+  email: string;
+  departmentId?: number;
+  departmentName?: string;
+  matchedSkillCount: number;
+  requiredSkillCount: number;
+  matchPercentage: number;
+  activeTicketCount: number;
+  lastAssignedAt?: string;
+}

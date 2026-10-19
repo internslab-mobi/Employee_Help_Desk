@@ -14,7 +14,7 @@ import java.util.List;
 
 @Tag(name = "Departments", description = "Master Data: Department retrieval endpoints")
 @RestController
-@RequestMapping("/departments")
+@RequestMapping("/helpdesk/departments")
 public class DepartmentController {
 
     private final DepartmentService departmentService;

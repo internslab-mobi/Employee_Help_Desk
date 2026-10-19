@@ -3,6 +3,7 @@ import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  AssignableAgentResponse,
   CategoryResponse,
   CreateTicketRequest,
   DepartmentResponse,
@@ -15,26 +16,28 @@ import {
   TicketSearchParams,
   TicketSlaResponse
 } from '../models/ticket.models';
+import { API_ENDPOINTS } from '../config/api.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TicketService {
-  private readonly baseUrl = `${environment.backendUrl}/tickets`;
-  private readonly rootUrl = environment.backendUrl;
+  // private readonly baseUrl = `${environment.backendUrl}/helpdesk/tickets`;
+  // private readonly rootUrl = environment.backendUrl;
+  private readonly baseUrl = API_ENDPOINTS.tickets.base;
 
   constructor(private http: HttpClient) {}
 
   getDepartments(): Observable<DepartmentResponse[]> {
-    return this.http.get<DepartmentResponse[]>(`${this.rootUrl}/departments`);
+    return this.http.get<DepartmentResponse[]>(API_ENDPOINTS.departments.base);
   }
 
   getCategories(departmentId: number): Observable<CategoryResponse[]> {
-    return this.http.get<CategoryResponse[]>(`${this.rootUrl}/departments/${departmentId}/categories`);
+    return this.http.get<CategoryResponse[]>(`${API_ENDPOINTS.categories.base}?departmentId=${departmentId}`);
   }
 
   getSubCategories(categoryId: number): Observable<SubCategoryResponse[]> {
-    return this.http.get<SubCategoryResponse[]>(`${this.rootUrl}/categories/${categoryId}/subcategories`);
+    return this.http.get<SubCategoryResponse[]>(`${API_ENDPOINTS.subCategories.base}?categoryId=${categoryId}`);
   }
 
   createTicket(request: CreateTicketRequest, attachments?: File[]): Observable<any> {
@@ -142,5 +145,9 @@ export class TicketService {
 
   updateTicket(ticketId: number, patch: { status: string; reason?: string; resolution?: string; agentId?: number }): Observable<any> {
     return this.http.patch<any>(`${this.baseUrl}/${ticketId}`, patch);
+  }
+
+  getAssignableAgents(ticketId: number): Observable<AssignableAgentResponse[]> {
+    return this.http.get<AssignableAgentResponse[]>(`${this.baseUrl}/${ticketId}/assignable-agents`);
   }
 }
