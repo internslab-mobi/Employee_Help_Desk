@@ -21,6 +21,15 @@ export const API_ENDPOINTS = {
     profile: (id: number) => `${API_BASE_URL}/helpdesk/user/${id}`,
     search: `${API_BASE_URL}/helpdesk/user/search`
   },
+  departments: {
+    base: `${API_BASE_URL}/helpdesk/departments`
+  },
+  categories: {
+    base: `${API_BASE_URL}/helpdesk/categories`
+  },
+  subCategories: {
+    base: `${API_BASE_URL}/helpdesk/sub-categories`
+  },
   analytics: {
     base: `${API_BASE_URL}/helpdesk/analytics`,
     dashboard: `${API_BASE_URL}/analytics/dashboard`

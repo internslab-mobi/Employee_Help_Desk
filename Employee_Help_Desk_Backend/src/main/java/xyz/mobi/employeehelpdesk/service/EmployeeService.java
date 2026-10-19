@@ -35,4 +35,8 @@ public interface EmployeeService {
             UpdateEmployeeRequestDTO request,
             MultipartFile profileImage
     ) throws IOException;
+
+    xyz.mobi.employeehelpdesk.dto.employee.ProfilePhotoDTO getCurrentEmployeePhoto();
+
+    xyz.mobi.employeehelpdesk.dto.employee.ProfilePhotoDTO getEmployeePhoto(Long id);
 }

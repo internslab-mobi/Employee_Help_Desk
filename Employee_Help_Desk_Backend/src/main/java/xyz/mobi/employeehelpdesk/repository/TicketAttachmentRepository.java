@@ -15,5 +15,7 @@ public interface TicketAttachmentRepository
 
     Optional<TicketAttachment> findByEmployeeIdAndAttachmentType(Long employeeId, AttachmentType attachmentType);
 
+    Optional<TicketAttachment> findTopByEmployeeIdAndAttachmentTypeOrderByIdDesc(Long employeeId, AttachmentType attachmentType);
+
     List<TicketAttachment> findByTicketId(Long ticketId);
 }

@@ -1589,9 +1589,16 @@ public class TicketServiceImpl implements TicketService {
 
         Instant now = Instant.now();
 
+        TicketStatus oldStatus = ticket.getStatus();
+
         // Assign ticket
         ticket.setAssignedAgent(agent);
         ticket.setAssignedAt(now);
+
+        // Reset to OPEN so newly assigned agent sees it as new/open and can start working
+        ticket.setStatus(TicketStatus.OPEN);
+        ticket.setHoldReason(null);
+        ticket.setHoldStartedAt(null);
 
         // Determine assigned manager
         DepartmentManager assignedManager = null;
@@ -1630,7 +1637,7 @@ public class TicketServiceImpl implements TicketService {
         ticketHistoryService.record(
                 ticket,
                 historyEvent,
-                ticket.getStatus(),
+                oldStatus,
                 ticket.getStatus()
         );
 

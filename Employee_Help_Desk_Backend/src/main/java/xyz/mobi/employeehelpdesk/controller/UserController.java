@@ -69,6 +69,18 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN', 'MANAGER', 'AGENT')")
+    @GetMapping(value = "/me/photo")
+    public ResponseEntity<byte[]> getCurrentUserProfilePhoto() {
+        xyz.mobi.employeehelpdesk.dto.employee.ProfilePhotoDTO photo = employeeService.getCurrentEmployeePhoto();
+        if (photo == null || photo.data() == null || photo.data().length == 0) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(photo.mimeType() != null ? photo.mimeType() : "image/jpeg"))
+                .body(photo.data());
+    }
+
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EmployeeResponseDTO> updateCurrentUserProfile(
@@ -91,6 +103,18 @@ public class UserController {
         EmployeeResponseDTO response = employeeService.getEmployeeById(id);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN', 'MANAGER', 'AGENT')")
+    @GetMapping(value = "/{id}/photo")
+    public ResponseEntity<byte[]> getEmployeePhoto(@PathVariable Long id) {
+        xyz.mobi.employeehelpdesk.dto.employee.ProfilePhotoDTO photo = employeeService.getEmployeePhoto(id);
+        if (photo == null || photo.data() == null || photo.data().length == 0) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(photo.mimeType() != null ? photo.mimeType() : "image/jpeg"))
+                .body(photo.data());
     }
 
     @PreAuthorize("hasRole('ADMIN')")

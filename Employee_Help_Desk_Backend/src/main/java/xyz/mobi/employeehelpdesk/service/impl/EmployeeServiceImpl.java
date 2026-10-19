@@ -13,6 +13,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.ProfilePhotoDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.UpdateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.entity.*;
 import xyz.mobi.employeehelpdesk.entity.enums.AttachmentType;
@@ -690,7 +691,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             byte[] fileData = profileImage.getBytes();
 
             TicketAttachment attachment = ticketAttachmentRepository
-                    .findByEmployeeIdAndAttachmentType(employee.getId(), AttachmentType.PROFILE_IMG)
+                    .findTopByEmployeeIdAndAttachmentTypeOrderByIdDesc(employee.getId(), AttachmentType.PROFILE_IMG)
                     .orElseGet(TicketAttachment::new);
 
             attachment.setEmployee(employee);
@@ -731,5 +732,31 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw new InvalidStateException(
                     "Unable to verify agent ticket status counts.");
         }
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public ProfilePhotoDTO getCurrentEmployeePhoto() {
+        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        return getEmployeePhoto(currentEmployeeId);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public ProfilePhotoDTO getEmployeePhoto(Long id) {
+        if (id == null) return null;
+        TicketAttachment attachment = ticketAttachmentRepository
+                .findTopByEmployeeIdAndAttachmentTypeOrderByIdDesc(id, AttachmentType.PROFILE_IMG)
+                .orElse(null);
+
+        if (attachment == null || attachment.getFileData() == null || attachment.getFileData().length == 0) {
+            return null;
+        }
+
+        return new ProfilePhotoDTO(
+                attachment.getFileData(),
+                attachment.getMimeType(),
+                attachment.getOriginalFilename()
+        );
     }
 }

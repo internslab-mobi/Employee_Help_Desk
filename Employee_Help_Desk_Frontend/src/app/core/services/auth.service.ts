@@ -10,6 +10,7 @@ const REFRESH_TOKEN_KEY = 'ehd_refresh_token';
 const EMPLOYEE_ID_KEY = 'ehd_employee_id';
 const ROLE_KEY = 'ehd_role';
 const PROFILE_KEY = 'ehd_profile';
+const PROFILE_PHOTO_KEY = 'ehd_profile_photo';
 const REFRESH_COUNT_KEY = 'ehd_refresh_count';
 const SESSION_START_KEY = 'ehd_session_start';
 
@@ -28,16 +29,19 @@ export class AuthService {
   readonly token = signal<string | null>(this.getStoredToken());
   readonly role = signal<UserRole | null>(this.getStoredRole());
   readonly currentUser = signal<EmployeeProfile | null>(this.getStoredProfile());
+  readonly profilePhotoUrl = signal<string | null>(this.getStoredProfilePhoto());
   readonly isLoggedIn = computed(() => !!this.token());
 
   private proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private sessionTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+  private isPhotoLoading = false;
 
   constructor(
     private http: HttpClient,
     private router: Router
   ) {
     if (this.isLoggedIn()) {
+      this.loadProfilePhoto();
       const sessionStart = this.getSessionStartTime();
       const elapsed = Date.now() - sessionStart;
       if (elapsed >= MAX_SESSION_DURATION_MS) {
@@ -56,6 +60,7 @@ export class AuthService {
     return this.http.post<LoginResponse>(API_ENDPOINTS.auth.login, credentials, { withCredentials: true }).pipe(
       tap((res) => {
         this.saveAuthSession(res);
+        this.loadProfilePhoto();
         this.loadProfile(res.employeeId).subscribe({
           next: () => {},
           error: () => {}
@@ -96,6 +101,13 @@ export class AuthService {
 
     if (profileImage) {
       formData.append('profileImage', profileImage, profileImage.name);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        this.profilePhotoUrl.set(dataUrl);
+        localStorage.setItem(this.getProfilePhotoKey(), dataUrl);
+      };
+      reader.readAsDataURL(profileImage);
     }
 
     return this.http.patch<EmployeeProfile>(url, formData).pipe(
@@ -104,6 +116,43 @@ export class AuthService {
         localStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
       })
     );
+  }
+
+  loadProfilePhoto(force = false): void {
+    const employeeId = this.getEmployeeId();
+    if (!employeeId) {
+      this.profilePhotoUrl.set(null);
+      return;
+    }
+    if (this.isPhotoLoading && !force) {
+      return;
+    }
+    this.isPhotoLoading = true;
+    const photoKey = this.getProfilePhotoKey(employeeId);
+
+    this.http.get(`${API_ENDPOINTS.user.base}/me/photo`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        this.isPhotoLoading = false;
+        if (!blob || blob.size === 0) {
+          this.profilePhotoUrl.set(null);
+          localStorage.removeItem(photoKey);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          this.profilePhotoUrl.set(dataUrl);
+          localStorage.setItem(photoKey, dataUrl);
+        };
+        reader.readAsDataURL(blob);
+      },
+      error: () => {
+        this.isPhotoLoading = false;
+        // Logged in user has no profile photo in DB (hd_ticket_attachments) -> show initials
+        this.profilePhotoUrl.set(null);
+        localStorage.removeItem(photoKey);
+      }
+    });
   }
 
   logout(notifyServer = true): void {
@@ -123,17 +172,23 @@ export class AuthService {
       }
     }
 
+    const currentEmpId = this.getEmployeeId();
+    if (currentEmpId) {
+      localStorage.removeItem(this.getProfilePhotoKey(currentEmpId));
+    }
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(EMPLOYEE_ID_KEY);
     localStorage.removeItem(ROLE_KEY);
     localStorage.removeItem(PROFILE_KEY);
+    localStorage.removeItem(PROFILE_PHOTO_KEY);
     localStorage.removeItem(REFRESH_COUNT_KEY);
     localStorage.removeItem(SESSION_START_KEY);
 
     this.token.set(null);
     this.role.set(null);
     this.currentUser.set(null);
+    this.profilePhotoUrl.set(null);
 
     this.router.navigate(['/login']);
   }
@@ -155,17 +210,11 @@ export class AuthService {
       return throwError(() => new Error('Maximum session duration of 45 minutes exceeded'));
     }
 
-    const refreshToken = this.getRefreshToken();
-    const body = refreshToken ? { refreshToken } : {};
-
     return this.http
-      .post<TokenRefreshResponse>(API_ENDPOINTS.auth.refreshToken, body, { withCredentials: true })
+      .post<TokenRefreshResponse>(API_ENDPOINTS.auth.refreshToken, {}, { withCredentials: true })
       .pipe(
         tap((res) => {
           localStorage.setItem(TOKEN_KEY, res.accessToken);
-          if (res.refreshToken) {
-            localStorage.setItem(REFRESH_TOKEN_KEY, res.refreshToken);
-          }
           this.token.set(res.accessToken);
 
           // Increment refresh count (up to 3 times)
@@ -323,14 +372,16 @@ export class AuthService {
 
   private saveAuthSession(res: LoginResponse): void {
     localStorage.setItem(TOKEN_KEY, res.accessToken);
-    if (res.refreshToken) {
-      localStorage.setItem(REFRESH_TOKEN_KEY, res.refreshToken);
-    }
     localStorage.setItem(EMPLOYEE_ID_KEY, String(res.employeeId));
     localStorage.setItem(ROLE_KEY, res.role);
 
+    // Clean up any legacy unscoped profile photo key to prevent leak across users
+    localStorage.removeItem(PROFILE_PHOTO_KEY);
+
     this.token.set(res.accessToken);
     this.role.set(res.role);
+    // Initialize profile photo signal specifically for the logged in user
+    this.profilePhotoUrl.set(this.getStoredProfilePhoto(res.employeeId));
 
     this.setRefreshCount(0);
     this.setSessionStartTime(Date.now());
@@ -355,5 +406,15 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  getProfilePhotoKey(employeeId?: number | null): string {
+    const id = employeeId ?? this.getEmployeeId();
+    return id ? `${PROFILE_PHOTO_KEY}_${id}` : PROFILE_PHOTO_KEY;
+  }
+
+  private getStoredProfilePhoto(employeeId?: number | null): string | null {
+    const key = this.getProfilePhotoKey(employeeId);
+    return localStorage.getItem(key);
   }
 }

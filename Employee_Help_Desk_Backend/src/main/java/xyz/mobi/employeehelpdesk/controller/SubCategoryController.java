@@ -13,7 +13,7 @@ import java.util.List;
 
 @Tag(name = "SubCategories", description = "Master Data: SubCategory retrieval endpoints")
 @RestController
-@RequestMapping("/sub-categories")
+@RequestMapping("/helpdesk/sub-categories")
 @RequiredArgsConstructor
 public class SubCategoryController {
 

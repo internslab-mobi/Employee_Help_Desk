@@ -14,7 +14,7 @@ import xyz.mobi.notificationservice.service.EmailService;
 
 @Slf4j
 @RestController
-@RequestMapping({"/emails", "/notifications"})
+@RequestMapping({"/emails", "/notifications", "/helpdesk/notifications"})
 @RequiredArgsConstructor
 public class EmailController {
 

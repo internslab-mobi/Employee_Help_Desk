@@ -7,8 +7,9 @@
       <span class="brand-subtitle">Employee Management Portal</span>
     </div>
 
-    <!-- Navigation Menu (Strictly Two Primary Navigation Entries) -->
+    <!-- Navigation Menu: Role-Adaptive Sections -->
     <nav class="sidebar-nav">
+      <!-- 1. Dashboard (All roles) -->
       <button type="button" class="nav-item" [class.active]="activeNav() === 'dashboard'"
         (click)="navigateToNav('dashboard')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -18,23 +19,123 @@
         <span class="nav-label">Dashboard</span>
       </button>
 
-      <button type="button" class="nav-item" [class.active]="activeNav() === 'helpdesk'"
-        (click)="navigateToNav('tickets')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <polyline points="10 9 9 9 8 9" />
-        </svg>
-        <span class="nav-label">Tickets</span>
-      </button>
+      <!-- AGENT: Dashboard, My Tickets, Assigned Tickets -->
+      @if (userRole() === 'AGENT') {
+        <button type="button" class="nav-item" [class.active]="activeNav() === 'my-tickets' || activeNav() === 'helpdesk'"
+          (click)="navigateToNav('tickets')">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span class="nav-label">My Tickets</span>
+        </button>
+
+        <button type="button" class="nav-item" [class.active]="activeNav() === 'assigned-tickets'"
+          (click)="navigateToNav('assigned-tickets')">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8.5" cy="7" r="4" />
+            <polyline points="17 11 19 13 23 9" />
+          </svg>
+          <span class="nav-label">Assigned Tickets</span>
+        </button>
+      }
+
+      <!-- MANAGER: Dashboard, Assign, My Tickets -->
+      @else if (userRole() === 'MANAGER') {
+        <button type="button" class="nav-item" [class.active]="activeNav() === 'assign'"
+          (click)="navigateToNav('assign')">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span class="nav-label">Assign</span>
+        </button>
+
+        <button type="button" class="nav-item" [class.active]="activeNav() === 'my-tickets' || activeNav() === 'helpdesk'"
+          (click)="navigateToNav('tickets')">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span class="nav-label">My Tickets</span>
+        </button>
+      }
+
+      <!-- ADMIN: Dashboard, Assign, Assigned Tickets, My Tickets -->
+      @else if (userRole() === 'ADMIN') {
+        <button type="button" class="nav-item" [class.active]="activeNav() === 'assign'"
+          (click)="navigateToNav('assign')">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span class="nav-label">Assign</span>
+        </button>
+
+        <button type="button" class="nav-item" [class.active]="activeNav() === 'assigned-tickets'"
+          (click)="navigateToNav('assigned-tickets')">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8.5" cy="7" r="4" />
+            <polyline points="17 11 19 13 23 9" />
+          </svg>
+          <span class="nav-label">Assigned Tickets</span>
+        </button>
+
+        <button type="button" class="nav-item" [class.active]="activeNav() === 'my-tickets' || activeNav() === 'helpdesk'"
+          (click)="navigateToNav('tickets')">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span class="nav-label">My Tickets</span>
+        </button>
+      }
+
+      <!-- EMPLOYEE: Dashboard, My Tickets -->
+      @else {
+        <button type="button" class="nav-item" [class.active]="activeNav() === 'my-tickets' || activeNav() === 'helpdesk'"
+          (click)="navigateToNav('tickets')">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span class="nav-label">My Tickets</span>
+        </button>
+      }
     </nav>
 
     <!-- Signed In As (Footer) -->
-    <div class="sidebar-footer">
-      <span class="signed-label">Signed in as</span>
-      <strong class="signed-name">{{ displayUserName() }}</strong>
+    <div class="sidebar-footer" (click)="navigateToProfile()" style="cursor: pointer;" title="View User Profile">
+      <div class="sidebar-user-avatar">
+        @if (authService.profilePhotoUrl()) {
+          <img class="avatar-img-circle small" [src]="authService.profilePhotoUrl()" alt="Profile" />
+        } @else {
+          <div class="profile-avatar small">{{ getInitials(displayUserName()) }}</div>
+        }
+      </div>
+      <div class="sidebar-user-meta">
+        <span class="signed-label">Signed in as</span>
+        <strong class="signed-name">{{ displayUserName() }}</strong>
+        <span class="signed-role">{{ displayUserRole() }}</span>
+      </div>
     </div>
   </aside>
 
@@ -44,10 +145,16 @@
     <header class="main-header">
       <div class="header-titles">
         @if (activeNav() === 'dashboard') {
-        <h2 class="page-title">Dashboard</h2>
-        <p class="page-subtitle">Operational overview and ticket analytics.</p>
+        <h2 class="page-title">{{ userRole() === 'MANAGER' ? 'Manager Dashboard' : (userRole() === 'AGENT' ? 'Agent Dashboard' : 'Dashboard') }}</h2>
+        <p class="page-subtitle">{{ userRole() === 'MANAGER' ? 'Department ticket operations, SLA escalations and agent metrics.' : 'Operational overview and ticket analytics.' }}</p>
+        } @else if (activeNav() === 'assigned-tickets') {
+        <h2 class="page-title">Assigned Tickets</h2>
+        <p class="page-subtitle">Track, start working, request employee responses, and resolve assigned tickets.</p>
+        } @else if (activeNav() === 'assign') {
+        <h2 class="page-title">Assign Escalated Tickets</h2>
+        <p class="page-subtitle">Escalated breached tickets requiring manager reassignment to capable department agents.</p>
         } @else {
-        <h2 class="page-title">Tickets</h2>
+        <h2 class="page-title">My Tickets</h2>
         <p class="page-subtitle">Raise, track and manage employee support tickets.</p>
         }
       </div>
@@ -98,7 +205,11 @@
         <!-- User Profile Area -->
         <div id="dashboard-profile-chip" class="profile-chip" (click)="navigateToProfile()" role="button" tabindex="0" (keydown.enter)="navigateToProfile()" title="View User Profile">
           <div class="profile-avatar">
-            {{ getInitials(displayUserName()) }}
+            @if (authService.profilePhotoUrl()) {
+              <img class="avatar-img-circle" [src]="authService.profilePhotoUrl()" alt="Profile photo" />
+            } @else {
+              {{ getInitials(displayUserName()) }}
+            }
           </div>
           <div class="profile-info">
             <span class="profile-name">{{ displayUserName() }}</span>
@@ -181,6 +292,75 @@
       <!-- ---------------------------------------------------- -->
       @if (selectedAnalyticsView() === 'OVERALL_OVERVIEW') {
       <!-- 4 Primary KPI Cards (Clickable Navigation to Filtered Tickets) -->
+      @if (userRole() === 'MANAGER') {
+      <!-- MANAGER KPI CARDS: Department Level Cards -->
+      <section class="summary-cards-grid">
+        <!-- 1. Opened Tickets in Dept -->
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'OPEN' })">
+          <span class="card-label">Opened Tickets in Dept</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.openTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-blue">View</button>
+          </div>
+        </div>
+
+        <!-- 2. In Progress in Dept -->
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'IN_PROGRESS' })">
+          <span class="card-label">In Progress in Dept</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.inProgressTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-orange">View</button>
+          </div>
+        </div>
+
+        <!-- 3. Resolved Tickets in Dept -->
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'RESOLVED' })">
+          <span class="card-label">Resolved in Dept</span>
+          <div class="card-bottom">
+            <span class="card-value text-green">{{ analytics()?.summary?.resolvedTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-green">View</button>
+          </div>
+        </div>
+
+        <!-- 4. Total Logged in Dept -->
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'ALL' })">
+          <span class="card-label">Total Logged in Dept</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.totalTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-blue">View</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Manager Secondary Metrics Row -->
+      <section class="metrics-row-cards">
+        <div class="sub-metric-card clickable" (click)="navigateToNav('assign')">
+          <span class="sub-lbl">Escalated SLA Breached</span>
+          <strong class="sub-val text-red">{{ breachedTickets().length }}</strong>
+        </div>
+        <div class="sub-metric-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'WITHDRAWN' })">
+          <span class="sub-lbl">Closed / Withdrawn</span>
+          <strong class="sub-val">{{ analytics()?.summary?.withdrawnTickets ?? 0 }}</strong>
+        </div>
+        <div class="sub-metric-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'ON_HOLD' })">
+          <span class="sub-lbl">On Hold / Awaiting Response</span>
+          <strong class="sub-val text-amber">{{ analytics()?.summary?.onHoldTickets ?? 0 }}</strong>
+        </div>
+      </section>
+
+      @if (breachedTickets().length > 0) {
+      <div class="manager-escalation-banner">
+        <div class="escalation-info">
+          <span class="escalation-badge">⚠️ Escalated SLA Breached Tickets ({{ breachedTickets().length }})</span>
+          <p class="escalation-text">Breached tickets have been escalated to you. Reassign them to capable department agents to resume resolution.</p>
+        </div>
+        <button type="button" class="btn-escalation-action" (click)="navigateToNav('assign')">
+          Go to Assign Section
+        </button>
+      </div>
+      }
+      } @else {
+      <!-- EMPLOYEE, AGENT, ADMIN DEFAULT KPI CARDS -->
       <section class="summary-cards-grid">
         <!-- 1. Open Help Desk Tickets -->
         <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ status: 'OPEN' })">
@@ -192,7 +372,7 @@
         </div>
 
         <!-- 2. Assigned Tickets -->
-        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ view: userRole() === 'EMPLOYEE' ? 'CREATED' : 'ASSIGNED' })">
+        <div class="summary-card clickable" (click)="userRole() === 'AGENT' ? navigateToNav('assigned-tickets') : navigateToTicketsWithFilter({ view: 'CREATED' })">
           <span class="card-label">Assigned Tickets</span>
           <div class="card-bottom">
             <span class="card-value">{{ analytics()?.summary?.assignedTickets ?? 0 }}</span>
@@ -234,6 +414,7 @@
           <strong class="sub-val text-amber">{{ analytics()?.summary?.onHoldTickets ?? 0 }}</strong>
         </div>
       </section>
+      }
 
       <!-- Bottom Section: Recent activity -->
       <section class="content-card recent-activity-card">
@@ -436,10 +617,10 @@
     <!-- ============================================== -->
     <!-- NAV VIEW 2: EMPLOYEE HELP DESK (MY TICKETS)    -->
     <!-- ============================================== -->
-    @if (activeNav() === 'helpdesk') {
+    @if (activeNav() === 'my-tickets' || activeNav() === 'helpdesk') {
 
-    <!-- Scope View Tabs (Role-Appropriate Controls; Redundant My Created tab omitted for employees) -->
-    @if (userRole() !== 'EMPLOYEE') {
+    <!-- Scope View Tabs (Omitted for employees and agents who have dedicated sidebar navigation) -->
+    @if (userRole() !== 'EMPLOYEE' && userRole() !== 'AGENT') {
     <div class="helpdesk-view-tabs">
       @if (userRole() === 'MANAGER' || userRole() === 'ADMIN') {
       <button type="button" class="view-tab-btn" [class.active]="selectedTicketView() === 'DEPARTMENT'"
@@ -447,7 +628,7 @@
         {{ userRole() === 'ADMIN' ? 'All Department Tickets' : 'Department Tickets' }}
       </button>
       }
-      @if (userRole() === 'AGENT' || userRole() === 'ADMIN') {
+      @if (userRole() === 'ADMIN') {
       <button type="button" class="view-tab-btn" [class.active]="selectedTicketView() === 'ASSIGNED'"
         (click)="setTicketView('ASSIGNED')">
         Assigned to Me
@@ -661,8 +842,294 @@
         }
       </div>
     </section>
+    }
 
-    <!-- Ticket Detail Preview Card -->
+    <!-- ============================================== -->
+    <!-- NAV VIEW: AGENT ASSIGNED TICKETS               -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'assigned-tickets') {
+    <section class="assigned-tickets-section">
+      <!-- Toolbar -->
+      <div class="helpdesk-toolbar">
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" class="search-tickets-input" placeholder="Search assigned tickets by ID, subject, requester..."
+            [ngModel]="assignedSearchTerm()" (ngModelChange)="onAssignedSearchInput($event)" />
+        </div>
+
+        <div class="toolbar-actions">
+          <select class="form-control-sm select-toolbar-filter" [ngModel]="assignedStatusFilter()" (ngModelChange)="onAssignedStatusFilter($event)">
+            <option value="ALL">All Statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="ON_HOLD">On Hold</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="REOPENED">Reopened</option>
+          </select>
+
+          <select class="form-control-sm select-toolbar-filter" [ngModel]="assignedPriorityFilter()" (ngModelChange)="onAssignedPriorityFilter($event)">
+            <option value="ALL">All Priorities</option>
+            <option value="CRITICAL">Critical</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+
+          <button type="button" class="btn-refresh-sm" (click)="loadAssignedTickets(0)" title="Refresh assigned tickets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M23 4v6h-6" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Assigned Tickets Table Card -->
+      <section class="content-card my-tickets-card">
+        <div class="card-header-clean table-header-flex">
+          <div>
+            <h3 class="card-title">Assigned Tickets</h3>
+            <p class="card-subtitle">Manage SLA progression, request employee clarification, and resolve issues.</p>
+          </div>
+          <span class="ticket-count-badge">{{ assignedTotalElements() || assignedTickets().length }} assigned tickets</span>
+        </div>
+
+        <div class="table-container">
+          @if (isLoadingAssignedTickets()) {
+          <div class="table-loading-bar">
+            <div class="loading-ring-small"></div>
+            <span>Loading assigned tickets...</span>
+          </div>
+          }
+          <table class="tickets-table-clean">
+            <thead>
+              <tr>
+                <th style="width: 12%;">Ticket #</th>
+                <th style="width: 24%;">Subject</th>
+                <th style="width: 14%;">Requester</th>
+                <th style="width: 12%;">Category</th>
+                <th style="width: 10%;">Priority</th>
+                <th style="width: 11%;">Status</th>
+                <th style="width: 17%; text-align: right;">Agent Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (assignedTickets().length > 0) {
+              @for (ticket of assignedTickets(); track ticket.id; let idx = $index) {
+              <tr class="ticket-row-clean" [class.row-selected]="selectedTicketForPreview()?.id === ticket.id"
+                (click)="selectTicket(ticket)">
+                <td>
+                  <span class="ticket-link">{{ ticket.ticketNumber }}</span>
+                </td>
+                <td>
+                  <span class="ticket-subject">{{ ticket.subject }}</span>
+                </td>
+                <td>
+                  <span class="ticket-requester-text">{{ getPreviewRequesterName(ticket) }}</span>
+                </td>
+                <td>
+                  <span class="ticket-category">{{ getPreviewCategoryName(ticket) }}</span>
+                </td>
+                <td>
+                  <span class="priority-pill" [class]="getPriorityClass(ticket.priority)">
+                    {{ ticket.priority }}
+                  </span>
+                </td>
+                <td>
+                  <span class="status-pill" [class]="getStatusClass(ticket.status)">
+                    {{ ticket.status }}
+                  </span>
+                </td>
+                <td style="text-align: right;">
+                  <div class="agent-actions-cell" (click)="$event.stopPropagation()">
+                    <!-- 1. Start Working: when ticket is OPEN or REOPENED -->
+                    @if (ticket.status === 'OPEN' || ticket.status === 'REOPENED') {
+                    <button type="button" class="btn-action-start" [disabled]="isSubmittingAction()"
+                      (click)="startWorkingTicket(ticket)" title="Start SLA and begin working">
+                      ▶ Start Working
+                    </button>
+                    }
+
+                    <!-- 2. Request Employee / Resume toggle -->
+                    @if (ticket.status === 'IN_PROGRESS') {
+                    <button type="button" class="btn-action-hold" [disabled]="isSubmittingAction()"
+                      (click)="openHoldModal(ticket)" title="Request additional information from employee (puts ON HOLD)">
+                      Request Employee
+                    </button>
+                    } @else if (ticket.status === 'ON_HOLD') {
+                    <button type="button" class="btn-action-resume" [disabled]="isSubmittingAction()"
+                      (click)="resumeTicketAction(ticket)" title="Resume working on ticket (changes back to IN PROGRESS)">
+                      ▶ Resume
+                    </button>
+                    }
+
+                    <!-- 3. Resolve Ticket -->
+                    @if (ticket.status === 'IN_PROGRESS' || ticket.status === 'ON_HOLD') {
+                    <button type="button" class="btn-action-resolve" [disabled]="isSubmittingAction()"
+                      (click)="openResolveModal(ticket)" title="Resolve ticket">
+                      ✓ Resolve
+                    </button>
+                    }
+
+                    @if (ticket.status === 'RESOLVED') {
+                    <span class="badge-resolved-done">✓ Resolved</span>
+                    }
+                  </div>
+                </td>
+              </tr>
+              }
+              } @else {
+              <tr>
+                <td colspan="7" class="empty-table-state">
+                  <p>No tickets currently assigned to you matching the criteria.</p>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+
+          <!-- Pagination Footer -->
+          @if (assignedTotalPages() > 1) {
+          <div class="table-pagination-footer">
+            <button type="button" class="pagination-btn" [disabled]="assignedCurrentPage() === 0"
+              (click)="prevAssignedPage()">Previous</button>
+            <span class="pagination-indicator">Page {{ assignedCurrentPage() + 1 }} of {{ assignedTotalPages() }}</span>
+            <button type="button" class="pagination-btn" [disabled]="assignedCurrentPage() + 1 >= assignedTotalPages()"
+              (click)="nextAssignedPage()">Next</button>
+          </div>
+          }
+        </div>
+      </section>
+    </section>
+    }
+
+    <!-- ============================================== -->
+    <!-- NAV VIEW: MANAGER ASSIGN BREACHED TICKETS       -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'assign') {
+    <section class="assign-section">
+      <!-- Toolbar -->
+      <div class="helpdesk-toolbar">
+        <div class="assign-header-meta">
+          <span class="escalation-alert-badge">⚠️ Escalated SLA Breached Tickets</span>
+          <p class="assign-desc-text">These tickets have breached SLA thresholds and require immediate manager re-assignment to department agents.</p>
+        </div>
+
+        <div class="toolbar-actions">
+          <button type="button" class="btn-refresh-sm" (click)="loadBreachedTickets()" title="Refresh breached tickets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M23 4v6h-6" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Breached Tickets Content Card -->
+      <section class="content-card my-tickets-card">
+        <div class="card-header-clean table-header-flex">
+          <div>
+            <h3 class="card-title">Escalated Breached Tickets</h3>
+            <p class="card-subtitle">Select a capable department agent to assign and reset ticket for resolution.</p>
+          </div>
+          <span class="ticket-count-badge badge-breached-count">{{ breachedTickets().length }} breached tickets</span>
+        </div>
+
+        <div class="table-container">
+          @if (isLoadingBreachedTickets()) {
+          <div class="table-loading-bar">
+            <div class="loading-ring-small"></div>
+            <span>Loading escalated breached tickets...</span>
+          </div>
+          }
+          <table class="tickets-table-clean">
+            <thead>
+              <tr>
+                <th style="width: 12%;">Ticket #</th>
+                <th style="width: 24%;">Subject</th>
+                <th style="width: 13%;">Category</th>
+                <th style="width: 13%;">Requester</th>
+                <th style="width: 12%;">Previous Agent</th>
+                <th style="width: 10%;">SLA</th>
+                <th style="width: 16%;">Assign to Capable Agent</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (breachedTickets().length > 0) {
+              @for (ticket of breachedTickets(); track ticket.id) {
+              <tr class="ticket-row-clean" [class.row-selected]="selectedTicketForPreview()?.id === ticket.id"
+                (click)="selectTicket(ticket)">
+                <td>
+                  <span class="ticket-link">{{ ticket.ticketNumber }}</span>
+                </td>
+                <td>
+                  <span class="ticket-subject">{{ ticket.subject }}</span>
+                </td>
+                <td>
+                  <span class="ticket-category">{{ getPreviewCategoryName(ticket) }}</span>
+                </td>
+                <td>
+                  <span class="ticket-requester-text">{{ getPreviewRequesterName(ticket) }}</span>
+                </td>
+                <td>
+                  <span class="ticket-agent-text">{{ getPreviewAssignedAgentName(ticket) }}</span>
+                </td>
+                <td>
+                  <span class="status-pill status-withdrawn" style="background: #fef2f2; color: #dc2626; border-color: #fecaca; font-weight: 700;">
+                    BREACHED
+                  </span>
+                </td>
+                <td>
+                  <div class="assign-action-cell" (click)="$event.stopPropagation()">
+                    @if (isLoadingAgents()[ticket.id]) {
+                      <span class="loading-agents-hint">Loading agents...</span>
+                    } @else {
+                      <select class="agent-select-control" [ngModel]="selectedAgentForTicket()[ticket.id]"
+                        (change)="onSelectAgentForTicket(ticket.id, $event)">
+                        @if (!assignableAgentsMap()[ticket.id]?.length) {
+                          <option [value]="0">No other agents available</option>
+                        }
+                        @for (agent of assignableAgentsMap()[ticket.id]; track agent.agentId) {
+                          <option [value]="agent.agentId">{{ agent.firstName }} {{ agent.lastName || '' }} (Active: {{ agent.activeTicketCount }})</option>
+                        }
+                      </select>
+                      <button type="button" class="btn-primary-assign"
+                        [disabled]="isAssigningTicket()[ticket.id] || !selectedAgentForTicket()[ticket.id]"
+                        (click)="assignAgentToTicket(ticket.id)">
+                        @if (isAssigningTicket()[ticket.id]) {
+                          Assigning...
+                        } @else {
+                          Assign
+                        }
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+              }
+              } @else {
+              <tr>
+                <td colspan="7" class="empty-table-state">
+                  <p>No escalated breached tickets in your department! All SLAs are on track.</p>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+    }
+
+    <!-- ============================================== -->
+    <!-- TICKET DETAIL PREVIEW CARD (FOR ALL NON-DASHBOARD TABS) -->
+    <!-- ============================================== -->
+    @if (activeNav() !== 'dashboard') {
     <section class="content-card ticket-preview-card">
       <div class="card-header-clean">
         <div class="preview-title-row">
@@ -672,9 +1139,30 @@
             <span class="preview-ticket-badge">{{ s.ticketNumber }}</span>
             }
           </div>
-          @if (selectedTicketForPreview()) {
-          <button type="button" class="btn-clear-preview" (click)="clearSelectedTicket()">Deselect</button>
-          }
+
+          <div class="preview-actions-group">
+            <!-- AGENT QUICK ACTIONS IN PREVIEW -->
+            @if (userRole() === 'AGENT' || userRole() === 'ADMIN') {
+              @if (selectedTicketForPreview()?.status === 'OPEN' || selectedTicketForPreview()?.status === 'REOPENED') {
+                <button type="button" class="btn-action-start sm" [disabled]="isSubmittingAction()"
+                  (click)="startWorkingTicket(selectedTicketForPreview())">▶ Start Working</button>
+              }
+              @if (selectedTicketForPreview()?.status === 'IN_PROGRESS') {
+                <button type="button" class="btn-action-hold sm" [disabled]="isSubmittingAction()"
+                  (click)="openHoldModal(selectedTicketForPreview())">Request Employee</button>
+              } @else if (selectedTicketForPreview()?.status === 'ON_HOLD') {
+                <button type="button" class="btn-action-resume sm" [disabled]="isSubmittingAction()"
+                  (click)="resumeTicketAction(selectedTicketForPreview())">▶ Resume</button>
+              }
+              @if (selectedTicketForPreview()?.status === 'IN_PROGRESS' || selectedTicketForPreview()?.status === 'ON_HOLD') {
+                <button type="button" class="btn-action-resolve sm" [disabled]="isSubmittingAction()"
+                  (click)="openResolveModal(selectedTicketForPreview())">✓ Resolve</button>
+              }
+            }
+            @if (selectedTicketForPreview()) {
+            <button type="button" class="btn-clear-preview" (click)="clearSelectedTicket()">Deselect</button>
+            }
+          </div>
         </div>
         @if (!selectedTicketForPreview()) {
         <p class="card-subtitle">Select a ticket to view conversation, attachments, SLA and resolution history.</p>
@@ -1179,6 +1667,84 @@
   </div>
   }
 
+  <!-- ================= AGENT: REQUEST EMPLOYEE (HOLD) MODAL ================= -->
+  @if (showHoldModal()) {
+  <div class="modal-backdrop" (click)="closeHoldModal()">
+    <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-with-icon">
+          <span class="icon-hold-circle">⏸</span>
+          <div>
+            <h3>Request Employee Information</h3>
+            <p class="modal-subtitle">Ticket #{{ selectedTicketForHold()?.ticketNumber }}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeHoldModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="hold-warning-alert">
+          <p>Putting this ticket <strong>ON HOLD</strong> pauses the SLA timer while waiting for the employee's input. You can resume at any time.</p>
+        </div>
+
+        <div class="form-group">
+          <label>Inquiry / What information is required from employee? <span class="required-star">*</span></label>
+          <textarea class="form-control" rows="4" [ngModel]="holdReasonInput()"
+            (ngModelChange)="holdReasonInput.set($event)"
+            placeholder="Explain what detail, attachment, or confirmation is required from the employee..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-outline-cancel" (click)="closeHoldModal()">Cancel</button>
+        <button type="button" class="btn-action-hold" [disabled]="isSubmittingAction() || !holdReasonInput().trim()"
+          (click)="confirmHoldTicket()">
+          @if (isSubmittingAction()) { Requesting... } @else { Put Ticket On Hold }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ================= AGENT: RESOLVE TICKET MODAL ================= -->
+  @if (showResolveModal()) {
+  <div class="modal-backdrop" (click)="closeResolveModal()">
+    <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-with-icon">
+          <span class="icon-resolve-circle">✓</span>
+          <div>
+            <h3>Resolve Support Ticket</h3>
+            <p class="modal-subtitle">Ticket #{{ selectedTicketForResolve()?.ticketNumber }}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeResolveModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="resolve-info-alert">
+          <p>Marking this ticket as <strong>RESOLVED</strong> will finalize the SLA resolution clock and notify the employee.</p>
+        </div>
+
+        <div class="form-group">
+          <label>Resolution Summary / Action Taken <span class="required-star">*</span></label>
+          <textarea class="form-control" rows="4" [ngModel]="resolutionSummaryInput()"
+            (ngModelChange)="resolutionSummaryInput.set($event)"
+            placeholder="Describe the solution applied or steps taken to resolve the issue..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-outline-cancel" (click)="closeResolveModal()">Cancel</button>
+        <button type="button" class="btn-action-resolve" [disabled]="isSubmittingAction() || !resolutionSummaryInput().trim()"
+          (click)="confirmResolveTicket()">
+          @if (isSubmittingAction()) { Resolving... } @else { Mark as Resolved }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
   <!-- ================= NOTIFICATION SLIDE-IN DRAWER ================= -->
   @if (showNotificationDrawer()) {
   <div class="drawer-backdrop" (click)="closeNotificationDrawer()">
@@ -1223,7 +1789,7 @@
           <div class="notification-item-card" [class.unread]="!notif.read">
             <div class="notif-card-top">
               <span class="notif-type-badge">{{ notif.type.replace('_', ' ') }}</span>
-              <span class="notif-time">{{ formatRelativeTime(notif.createdAt) }}</span>
+              <span class="notif-time">{{ formatNotificationTime(notif.createdAt) }}</span>
             </div>
             <h4 class="notif-title">{{ notif.title }}</h4>
             <p class="notif-message">{{ notif.message }}</p>
