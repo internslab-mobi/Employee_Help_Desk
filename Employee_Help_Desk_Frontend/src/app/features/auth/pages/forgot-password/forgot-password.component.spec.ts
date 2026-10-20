@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { of } from 'rxjs';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { ForgotPasswordComponent } from './forgot-password.component';
@@ -48,6 +49,10 @@ describe('ForgotPasswordComponent', () => {
   it('should validate valid email, start reset session, and navigate to /verify-otp', async () => {
     vi.useFakeTimers();
     const navigateSpy = vi.spyOn(router, 'navigate');
+    vi.spyOn(flowService, 'requestOtp').mockImplementation((email: string) => {
+      flowService.startResetSession(email);
+      return of({ message: 'OTP sent successfully' });
+    });
 
     component.forgotPasswordForm.setValue({ email: 'alex@company.com' });
     component.onSubmit();
