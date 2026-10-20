@@ -1,0 +1,87 @@
+@if (state.showReportJsonModal() && state.reportSummaryJson(); as report) {
+<div class="modal-backdrop" (click)="state.closeReportJsonModal()">
+  <div class="modal-card modal-report-json" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <h3>Report Summary: {{ state.formatReportTypeName(report.reportType) }}</h3>
+        <span class="report-meta-chip">Role: {{ report.role }} | Total Persisted Records: {{ report.totalRecords }}</span>
+      </div>
+      <button type="button" class="btn-close-modal" (click)="state.closeReportJsonModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="report-summary-metrics-grid">
+        <div class="metric-card">
+          <span class="metric-lbl">Total Tickets</span>
+          <strong class="metric-val">{{ report.summary?.totalTickets ?? 0 }}</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-lbl">Open</span>
+          <strong class="metric-val text-blue">{{ report.summary?.openTickets ?? 0 }}</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-lbl">In Progress</span>
+          <strong class="metric-val text-amber">{{ report.summary?.inProgressTickets ?? 0 }}</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-lbl">Resolved</span>
+          <strong class="metric-val text-green">{{ report.summary?.resolvedTickets ?? 0 }}</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-lbl">SLA Breached</span>
+          <strong class="metric-val text-red">{{ report.summary?.slaBreachedTickets ?? 0 }}</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-lbl">SLA Compliance</span>
+          <strong class="metric-val">{{ report.summary?.slaComplianceRate ?? 100 }}%</strong>
+        </div>
+      </div>
+
+      @if (report.statusDistribution && report.statusDistribution.length) {
+      <div class="report-section-block">
+        <h4>Status Distribution</h4>
+        <div class="distribution-list">
+          @for (item of report.statusDistribution; track item.key) {
+          <div class="dist-row">
+            <span class="dist-label">{{ item.label }}</span>
+            <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+          </div>
+          }
+        </div>
+      </div>
+      }
+
+      @if (report.priorityDistribution && report.priorityDistribution.length) {
+      <div class="report-section-block">
+        <h4>Priority Distribution</h4>
+        <div class="distribution-list">
+          @for (item of report.priorityDistribution; track item.key) {
+          <div class="dist-row">
+            <span class="dist-label">{{ item.label }}</span>
+            <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+          </div>
+          }
+        </div>
+      </div>
+      }
+
+      <div class="report-filter-meta-block">
+        <h4>Reporting Scope & Filters</h4>
+        <div class="meta-pills-row">
+          <span class="meta-pill"><strong>Report Type:</strong> {{ state.formatReportTypeName(report.reportType) }}</span>
+          <span class="meta-pill"><strong>Generated For:</strong> {{ report.role }}</span>
+          <span class="meta-pill"><strong>Status:</strong> Ready</span>
+          <span class="meta-pill"><strong>Total Records:</strong> {{ report.totalRecords }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-primary-blue" (click)="exportExcel()">
+        Export This Report to Excel
+      </button>
+      <button type="button" class="btn-outline-cancel" (click)="state.closeReportJsonModal()">Close</button>
+    </div>
+  </div>
+</div>
+}

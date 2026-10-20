@@ -171,7 +171,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         if (request.managerId() != null) {
 
-            manager = departmentManagerRepository.findById(request.managerId())
+            manager = departmentManagerRepository.findByEmployeeId(request.managerId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Department manager not found with id: "
                                     + request.managerId()
@@ -284,6 +284,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         // Save employee code
         savedEmployee = employeeRepository.save(savedEmployee);
+
+        // Auto-register in hd_department_agents or hd_department_managers according to role
+        registerDepartmentRoleIfNeeded(savedEmployee);
 
         log.info(
                 "Employee created successfully: employeeId={}, employeeCode={}, role={}, departmentId={}, managerId={}",
@@ -707,9 +710,32 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         Employee savedEmployee = employeeRepository.save(employee);
+        registerDepartmentRoleIfNeeded(savedEmployee);
         log.info("Employee updated successfully: employeeId={}", savedEmployee.getId());
 
         return toUpdateResponse(savedEmployee);
+    }
+
+    private void registerDepartmentRoleIfNeeded(Employee employee) {
+        if (employee == null || employee.getRole() == null) {
+            return;
+        }
+        if (employee.getRole() == UserRole.AGENT) {
+            if (departmentAgentRepository.findByEmployeeId(employee.getId()).isEmpty()) {
+                DepartmentAgent agent = new DepartmentAgent();
+                agent.setEmployee(employee);
+                departmentAgentRepository.save(agent);
+                log.info("Automatically registered employeeId={} into hd_department_agents", employee.getId());
+            }
+        } else if (employee.getRole() == UserRole.MANAGER) {
+            if (departmentManagerRepository.findByEmployeeId(employee.getId()).isEmpty()) {
+                DepartmentManager deptManager = new DepartmentManager();
+                deptManager.setEmployee(employee);
+                deptManager.setIsPrimary(false);
+                departmentManagerRepository.save(deptManager);
+                log.info("Automatically registered employeeId={} into hd_department_managers", employee.getId());
+            }
+        }
     }
 
     private boolean hasActiveTickets(DepartmentAgent agent) {

@@ -24,4 +24,21 @@ public class SlaPolicyController {
         return ResponseEntity.ok(response);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @GetMapping
+    public ResponseEntity<java.util.List<SlaPolicyResponseDTO>> getSlaPolicies(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long departmentId
+    ) {
+        return ResponseEntity.ok(slaService.getSlaPolicies(departmentId));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @org.springframework.web.bind.annotation.PostMapping
+    public ResponseEntity<SlaPolicyResponseDTO> createSlaPolicy(
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody xyz.mobi.employeehelpdesk.dto.slapolicy.CreateSlaPolicyRequestDTO request
+    ) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(slaService.createSlaPolicy(request));
+    }
+
 }

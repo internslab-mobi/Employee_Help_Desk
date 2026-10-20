@@ -111,6 +111,8 @@ export interface DepartmentResponse {
   code: string;
   name: string;
   description?: string;
+  isActive?: boolean;
+  timezone?: string;
 }
 
 export interface CategoryResponse {
@@ -126,6 +128,8 @@ export interface SubCategoryResponse {
   name: string;
   description?: string;
   priority: TicketPriorityType | string;
+  skillIds?: number[];
+  skillNames?: string[];
 }
 
 export interface PageResponse<T> {

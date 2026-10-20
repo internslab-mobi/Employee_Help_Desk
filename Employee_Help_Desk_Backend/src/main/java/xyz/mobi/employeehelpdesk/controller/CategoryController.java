@@ -33,4 +33,14 @@ public class CategoryController {
         CategoryResponseDTO category = categoryService.getCategoryById(id);
         return ResponseEntity.ok(category);
     }
+
+    @Operation(summary = "Create a new category")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @PostMapping
+    public ResponseEntity<CategoryResponseDTO> createCategory(
+            @jakarta.validation.Valid @RequestBody xyz.mobi.employeehelpdesk.dto.category.CreateCategoryRequestDTO request
+    ) {
+        CategoryResponseDTO category = categoryService.createCategory(request);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(category);
+    }
 }

@@ -1,0 +1,665 @@
+<div class="peoplehub-layout">
+  <!-- Shared Left Sidebar -->
+  <app-dashboard-sidebar [activeNav]="activeNav()" (navChange)="setActiveNav($event)"></app-dashboard-sidebar>
+
+  <!-- Main Content Area -->
+  <main class="peoplehub-main">
+    <!-- Shared Top Header -->
+    <app-dashboard-header [activeNav]="activeNav()" [selectedAnalyticsView]="selectedAnalyticsView()"
+      (analyticsViewChange)="setAnalyticsView($event)" (refresh)="loadAllData()">
+    </app-dashboard-header>
+
+    <!-- Global Notification Banner -->
+    @if (state.notification(); as notif) {
+    <div class="toast-banner notif-{{ notif.type }}">
+      <span>{{ notif.message }}</span>
+    </div>
+    }
+
+    <!-- Analytics Date Filter Bar -->
+    @if (activeNav() === 'dashboard') {
+    <section class="dashboard-filter-bar">
+      <div class="filter-pill-group">
+        <span class="filter-group-label">Date Filter:</span>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === 'all'"
+          (click)="setDateRange('all')">All Time</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === 'today'"
+          (click)="setDateRange('today')">Today</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === '7days'"
+          (click)="setDateRange('7days')">Last 7 Days</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === '30days'"
+          (click)="setDateRange('30days')">Last 30 Days</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === 'thisMonth'"
+          (click)="setDateRange('thisMonth')">This Month</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === 'custom'"
+          (click)="setDateRange('custom')">Custom</button>
+      </div>
+
+      @if (selectedDateRange() === 'custom') {
+      <div class="custom-date-inputs">
+        <input type="date" [(ngModel)]="customFromDate" class="date-input" aria-label="From Date" />
+        <span class="date-sep">to</span>
+        <input type="date" [(ngModel)]="customToDate" class="date-input" aria-label="To Date" />
+        <button type="button" class="btn-apply-date" (click)="applyCustomDateRange()">Apply</button>
+      </div>
+      }
+    </section>
+    }
+
+    <!-- Loading / Error States -->
+    @if (isLoading()) {
+    <div class="state-container loading-state">
+      <div class="loading-ring"></div>
+      <p>Loading real-time help desk data...</p>
+    </div>
+    } @else if (errorMessage()) {
+    <div class="state-container error-state">
+      <h3>Unable to load dashboard data</h3>
+      <p>{{ errorMessage() }}</p>
+      <button class="btn-primary-blue" (click)="loadDashboardData()">Retry</button>
+    </div>
+    } @else {
+
+    <!-- ============================================== -->
+    <!-- VIEW 1: DASHBOARD ANALYTICS (MANAGER VIEW)     -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'dashboard') {
+
+      <!-- VIEW 1A: OVERALL OVERVIEW -->
+      @if (selectedAnalyticsView() === 'OVERALL_OVERVIEW') {
+      <!-- MANAGER KPI CARDS: Department Level Cards -->
+      <section class="summary-cards-grid">
+        <!-- 1. Opened Tickets in Dept -->
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'OPEN' })">
+          <span class="card-label">Opened Tickets in Dept</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.openTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-blue">View</button>
+          </div>
+        </div>
+
+        <!-- 2. In Progress in Dept -->
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'IN_PROGRESS' })">
+          <span class="card-label">In Progress in Dept</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.inProgressTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-orange">View</button>
+          </div>
+        </div>
+
+        <!-- 3. Resolved Tickets in Dept -->
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'RESOLVED' })">
+          <span class="card-label">Resolved in Dept</span>
+          <div class="card-bottom">
+            <span class="card-value text-green">{{ analytics()?.summary?.resolvedTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-green">View</button>
+          </div>
+        </div>
+
+        <!-- 4. Total Logged in Dept -->
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'ALL' })">
+          <span class="card-label">Total Logged in Dept</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.totalTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-blue">View</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Manager Secondary Metrics Row -->
+      <section class="metrics-row-cards">
+        <div class="sub-metric-card clickable" (click)="setActiveNav('assign')">
+          <span class="sub-lbl">Escalated SLA Breached</span>
+          <strong class="sub-val text-red">{{ breachedTickets().length }}</strong>
+        </div>
+        <div class="sub-metric-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'WITHDRAWN' })">
+          <span class="sub-lbl">Closed / Withdrawn</span>
+          <strong class="sub-val">{{ analytics()?.summary?.withdrawnTickets ?? 0 }}</strong>
+        </div>
+        <div class="sub-metric-card clickable" (click)="navigateToTicketsWithFilter({ view: 'DEPARTMENT', status: 'ON_HOLD' })">
+          <span class="sub-lbl">On Hold / Awaiting Response</span>
+          <strong class="sub-val text-amber">{{ analytics()?.summary?.onHoldTickets ?? 0 }}</strong>
+        </div>
+      </section>
+
+      @if (breachedTickets().length > 0) {
+      <div class="manager-escalation-banner">
+        <div class="escalation-info">
+          <span class="escalation-badge">⚠️ Escalated SLA Breached Tickets ({{ breachedTickets().length }})</span>
+          <p class="escalation-text">Breached tickets have been escalated to you. Reassign them to capable department agents to resume resolution.</p>
+        </div>
+        <button type="button" class="btn-escalation-action" (click)="setActiveNav('assign')">
+          Go to Assign Section
+        </button>
+      </div>
+      }
+
+      <!-- Recent Activity -->
+      <section class="content-card recent-activity-card">
+        <div class="card-header-clean">
+          <h3 class="card-title">Recent activity</h3>
+        </div>
+
+        <div class="activity-list">
+          @if (analytics()?.recentTickets?.length) {
+            @for (ticket of analytics()!.recentTickets.slice(0, 4); track ticket.id) {
+              <div class="activity-item" (click)="selectTicket(ticket); setActiveNav('my-tickets')" style="cursor: pointer;">
+                <strong class="activity-tag">{{ ticket.ticketNumber }}</strong>
+                <span class="activity-desc">{{ ticket.subject }} ({{ ticket.status }})</span>
+              </div>
+            }
+          } @else {
+            <p class="empty-hint" style="padding: 14px; color: #64748b; font-size: 13px;">No recent activity recorded.</p>
+          }
+        </div>
+      </section>
+
+      <!-- Operational Charts Accordion -->
+      <div class="analytics-accordion-wrapper">
+        <button type="button" class="btn-toggle-analytics" (click)="toggleAnalyticsSection()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+          <span>{{ showAnalyticsSection() ? 'Hide Detailed Operational Analytics & SLA Charts' : 'Show Detailed Operational Analytics & SLA Charts' }}</span>
+          <span class="toggle-arrow">{{ showAnalyticsSection() ? '▲' : '▼' }}</span>
+        </button>
+      </div>
+
+      @if (showAnalyticsSection() && analytics(); as data) {
+      <section class="charts-section-grid">
+        <!-- Ticket Status Distribution -->
+        <div class="content-card">
+          <h4 class="card-title">Ticket Status Distribution</h4>
+          <div class="distribution-list">
+            @for (item of data.statusDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-blue-bar" [style.width.%]="item.percentage"></div>
+              </div>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Ticket Priority Distribution -->
+        <div class="content-card">
+          <h4 class="card-title">Ticket Priority Distribution</h4>
+          <div class="distribution-list">
+            @for (item of data.priorityDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-purple-bar" [style.width.%]="item.percentage"></div>
+              </div>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Trends -->
+        @if (data.trends.length) {
+        <div class="content-card span-full">
+          <h4 class="card-title">Creation vs Resolution Trends</h4>
+          <div class="trends-timeline">
+            @for (t of data.trends; track t.period) {
+            <div class="trend-col">
+              <div class="trend-bars">
+                <div class="bar-created" [style.height.px]="t.createdCount * 14" [title]="'Created: ' + t.createdCount"></div>
+                <div class="bar-resolved" [style.height.px]="t.resolvedCount * 14" [title]="'Resolved: ' + t.resolvedCount"></div>
+              </div>
+              <span class="trend-date">{{ t.period.substring(5) }}</span>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </section>
+      }
+      }
+
+      <!-- VIEW 1B: TICKET ANALYTICS -->
+      @if (selectedAnalyticsView() === 'TICKET_ANALYTICS') {
+      <section class="view-header-strip">
+        <h3>Ticket Analytics & Resolution Metrics</h3>
+        <p>Breakdown of support tickets across statuses, priority tiers, and category volumes.</p>
+      </section>
+
+      <section class="summary-cards-grid">
+        <div class="summary-card">
+          <span class="card-label">Total Tickets</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.totalTickets ?? 0 }}</span>
+          </div>
+        </div>
+        <div class="summary-card">
+          <span class="card-label">Open / In Progress</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ (analytics()?.summary?.openTickets ?? 0) + (analytics()?.summary?.inProgressTickets ?? 0) }}</span>
+          </div>
+        </div>
+        <div class="summary-card">
+          <span class="card-label">Avg Resolution Time</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.avgResolutionHours ?? 0 }}h</span>
+          </div>
+        </div>
+        <div class="summary-card">
+          <span class="card-label">SLA Compliance</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.slaComplianceRate ?? 100 }}%</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="charts-section-grid">
+        <div class="content-card">
+          <h4 class="card-title">Tickets by Status</h4>
+          <div class="distribution-list">
+            @for (item of analytics()?.statusDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-blue-bar" [style.width.%]="item.percentage"></div>
+              </div>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <div class="content-card">
+          <h4 class="card-title">Tickets by Priority</h4>
+          <div class="distribution-list">
+            @for (item of analytics()?.priorityDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-purple-bar" [style.width.%]="item.percentage"></div>
+              </div>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        @if (analytics()?.categoryDistribution?.length) {
+        <div class="content-card span-full">
+          <h4 class="card-title">Tickets by Category</h4>
+          <div class="category-chips-grid">
+            @for (cat of analytics()?.categoryDistribution; track cat.key) {
+            <div class="category-metric-chip">
+              <div class="chip-header">
+                <strong>{{ cat.label }}</strong>
+                <span>{{ cat.percentage }}%</span>
+              </div>
+              <div class="chip-count">{{ cat.count }} tickets</div>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-green-bar" [style.width.%]="cat.percentage"></div>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        @if (analytics()?.trends?.length) {
+        <div class="content-card span-full">
+          <h4 class="card-title">Daily Ticket Intake vs Resolution</h4>
+          <div class="trends-timeline">
+            @for (t of analytics()?.trends; track t.period) {
+            <div class="trend-col">
+              <div class="trend-bars">
+                <div class="bar-created" [style.height.px]="t.createdCount * 14" [title]="'Created: ' + t.createdCount"></div>
+                <div class="bar-resolved" [style.height.px]="t.resolvedCount * 14" [title]="'Resolved: ' + t.resolvedCount"></div>
+              </div>
+              <span class="trend-date">{{ t.period.substring(5) }}</span>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </section>
+      }
+    }
+
+    <!-- ============================================== -->
+    <!-- VIEW 2: MANAGER ASSIGN BREACHED TICKETS        -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'assign') {
+    <section class="assign-section">
+      <!-- Toolbar -->
+      <div class="helpdesk-toolbar">
+        <div class="assign-header-meta">
+          <span class="escalation-alert-badge">⚠️ Escalated SLA Breached Tickets</span>
+          <p class="assign-desc-text">These tickets have breached SLA thresholds and require immediate manager re-assignment to department agents.</p>
+        </div>
+
+        <div class="toolbar-actions">
+          <button type="button" class="btn-refresh-sm" (click)="loadBreachedTickets()" title="Refresh breached tickets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M23 4v6h-6" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Breached Tickets Content Card -->
+      <section class="content-card my-tickets-card">
+        <div class="card-header-clean table-header-flex">
+          <div>
+            <h3 class="card-title">Escalated Breached Tickets</h3>
+            <p class="card-subtitle">Select a capable department agent to assign and reset ticket for resolution.</p>
+          </div>
+          <span class="ticket-count-badge badge-breached-count">{{ breachedTickets().length }} breached tickets</span>
+        </div>
+
+        <div class="table-container">
+          @if (isLoadingBreachedTickets()) {
+          <div class="table-loading-bar">
+            <div class="loading-ring-small"></div>
+            <span>Loading escalated breached tickets...</span>
+          </div>
+          }
+          <table class="tickets-table-clean">
+            <thead>
+              <tr>
+                <th style="width: 12%;">Ticket #</th>
+                <th style="width: 24%;">Subject</th>
+                <th style="width: 13%;">Category</th>
+                <th style="width: 13%;">Requester</th>
+                <th style="width: 12%;">Previous Agent</th>
+                <th style="width: 10%;">SLA</th>
+                <th style="width: 16%;">Assign to Capable Agent</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (breachedTickets().length > 0) {
+              @for (ticket of breachedTickets(); track ticket.id) {
+              <tr class="ticket-row-clean" [class.row-selected]="state.selectedTicketForPreview()?.id === ticket.id"
+                (click)="selectTicket(ticket)">
+                <td>
+                  <span class="ticket-link">{{ ticket.ticketNumber }}</span>
+                </td>
+                <td>
+                  <span class="ticket-subject">{{ ticket.subject }}</span>
+                </td>
+                <td>
+                  <span class="ticket-category">{{ state.getPreviewCategoryName(ticket) }}</span>
+                </td>
+                <td>
+                  <span class="ticket-requester-text">{{ state.getPreviewRequesterName(ticket) }}</span>
+                </td>
+                <td>
+                  <span class="ticket-agent-text">{{ state.getPreviewAssignedAgentName(ticket) }}</span>
+                </td>
+                <td>
+                  <span class="status-pill status-withdrawn" style="background: #fef2f2; color: #dc2626; border-color: #fecaca; font-weight: 700;">
+                    BREACHED
+                  </span>
+                </td>
+                <td>
+                  <div class="assign-action-cell" (click)="$event.stopPropagation()">
+                    @if (isLoadingAgents()[ticket.id]) {
+                      <span class="loading-agents-hint">Loading agents...</span>
+                    } @else {
+                      <select class="agent-select-control" [ngModel]="selectedAgentForTicket()[ticket.id]"
+                        (change)="onSelectAgentForTicket(ticket.id, $event)">
+                        @if (!assignableAgentsMap()[ticket.id]?.length) {
+                          <option [value]="0">No other agents available</option>
+                        }
+                        @for (agent of assignableAgentsMap()[ticket.id]; track agent.agentId) {
+                          <option [value]="agent.agentId">{{ agent.firstName }} {{ agent.lastName || '' }} (Active: {{ agent.activeTicketCount }})</option>
+                        }
+                      </select>
+                      <button type="button" class="btn-primary-assign"
+                        [disabled]="isAssigningTicket()[ticket.id] || !selectedAgentForTicket()[ticket.id]"
+                        (click)="assignAgentToTicket(ticket.id)">
+                        @if (isAssigningTicket()[ticket.id]) {
+                          Assigning...
+                        } @else {
+                          Assign
+                        }
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+              }
+              } @else {
+              <tr>
+                <td colspan="7" class="empty-table-state">
+                  <p>No escalated breached tickets in your department! All SLAs are on track.</p>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+    }
+
+    <!-- ============================================== -->
+    <!-- VIEW 3: MY TICKETS (DEPARTMENT & MY CREATED)   -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'my-tickets' || activeNav() === 'helpdesk') {
+    <!-- Scope View Tabs -->
+    <div class="helpdesk-view-tabs">
+      <button type="button" class="view-tab-btn" [class.active]="selectedTicketView() === 'DEPARTMENT'"
+        (click)="setTicketView('DEPARTMENT')">
+        Department Tickets
+      </button>
+      <button type="button" class="view-tab-btn" [class.active]="selectedTicketView() === 'CREATED'"
+        (click)="setTicketView('CREATED')">
+        My Created
+      </button>
+    </div>
+
+    <!-- Search and Action Bar -->
+    <section class="helpdesk-toolbar">
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-tickets-input" placeholder="Search tickets by ID, subject, requester..."
+          [ngModel]="ticketSearchTerm()" (ngModelChange)="onSearchInput($event)" />
+        @if (ticketSearchTerm()) {
+        <button type="button" class="btn-clear-search" (click)="clearSearch()">&times;</button>
+        }
+      </div>
+
+      <div class="toolbar-actions">
+        <!-- Report Category Type Selector -->
+        <select id="report-type-select" class="select-report-type" [ngModel]="state.selectedReportType()"
+          (ngModelChange)="state.selectedReportType.set($event)" title="Select report summary category">
+          @for (type of state.permittedReportTypes(); track type) {
+          <option [value]="type">{{ state.formatReportTypeName(type) }}</option>
+          }
+        </select>
+
+        <!-- View On-Screen Summary Button -->
+        <button id="view-json-summary-btn" class="btn-summary-view" [disabled]="state.isLoadingReportJson() || isLoading()"
+          (click)="state.fetchSummaryJson(resolveDateRange())" title="View on-screen summary report">
+          @if (state.isLoadingReportJson()) {
+          <span class="export-spinner"></span>
+          <span>Loading...</span>
+          } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+          <span>View Summary</span>
+          }
+        </button>
+
+        <!-- Export Summary to Excel button -->
+        <button id="export-excel-btn" class="btn-excel-export" [disabled]="state.isExporting() || isLoading()"
+          (click)="state.exportSummaryToExcel(resolveDateRange())" title="Export Excel summary report">
+          @if (state.isExporting()) {
+          <span class="export-spinner"></span>
+          <span>Exporting...</span>
+          } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+          <span>Export Summary to Excel</span>
+          }
+        </button>
+
+        <button type="button" class="btn-primary-blue" (click)="state.openNewTicketModal()">
+          + New ticket
+        </button>
+        <button type="button" class="btn-outline-filters" [class.active]="showFilters()" (click)="toggleFilters()">
+          Filters
+        </button>
+      </div>
+    </section>
+
+    <!-- Collapsible Filters Drawer -->
+    @if (showFilters()) {
+    <section class="filters-drawer">
+      <div class="filter-item">
+        <label>Status:</label>
+        <select [ngModel]="ticketStatusFilter()" (ngModelChange)="onStatusFilterChange($event)">
+          <option value="ALL">All Statuses</option>
+          <option value="OPEN">Open</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="ON_HOLD">On Hold</option>
+          <option value="RESOLVED">Resolved</option>
+          <option value="WITHDRAWN">Withdrawn</option>
+          <option value="REOPENED">Reopened</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label>Priority:</label>
+        <select [ngModel]="ticketPriorityFilter()" (ngModelChange)="onPriorityFilterChange($event)">
+          <option value="ALL">All Priorities</option>
+          <option value="CRITICAL">Critical</option>
+          <option value="HIGH">High</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="LOW">Low</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label>Date Range:</label>
+        <select [ngModel]="selectedDateRange()" (ngModelChange)="setDateRange($event)">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="7days">Last 7 Days</option>
+          <option value="30days">Last 30 Days</option>
+          <option value="thisMonth">This Month</option>
+          <option value="custom">Custom Range</option>
+        </select>
+      </div>
+
+      <div class="filter-item-actions">
+        <button type="button" class="btn-reset-filters" (click)="clearAllFilters()">Reset Filters</button>
+      </div>
+    </section>
+    }
+
+    <!-- My tickets Table Card -->
+    <section class="content-card my-tickets-card">
+      <div class="card-header-clean table-header-flex">
+        <h3 class="card-title">
+          {{ selectedTicketView() === 'DEPARTMENT' ? 'Department Tickets' : 'My Tickets' }}
+        </h3>
+        <span class="ticket-count-badge">{{ ticketTotalElements() || displayTickets().length }} tickets found</span>
+      </div>
+
+      <div class="table-container">
+        @if (isLoadingTickets()) {
+        <div class="table-loading-bar">
+          <div class="loading-ring-small"></div>
+          <span>Loading tickets...</span>
+        </div>
+        }
+        <table class="tickets-table-clean">
+          <thead>
+            <tr>
+              <th style="width: 14%;">Ticket #</th>
+              <th style="width: 32%;">Subject</th>
+              <th style="width: 16%;">Category</th>
+              <th style="width: 12%;">Priority</th>
+              <th style="width: 14%;">Status</th>
+              <th style="width: 12%;">Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (displayTickets().length > 0) {
+            @for (ticket of displayTickets(); track ticket.id; let idx = $index) {
+            <tr class="ticket-row-clean" [class.row-selected]="state.selectedTicketForPreview()?.id === ticket.id"
+              (click)="selectTicket(ticket)">
+              <td>
+                <span class="ticket-link">{{ ticket.ticketNumber }}</span>
+              </td>
+              <td>
+                <span class="ticket-subject">{{ ticket.subject }}</span>
+              </td>
+              <td>
+                <span class="ticket-category">{{ ticket.category?.name || 'Support' }}</span>
+              </td>
+              <td>
+                <span class="priority-pill" [class]="state.getPriorityClass(ticket.priority)">
+                  {{ ticket.priority }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" [class]="state.getStatusClass(ticket.status)">
+                  {{ ticket.status }}
+                </span>
+              </td>
+              <td>
+                <span class="ticket-updated">{{ state.formatRelativeTime(ticket.createdAt || ticket.updatedAt, idx) }}</span>
+              </td>
+            </tr>
+            }
+            } @else {
+            <tr>
+              <td colspan="6" class="empty-table-state">
+                <p>No tickets match your filter criteria.</p>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+
+        <!-- Server Pagination Footer -->
+        @if (ticketTotalPages() > 1) {
+        <div class="table-pagination-footer">
+          <button type="button" class="pagination-btn" [disabled]="ticketCurrentPage() === 0"
+            (click)="prevTicketPage()">Previous</button>
+          <span class="pagination-indicator">Page {{ ticketCurrentPage() + 1 }} of {{ ticketTotalPages() }}</span>
+          <button type="button" class="pagination-btn" [disabled]="ticketCurrentPage() + 1 >= ticketTotalPages()"
+            (click)="nextTicketPage()">Next</button>
+        </div>
+        }
+      </div>
+    </section>
+    }
+
+    <!-- Shared Ticket Detail Preview Card -->
+    <app-ticket-preview [activeNav]="activeNav()" (actionCompleted)="loadAllData()"></app-ticket-preview>
+    }
+  </main>
+
+  <!-- Shared Modals & Slide-in Drawers -->
+  <app-new-ticket-modal (ticketCreated)="loadAllData()"></app-new-ticket-modal>
+  <app-report-summary-modal [dateRange]="resolveDateRange()"></app-report-summary-modal>
+  <app-notification-drawer></app-notification-drawer>
+</div>

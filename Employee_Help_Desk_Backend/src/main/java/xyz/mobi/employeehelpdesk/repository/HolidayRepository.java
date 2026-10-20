@@ -15,6 +15,7 @@ public interface HolidayRepository extends JpaRepository<Holiday, Long> {
         FROM Holiday h
         WHERE h.department.id = :departmentId
           AND h.holidayDate BETWEEN :from AND :to
+        ORDER BY h.holidayDate ASC
     """)
     List<Holiday> findByDepartmentIdAndHolidayDateBetween(
             @Param("departmentId") Long departmentId,
@@ -22,5 +23,9 @@ public interface HolidayRepository extends JpaRepository<Holiday, Long> {
             @Param("to") LocalDate to
     );
 
-}
+    List<Holiday> findByDepartmentIdOrderByHolidayDateAsc(Long departmentId);
 
+    List<Holiday> findAllByOrderByHolidayDateAsc();
+
+    boolean existsByDepartmentIdAndHolidayDate(Long departmentId, LocalDate holidayDate);
+}

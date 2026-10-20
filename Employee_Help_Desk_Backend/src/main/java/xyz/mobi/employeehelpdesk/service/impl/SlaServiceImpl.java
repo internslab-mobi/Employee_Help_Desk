@@ -8,6 +8,7 @@ import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.SlaPolicy;
+import xyz.mobi.employeehelpdesk.entity.SubCategory;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
 import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaEventType;
@@ -39,6 +40,9 @@ public class SlaServiceImpl implements SlaService {
     private final DepartmentManagerRepository departmentManagerRepository;
     private final NotificationService notificationService;
     private final SlaDynamicScheduler slaDynamicScheduler;
+    private final xyz.mobi.employeehelpdesk.service.helperservice.TicketHistoryService ticketHistoryService;
+    private final xyz.mobi.employeehelpdesk.repository.DepartmentRepository departmentRepository;
+    private final xyz.mobi.employeehelpdesk.repository.SubCategoryRepository subCategoryRepository;
 
     /**
      * Starts the INITIAL SLA cycle for a newly created ticket.
@@ -185,31 +189,40 @@ public class SlaServiceImpl implements SlaService {
         ZoneId departmentZone = resolveDepartmentZone(department);
 
         // 1. Fetch previous SLA cycle (highest cycle number for this ticket)
-        SlaInstance previousSla = slaInstanceRepository
-                .findTopByTicketIdOrderByCycleNumberDesc(ticket.getId())
-                .orElseThrow(() ->
-                        new InvalidStateException(
-                                "Cannot " + (cycleType.equalsIgnoreCase("reopen") || cycleType.equalsIgnoreCase("reopened") ? "reopen" : "start " + cycleType.toLowerCase()) + " SLA: no previous SLA cycle exists for ticket " + ticket.getId()
-                        )
-                );
+        java.util.Optional<SlaInstance> previousSlaOpt = slaInstanceRepository
+                .findTopByTicketIdOrderByCycleNumberDesc(ticket.getId());
 
-        // 2. Calculate new allocation: half of previous cycle's allocated minutes
-        int newAllocatedMinutes = previousSla.getAllocatedMinutes() / 2;
+        SlaInstance previousSla = previousSlaOpt.orElse(null);
+        int prevAllocatedMinutes;
+        int cycleNumber;
+        SlaPolicy policy;
+
+        if (previousSla != null) {
+            prevAllocatedMinutes = previousSla.getAllocatedMinutes();
+            cycleNumber = previousSla.getCycleNumber() + 1;
+            policy = previousSla.getSlaPolicy();
+        } else {
+            policy = slaPolicyRepository
+                    .findByDepartmentIdAndSubCategoryIdAndIsActiveTrue(departmentId, ticket.getSubCategory().getId())
+                    .orElse(null);
+            prevAllocatedMinutes = policy != null ? policy.getDurationMinutes() : 480;
+            cycleNumber = 2;
+        }
+
+        // 2. Calculate new allocation: half of previous cycle's allocated minutes (50% reduction)
+        int newAllocatedMinutes = prevAllocatedMinutes / 2;
         if (newAllocatedMinutes < 1) {
             newAllocatedMinutes = 1; // Minimum 1 minute
         }
 
-        // 3. Determine cycle number
-        int cycleNumber = previousSla.getCycleNumber() + 1;
-
-        // 4. Determine start time
+        // 3. Determine start time
         Instant effectiveBaseInstant = baseInstant != null
                 ? baseInstant
                 : Instant.now();
 
         Instant startAt = workingCalendarService.moveToWorkingTime(effectiveBaseInstant, departmentId, departmentZone);
 
-        // 5. Calculate deadline
+        // 4. Calculate deadline
         Instant deadline =
                 workingCalendarService.addWorkingMinutes(
                         startAt,
@@ -218,13 +231,10 @@ public class SlaServiceImpl implements SlaService {
                         departmentZone
                 );
 
-        // 6. Calculate warning time preserving the warning ratio from the previous cycle
+        // 5. Calculate warning time preserving the warning ratio from the previous cycle
         Instant warningAt = calculateWarningAtFromPreviousCycle(
                 startAt, newAllocatedMinutes, previousSla, departmentId, departmentZone
         );
-
-        // 7. Fetch the SLA policy (for reference association, not for duration)
-        SlaPolicy policy = previousSla.getSlaPolicy();
 
         // 8. Determine initial event
         SlaEventType nextEventType;
@@ -457,6 +467,15 @@ public class SlaServiceImpl implements SlaService {
             sla.setNextEventAt(null);
 
             slaInstanceRepository.save(sla);
+
+            if (sla.getTicket() != null) {
+                ticketHistoryService.record(
+                        sla.getTicket(),
+                        xyz.mobi.employeehelpdesk.entity.enums.HistoryEventType.SLA_BREACHED,
+                        sla.getTicket().getStatus(),
+                        sla.getTicket().getStatus()
+                );
+            }
             log.info("SLA breached successfully for id={}", slaInstanceId);
         }
     }
@@ -469,6 +488,53 @@ public class SlaServiceImpl implements SlaService {
         SlaPolicy policy = slaPolicyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("SLA policy not found with id: " + id));
 
+        return toPolicyResponse(policy);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<SlaPolicyResponseDTO> getSlaPolicies(Long departmentId) {
+        log.debug("Fetching SLA policies, departmentId={}", departmentId);
+        java.util.List<SlaPolicy> policies;
+        if (departmentId != null) {
+            policies = slaPolicyRepository.findAll().stream()
+                    .filter(p -> p.getDepartment() != null && departmentId.equals(p.getDepartment().getId()))
+                    .toList();
+        } else {
+            policies = slaPolicyRepository.findAll();
+        }
+        return policies.stream().map(this::toPolicyResponse).toList();
+    }
+
+    @Override
+    @Transactional
+    public SlaPolicyResponseDTO createSlaPolicy(xyz.mobi.employeehelpdesk.dto.slapolicy.CreateSlaPolicyRequestDTO request) {
+        log.info("Creating SLA policy: departmentId={}, subCategoryId={}", request.departmentId(), request.subCategoryId());
+
+        Department department = departmentRepository.findById(request.departmentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));
+
+        SubCategory subCategory = subCategoryRepository.findById(request.subCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("SubCategory not found with id: " + request.subCategoryId()));
+
+        // Check duplicate
+        slaPolicyRepository.findByDepartmentIdAndSubCategoryIdAndIsActiveTrue(department.getId(), subCategory.getId())
+                .ifPresent(existing -> {
+                    throw new BadRequestException("An active SLA policy already exists for this department and subcategory");
+                });
+
+        SlaPolicy policy = new SlaPolicy();
+        policy.setDepartment(department);
+        policy.setSubCategory(subCategory);
+        policy.setDurationMinutes(request.durationMinutes());
+        policy.setWarningMinutes(request.warningMinutes() != null ? request.warningMinutes() : (int) (request.durationMinutes() * 0.75));
+        policy.setIsActive(true);
+
+        SlaPolicy saved = slaPolicyRepository.save(policy);
+        return toPolicyResponse(saved);
+    }
+
+    private SlaPolicyResponseDTO toPolicyResponse(SlaPolicy policy) {
         return SlaPolicyResponseDTO.builder()
                 .id(policy.getId())
                 .departmentId(policy.getDepartment() != null ? policy.getDepartment().getId() : null)
@@ -523,7 +589,7 @@ public class SlaServiceImpl implements SlaService {
             Long departmentId,
             ZoneId departmentZone
     ) {
-        if (previousSla.getWarningAt() == null) {
+        if (previousSla == null || previousSla.getWarningAt() == null) {
             return null;
         }
 

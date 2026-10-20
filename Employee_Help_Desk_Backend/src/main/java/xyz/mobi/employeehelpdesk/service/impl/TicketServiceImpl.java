@@ -112,13 +112,19 @@ public class TicketServiceImpl implements TicketService {
         );
 
 
+        // Find priority, ensuring MEDIUM default for 'others' subcategory
+        Priority ticketPriority = (subCategory.getName() != null && "others".equalsIgnoreCase(subCategory.getName()))
+                || subCategory.getPriority() == null
+                ? Priority.MEDIUM
+                : subCategory.getPriority();
+
         // Create Ticket using Builder
         Ticket ticket = Ticket.builder()
                 .requester(requester)
                 .department(department)
                 .category(category)
                 .subCategory(subCategory)
-                .priority(subCategory.getPriority())
+                .priority(ticketPriority)
                 .subject(request.getSubject())
                 .description(request.getDescription())
                 .status(OPEN)
@@ -478,7 +484,6 @@ public class TicketServiceImpl implements TicketService {
         }
 
         Long departmentId = ticket.getDepartment().getId();
-        Long categoryId = ticket.getCategory() != null ? ticket.getCategory().getId() : null;
 
         if (currentEmployee.getRole() != UserRole.MANAGER && currentEmployee.getRole() != UserRole.ADMIN) {
             throw new AccessDeniedException("Only managers and admins can view assignable agents");
@@ -491,8 +496,8 @@ public class TicketServiceImpl implements TicketService {
             }
         }
 
-        // 1. Fetch eligible agents in the ticket's department (ACTIVE status and AGENT role)
-        List<DepartmentAgent> eligibleAgents = departmentAgentRepository.findEligibleAgents(departmentId, categoryId);
+        // 1. Fetch all eligible agents in the ticket's department (ACTIVE status and AGENT role regardless of category/skills)
+        List<DepartmentAgent> eligibleAgents = departmentAgentRepository.findEligibleAgents(departmentId);
         if (eligibleAgents.isEmpty()) {
             return Collections.emptyList();
         }
@@ -795,7 +800,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     public TicketResponseDTO withdrawTicket(Long ticketId, WithdrawRequestDTO withdrawRequest) {
 
         String reason = withdrawRequest.reason();
@@ -837,7 +842,7 @@ public class TicketServiceImpl implements TicketService {
         ticket.setStatus(TicketStatus.WITHDRAWN);
 
         if (reason == null || reason.isBlank()) {
-            throw new BadRequestException("Withdrawal reason is required");
+            reason = "Withdrawn by requester";
         }
 
         ticket.setWithdrawnAt(Instant.now());
@@ -1118,7 +1123,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     public TicketResponseDTO reopenTicket(Long ticketId, ReopenRequestDTO request) {
 
         Long employeeId = authService.getCurrentEmployeeId();
@@ -1148,29 +1153,25 @@ public class TicketServiceImpl implements TicketService {
             );
         }
 
-        if (ticket.getReopenCount() >= 2) {
+        if (ticket.getReopenCount() != null && ticket.getReopenCount() >= 2) {
             log.warn("Reopen ticket rejected: ticketId={} already reopened {} times", ticketId, ticket.getReopenCount());
             throw new InvalidStateException(
                     "Ticket can only be reopened twice"
             );
         }
 
-        if (ticket.getAssignedAgent() == null) {
-            log.warn("Reopen ticket rejected: ticketId={} has no previous assigned agent", ticketId);
-            throw new InvalidStateException(
-                    "Cannot reopen ticket because no previous agent is assigned"
-            );
-        }
-
-        int oldReopenCount = ticket.getReopenCount();
+        int oldReopenCount = ticket.getReopenCount() != null ? ticket.getReopenCount() : 0;
 
         ticket.setReopenCount(oldReopenCount + 1);
         ticket.setStatus(TicketStatus.REOPENED);
         ticket.setReopenedAt(Instant.now());
+        ticket.setReopenReason(request != null && request.reason() != null && !request.reason().isBlank()
+                ? request.reason().trim()
+                : "Ticket reopened by requester");
         ticket.setResolvedAt(null);
         ticket.setResolutionSummary(null);
 
-        ticketRepository.save(ticket);
+        ticket = ticketRepository.save(ticket);
 
         ticketHistoryService.record(
                 ticket,
@@ -1178,6 +1179,9 @@ public class TicketServiceImpl implements TicketService {
                 TicketStatus.RESOLVED,
                 TicketStatus.REOPENED
         );
+
+        // Agent assignment should be same as during the normal ticket creation
+        ticketRoutingService.routeTicket(ticket);
 
         SlaInstance slaInstance = slaService.startReopenSla(ticket);
 
@@ -1197,8 +1201,9 @@ public class TicketServiceImpl implements TicketService {
             );
         }
 
-        log.info("Ticket reopened: ticketId={}, ticketNumber={}, requesterId={}, newReopenCount={}",
-                ticket.getId(), ticket.getTicketNumber(), employeeId, ticket.getReopenCount());
+        log.info("Ticket reopened: ticketId={}, ticketNumber={}, requesterId={}, newReopenCount={}, assignedAgentId={}",
+                ticket.getId(), ticket.getTicketNumber(), employeeId, ticket.getReopenCount(),
+                ticket.getAssignedAgent() != null ? ticket.getAssignedAgent().getId() : null);
 
         return ticketMapper.toUpdateResponse(ticket, slaInstance);
     }
@@ -1683,26 +1688,31 @@ public class TicketServiceImpl implements TicketService {
         switch (request.status()) {
 
             case IN_PROGRESS:
+            case START_WORKING:
                 return startTicket(ticketId);
 
             case ON_HOLD:
+            case HOLD:
                 return holdTicket(
                         ticketId,
                         new HoldTicketRequestDTO(request.reason())
                 );
 
             case RESOLVED:
+            case RESOLVE:
                 return resolveTicket(
                         ticketId,
                         new ResolveTicketRequestDTO(request.resolution())
                 );
 
             case WITHDRAWN:
+            case WITHDRAW:
                 return withdrawTicket(
                         ticketId,
                         new WithdrawRequestDTO(request.reason())
                 );
 
+            case REOPEN:
             case REOPENED:
                 return reopenTicket(
                         ticketId,

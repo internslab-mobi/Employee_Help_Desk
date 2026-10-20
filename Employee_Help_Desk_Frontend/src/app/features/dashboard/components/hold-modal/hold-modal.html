@@ -1,0 +1,37 @@
+@if (state.showHoldModal()) {
+<div class="modal-backdrop" (click)="state.closeHoldModal()">
+  <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title-with-icon">
+        <span class="icon-hold-circle">⏸</span>
+        <div>
+          <h3>Request Employee Information</h3>
+          <p class="modal-subtitle">Ticket #{{ state.selectedTicketForHold()?.ticketNumber }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-close-modal" (click)="state.closeHoldModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="hold-warning-alert">
+        <p>Putting this ticket <strong>ON HOLD</strong> pauses the SLA timer while waiting for the employee's input. You can resume at any time.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Inquiry / What information is required from employee? <span class="required-star">*</span></label>
+        <textarea class="form-control" rows="4" [ngModel]="state.holdReasonInput()"
+          (ngModelChange)="state.holdReasonInput.set($event)"
+          placeholder="Explain what detail, attachment, or confirmation is required from the employee..."></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-outline-cancel" (click)="state.closeHoldModal()">Cancel</button>
+      <button type="button" class="btn-action-hold" [disabled]="state.isSubmittingAction() || !state.holdReasonInput().trim()"
+        (click)="confirmHold()">
+        @if (state.isSubmittingAction()) { Requesting... } @else { Put Ticket On Hold }
+      </button>
+    </div>
+  </div>
+</div>
+}

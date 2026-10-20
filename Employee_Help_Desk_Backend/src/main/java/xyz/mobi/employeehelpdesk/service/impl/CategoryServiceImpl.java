@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.mobi.employeehelpdesk.dto.category.CategoryResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.Category;
+import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
 import xyz.mobi.employeehelpdesk.repository.CategoryRepository;
 import xyz.mobi.employeehelpdesk.repository.DepartmentRepository;
@@ -46,6 +47,23 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryRepository.findByIdAndIsActiveTrue(id)
                 .map(this::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
+    }
+
+    @Override
+    @Transactional
+    public CategoryResponseDTO createCategory(xyz.mobi.employeehelpdesk.dto.category.CreateCategoryRequestDTO request) {
+        log.info("Creating new category: deptId={}, name={}", request.departmentId(), request.name());
+        Department department = departmentRepository.findByIdAndIsActiveTrue(request.departmentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));
+
+        Category category = new Category();
+        category.setDepartment(department);
+        category.setName(request.name().trim());
+        category.setDescription(request.description() != null ? request.description().trim() : null);
+        category.setIsActive(true);
+
+        Category saved = categoryRepository.save(category);
+        return toResponse(saved);
     }
 
     private CategoryResponseDTO toResponse(Category category) {

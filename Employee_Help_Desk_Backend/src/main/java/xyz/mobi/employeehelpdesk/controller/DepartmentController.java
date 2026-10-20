@@ -36,4 +36,14 @@ public class DepartmentController {
         DepartmentResponseDTO department = departmentService.getDepartmentById(id);
         return ResponseEntity.ok(department);
     }
+
+    @Operation(summary = "Create a new department")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @org.springframework.web.bind.annotation.PostMapping
+    public ResponseEntity<DepartmentResponseDTO> createDepartment(
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody xyz.mobi.employeehelpdesk.dto.department.CreateDepartmentRequestDTO request
+    ) {
+        DepartmentResponseDTO department = departmentService.createDepartment(request);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(department);
+    }
 }

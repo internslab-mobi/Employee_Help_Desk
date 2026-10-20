@@ -16,4 +16,6 @@ public interface SlaService {
     void processSlaEvent(Long slaInstanceId);
 
     SlaPolicyResponseDTO getSlaPolicyById(Long id);
+    java.util.List<SlaPolicyResponseDTO> getSlaPolicies(Long departmentId);
+    SlaPolicyResponseDTO createSlaPolicy(xyz.mobi.employeehelpdesk.dto.slapolicy.CreateSlaPolicyRequestDTO request);
 }

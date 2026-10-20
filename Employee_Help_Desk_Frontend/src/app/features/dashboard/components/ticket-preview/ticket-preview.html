@@ -1,0 +1,475 @@
+@if (activeNav() !== 'dashboard' && state.selectedTicketForPreview()) {
+<section class="content-card ticket-preview-card">
+  <div class="card-header-clean">
+    <div class="preview-title-row">
+      <div class="preview-heading-group">
+        <h3 class="card-title">Ticket Detail Preview</h3>
+        @if (state.selectedTicketForPreview(); as s) {
+        <span class="preview-ticket-badge">{{ s.ticketNumber }}</span>
+        }
+      </div>
+
+      <div class="preview-actions-group">
+        <!-- AGENT QUICK ACTIONS IN PREVIEW (Only for assigned tickets, not for tickets raised by self) -->
+        @if (canShowAgentActions()) {
+          @if (state.selectedTicketForPreview()?.status === 'OPEN' || state.selectedTicketForPreview()?.status === 'REOPENED') {
+            <button type="button" class="btn-action-start sm" [disabled]="state.isSubmittingAction()"
+              (click)="onStartWorking()">▶ Start Working</button>
+          }
+          @if (state.selectedTicketForPreview()?.status === 'IN_PROGRESS') {
+            <button type="button" class="btn-action-hold sm" [disabled]="state.isSubmittingAction()"
+              (click)="onOpenHold()">Request Employee</button>
+          } @else if (state.selectedTicketForPreview()?.status === 'ON_HOLD') {
+            <button type="button" class="btn-action-resume sm" [disabled]="state.isSubmittingAction()"
+              (click)="onResume()">▶ Resume</button>
+          }
+          @if (state.selectedTicketForPreview()?.status === 'IN_PROGRESS' || state.selectedTicketForPreview()?.status === 'ON_HOLD') {
+            <button type="button" class="btn-action-resolve sm" [disabled]="state.isSubmittingAction()"
+              (click)="onOpenResolve()">✓ Resolve</button>
+          }
+        }
+        @if (state.selectedTicketForPreview()) {
+        <button type="button" class="btn-clear-preview" (click)="state.clearSelectedTicket()">Deselect</button>
+        }
+      </div>
+    </div>
+    @if (!state.selectedTicketForPreview()) {
+    <p class="card-subtitle">Select a ticket to view conversation, attachments, SLA and resolution history.</p>
+    }
+  </div>
+
+  @if (state.selectedTicketForPreview(); as selected) {
+  <div class="preview-details-body">
+    <!-- Preview Navigation Tabs -->
+    <div class="preview-tabs-bar">
+      <button type="button" class="preview-tab" [class.active]="state.previewActiveTab() === 'overview'"
+        (click)="state.switchPreviewTab('overview')">Overview</button>
+      <button type="button" class="preview-tab" [class.active]="state.previewActiveTab() === 'conversation'"
+        (click)="state.switchPreviewTab('conversation')">Conversation ({{ state.ticketMessages().length }})</button>
+      <button type="button" class="preview-tab" [class.active]="state.previewActiveTab() === 'attachments'"
+        (click)="state.switchPreviewTab('attachments')">Attachments ({{ state.ticketAttachments().length }})</button>
+      <button type="button" class="preview-tab" [class.active]="state.previewActiveTab() === 'sla'"
+        (click)="state.switchPreviewTab('sla')">SLA Tracking</button>
+      <button type="button" class="preview-tab" [class.active]="state.previewActiveTab() === 'history'"
+        (click)="state.switchPreviewTab('history')">History & Audit</button>
+    </div>
+
+    <!-- TAB 1: OVERVIEW -->
+    @if (state.previewActiveTab() === 'overview') {
+    <div class="tab-pane-content">
+      <div class="preview-meta-grid">
+        <div class="meta-item">
+          <span class="meta-label">Ticket ID</span>
+          <strong class="meta-val">{{ selected.ticketNumber }}</strong>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Subject</span>
+          <strong class="meta-val">{{ selected.subject }}</strong>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Category</span>
+          <span class="meta-val">{{ state.getPreviewCategoryName(selected) }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Subcategory</span>
+          <span class="meta-val">{{ state.getPreviewSubCategoryName(selected) }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Priority</span>
+          <span class="priority-pill" [class]="state.getPriorityClass(selected.priority)">{{ selected.priority }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Status</span>
+          <span class="status-pill" [class]="state.getStatusClass(selected.status)">{{ selected.status }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Requester</span>
+          <span class="meta-val">{{ state.getPreviewRequesterName(selected) }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Assigned Support</span>
+          <span class="meta-val">{{ state.getPreviewAssignedAgentName(selected) }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Department</span>
+          <span class="meta-val">{{ state.getPreviewDepartmentName(selected) }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Reopen Count</span>
+          <span class="meta-val">{{ state.getPreviewReopenCount(selected) }}</span>
+        </div>
+      </div>
+
+      <div class="preview-description-box">
+        <span class="meta-label">Description</span>
+        <p class="description-text">{{ state.fullSelectedTicket()?.description || 'No additional description provided.' }}</p>
+      </div>
+
+      @if (state.fullSelectedTicket()?.resolutionSummary) {
+      <div class="resolution-summary-box">
+        <span class="meta-label">Resolution Summary</span>
+        <p class="resolution-text">{{ state.fullSelectedTicket()?.resolutionSummary }}</p>
+        @if (state.fullSelectedTicket()?.resolvedAt) {
+        <small class="text-muted">Resolved at: {{ state.fullSelectedTicket()?.resolvedAt }}</small>
+        }
+      </div>
+      }
+
+      @if (state.fullSelectedTicket()?.reopenReason) {
+      <div class="resolution-summary-box reopen-summary-box">
+        <span class="meta-label" style="color: #2563eb;">Reopen Reason</span>
+        <p class="resolution-text">{{ state.fullSelectedTicket()?.reopenReason }}</p>
+        @if (state.fullSelectedTicket()?.reopenedAt) {
+        <small class="text-muted">Reopened at: {{ state.fullSelectedTicket()?.reopenedAt }}</small>
+        }
+      </div>
+      }
+    </div>
+    }
+
+    <!-- TAB 2: CONVERSATION -->
+    @if (state.previewActiveTab() === 'conversation') {
+    <div class="tab-pane-content conversation-pane">
+      @if (state.isLoadingMessages()) {
+      <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading conversation...</span></div>
+      }
+
+      <div class="messages-stream">
+        @if (state.ticketMessages().length > 0) {
+        @for (msg of state.ticketMessages(); track msg.id) {
+        <div class="message-bubble" [class.bubble-self]="msg.senderName === state.displayUserName()">
+          <div class="message-header">
+            <strong>{{ msg.senderName }}</strong>
+            <small>{{ msg.createdAt ? state.formatRelativeTime(msg.createdAt) : '' }}</small>
+          </div>
+          <div class="message-body">{{ msg.content }}</div>
+          @if (msg.attachments && msg.attachments.length) {
+          <div class="message-attachments-list">
+            @for (att of msg.attachments; track att.id) {
+            <button type="button" class="btn-attachment-link" (click)="state.downloadAttachment(att.id, att.originalFilename)">
+              📎 {{ att.originalFilename }} ({{ state.formatFileSize(att.fileSize) }})
+            </button>
+            }
+          </div>
+          }
+        </div>
+        }
+        } @else {
+        <p class="empty-conversation-hint">No messages yet. Start the conversation below.</p>
+        }
+      </div>
+
+      <!-- Reply Box -->
+      <div class="reply-composer-box">
+        <textarea class="reply-input" rows="2" placeholder="Write a response or comment..."
+          [ngModel]="state.replyContent()" (ngModelChange)="state.replyContent.set($event)"></textarea>
+        <div class="reply-controls">
+          <input type="file" #replyFileInput (change)="state.onReplyFilesSelected($event)" style="display: none;" multiple />
+          <button type="button" class="btn-attach" (click)="replyFileInput.click()">
+            📎 Attach File
+          </button>
+          @if (state.replyFiles().length) {
+          <span class="attached-files-chip">{{ state.replyFiles().length }} file(s) attached</span>
+          }
+          <button type="button" class="btn-primary-blue btn-reply-send" [disabled]="state.isPostingReply() || !state.replyContent().trim()"
+            (click)="state.submitReply()">
+            {{ state.isPostingReply() ? 'Sending...' : 'Send Reply' }}
+          </button>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- TAB 3: ATTACHMENTS -->
+    @if (state.previewActiveTab() === 'attachments') {
+    <div class="tab-pane-content">
+      @if (state.isLoadingAttachments()) {
+      <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading attachments...</span></div>
+      }
+
+      @if (state.ticketAttachments().length > 0) {
+      <div class="attachments-grid-view">
+        @for (att of state.ticketAttachments(); track att.id) {
+        <div class="attachment-file-card">
+          <div class="file-icon">📄</div>
+          <div class="file-info">
+            <strong class="file-name">{{ att.originalFilename }}</strong>
+            <small class="file-size">{{ state.formatFileSize(att.fileSize) }} | {{ att.attachmentType }}</small>
+          </div>
+          <button type="button" class="btn-download-att" (click)="state.downloadAttachment(att.id, att.originalFilename)">
+            Download
+          </button>
+        </div>
+        }
+      </div>
+      } @else {
+      <p class="empty-hint" style="padding: 24px; text-align: center; color: #64748b;">
+        No file attachments associated with this ticket.
+      </p>
+      }
+    </div>
+    }
+
+    <!-- TAB 4: SLA DETAILS -->
+    @if (state.previewActiveTab() === 'sla') {
+    <div class="tab-pane-content">
+      @if (state.isLoadingSla()) {
+      <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading SLA tracking...</span></div>
+      }
+
+      @if (state.ticketSla(); as sla) {
+      <div class="sla-detail-card">
+        <div class="sla-status-banner" [class]="'sla-' + (sla.status ? sla.status.toLowerCase() : 'active')">
+          <strong>SLA Status: {{ sla.status }}</strong>
+          <span>Policy: {{ sla.policyName || 'Standard Policy' }}</span>
+        </div>
+
+        <div class="preview-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Allocated Duration</span>
+            <strong class="meta-val">{{ sla.allocatedMinutes }} minutes ({{ ((sla.allocatedMinutes || 0) / 60) | number:'1.1-1' }}h)</strong>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Cycle Number</span>
+            <span class="meta-val">{{ sla.cycleNumber }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">SLA Start</span>
+            <span class="meta-val">{{ sla.slaStartAt ? (sla.slaStartAt | date:'medium') : 'N/A' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Target Deadline</span>
+            <span class="meta-val font-semibold">{{ sla.currentDeadlineAt ? (sla.currentDeadlineAt | date:'medium') : 'N/A' }}</span>
+          </div>
+          @if (sla.warningAt) {
+          <div class="meta-item">
+            <span class="meta-label">Warning Threshold</span>
+            <span class="meta-val">{{ sla.warningAt | date:'medium' }}</span>
+          </div>
+          }
+          @if (sla.breachedAt) {
+          <div class="meta-item">
+            <span class="meta-label">Breached At</span>
+            <span class="meta-val text-red font-semibold">{{ sla.breachedAt | date:'medium' }}</span>
+          </div>
+          }
+          @if (sla.pausedAt) {
+          <div class="meta-item">
+            <span class="meta-label">Paused At</span>
+            <span class="meta-val text-amber">{{ sla.pausedAt | date:'medium' }}</span>
+          </div>
+          }
+        </div>
+      </div>
+      } @else {
+      <p class="empty-hint" style="padding: 24px; text-align: center; color: #64748b;">
+        SLA policy is being initialized or not applicable for this ticket type.
+      </p>
+      }
+    </div>
+    }
+
+    <!-- TAB 5: RESOLUTION & STATUS HISTORY -->
+    @if (state.previewActiveTab() === 'history') {
+    <div class="tab-pane-content history-tracking-pane">
+      @if (state.isLoadingHistory()) {
+      <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading status history...</span></div>
+      }
+
+      @if (state.isTicketBreached()) {
+      <div class="breach-audit-banner">
+        <div class="breach-banner-icon">⚠️</div>
+        <div class="breach-banner-info">
+          <strong>SLA Status: BREACHED</strong>
+          <span>The SLA deadline for this ticket was breached. Immediate attention or reassignment is required.</span>
+        </div>
+      </div>
+      }
+
+      <div class="amazon-tracking-timeline">
+        @if (state.statusTimelineSteps().length > 0) {
+        <div class="timeline-stepper">
+          @for (step of state.statusTimelineSteps(); track $index; let isLast = $last) {
+          <div class="timeline-step" [class]="'step-' + step.state" [class.is-last-step]="isLast">
+            <!-- Left Track: Circle & Connecting Line -->
+            <div class="timeline-track-col">
+              <div class="timeline-circle" [class]="'circle-' + step.state" [class]="'circle-status-' + step.status.toLowerCase()">
+                @if (step.state === 'completed') {
+                <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor" width="12" height="12">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                } @else if (step.state === 'current') {
+                <span class="active-dot"></span>
+                }
+              </div>
+              @if (!isLast) {
+              <div class="timeline-line" [class.line-completed]="step.isLineCompleted"></div>
+              }
+            </div>
+
+            <!-- Right Content: Status Label & Badge -->
+            <div class="timeline-content-col">
+              <div class="step-label-row">
+                <span class="step-title" [class.title-current]="step.state === 'current'" [class.title-pending]="step.state === 'pending'">
+                  {{ step.label }}
+                </span>
+                @if (step.state === 'current') {
+                <span class="current-status-tag" [class]="state.getStatusClass(step.status)">Current</span>
+                }
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+        } @else {
+        <p class="empty-hint" style="padding: 24px; text-align: center; color: #64748b;">
+          Status tracking will appear once a ticket is selected.
+        </p>
+        }
+      </div>
+
+      <!-- Detailed Audit Log Entries -->
+      @if (state.ticketHistory().length > 0) {
+      <div class="audit-history-section">
+        <h4 class="audit-section-heading">Detailed Audit Activity Trail</h4>
+        <div class="audit-events-stream">
+          @for (hist of state.ticketHistory(); track hist.id) {
+          <div class="audit-entry" [class.entry-breached]="hist.eventType === 'SLA_BREACHED'" [class.entry-reopened]="hist.eventType === 'REOPENED'">
+            <div class="entry-time">{{ hist.createdAt ? (hist.createdAt | date:'short') : '' }}</div>
+            <div class="entry-badge" [class.badge-breach]="hist.eventType === 'SLA_BREACHED'" [class.badge-reopened]="hist.eventType === 'REOPENED'">
+              {{ hist.eventType }}
+            </div>
+            <div class="entry-desc">
+              @if (hist.eventType === 'SLA_BREACHED') {
+              <strong style="color: #ef4444;">Ticket SLA Breached — escalation / reassignment triggered</strong>
+              } @else if (hist.eventType === 'REOPENED') {
+              <strong style="color: #2563eb;">Ticket Reopened by Requester — SLA restarted with 50% duration</strong>
+              } @else if (hist.oldValue || hist.newValue) {
+              <span>Status change: <span class="old-val">{{ hist.oldValue || '—' }}</span> &rarr; <span class="new-val">{{ hist.newValue || '—' }}</span></span>
+              } @else {
+              <span>Event recorded</span>
+              }
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+    }
+  </div>
+  }
+
+  <!-- BOTTOM ACTIONS: WITHDRAW TICKET (For My Tickets section) -->
+  @if (canWithdrawTicket()) {
+  <div class="preview-footer-actions">
+    <div class="withdraw-hint">
+      <span class="withdraw-icon">ℹ️</span>
+      <div class="withdraw-hint-text">
+        <strong>Need to cancel this ticket?</strong>
+        <span>If this issue is resolved or no longer needed, you can withdraw this ticket.</span>
+      </div>
+    </div>
+    <button type="button" class="btn-action-withdraw" [disabled]="state.isSubmittingAction()"
+      (click)="openWithdrawConfirmation()">
+      ✕ Withdraw Ticket
+    </button>
+  </div>
+  }
+
+  <!-- BOTTOM ACTIONS: REOPEN TICKET (For resolved tickets) -->
+  @if (canReopenTicket()) {
+  <div class="preview-footer-actions reopen-footer-bar">
+    <div class="reopen-hint">
+      <span class="reopen-icon">🔄</span>
+      <div class="reopen-hint-text">
+        <strong>Issue persists or not fully resolved?</strong>
+        <span>You can reopen this ticket (Reopened {{ getReopenCount() }}/2 times). A new SLA with 50% duration will start and an agent will be auto-assigned.</span>
+      </div>
+    </div>
+    <button type="button" class="btn-action-reopen" [disabled]="state.isSubmittingAction()"
+      (click)="openReopenConfirmation()">
+      🔄 Reopen Ticket
+    </button>
+  </div>
+  }
+</section>
+
+<!-- WITHDRAW CONFIRMATION MODAL -->
+@if (showWithdrawConfirm()) {
+<div class="modal-backdrop" (click)="closeWithdrawConfirmation()">
+  <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title-with-icon">
+        <span class="icon-withdraw-circle">✕</span>
+        <div>
+          <h3>Withdraw Ticket</h3>
+          <p class="modal-subtitle">Ticket #{{ state.selectedTicketForPreview()?.ticketNumber }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-close-modal" (click)="closeWithdrawConfirmation()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="withdraw-warning-alert">
+        <p>Are you sure you want to withdraw this ticket? The status will change to <strong>WITHDRAWN</strong> and any active SLA timers will be stopped.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Reason for withdrawal (Optional)</label>
+        <textarea class="form-control" rows="3" [ngModel]="withdrawReason()"
+          (ngModelChange)="withdrawReason.set($event)"
+          placeholder="e.g., Resolved on my own, no longer an issue..."></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-outline-cancel" (click)="closeWithdrawConfirmation()">Cancel</button>
+      <button type="button" class="btn-action-withdraw-confirm" [disabled]="state.isSubmittingAction()"
+        (click)="confirmWithdraw()">
+        @if (state.isSubmittingAction()) { Withdrawing... } @else { Confirm Withdraw }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- REOPEN CONFIRMATION MODAL -->
+@if (showReopenConfirm()) {
+<div class="modal-backdrop" (click)="closeReopenConfirmation()">
+  <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title-with-icon">
+        <span class="icon-reopen-circle">🔄</span>
+        <div>
+          <h3>Reopen Ticket</h3>
+          <p class="modal-subtitle">Ticket #{{ state.selectedTicketForPreview()?.ticketNumber }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-close-modal" (click)="closeReopenConfirmation()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="reopen-notice-alert">
+        <p>A new SLA cycle will start with <strong>50% of the previous SLA duration</strong>. The ticket will be automatically routed and assigned to an available active agent.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Reason for Reopening <span class="required-star">*</span></label>
+        <textarea class="form-control" rows="3" [ngModel]="reopenReason()"
+          (ngModelChange)="reopenReason.set($event)"
+          placeholder="Please explain what issue persists or why the ticket needs to be reopened..."></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-outline-cancel" (click)="closeReopenConfirmation()">Cancel</button>
+      <button type="button" class="btn-action-reopen-confirm" [disabled]="state.isSubmittingAction() || !reopenReason().trim()"
+        (click)="confirmReopen()">
+        @if (state.isSubmittingAction()) { Reopening... } @else { Confirm Reopen Ticket }
+      </button>
+    </div>
+  </div>
+</div>
+}
+}

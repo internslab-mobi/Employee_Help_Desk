@@ -17,6 +17,8 @@ public record SubCategoryResponseDTO(
         Priority priority,
         Boolean isActive,
         Long createdById,
-        String createdByName
+        String createdByName,
+        java.util.List<Long> skillIds,
+        java.util.List<String> skillNames
 ) {
 }

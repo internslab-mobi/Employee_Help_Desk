@@ -30,6 +30,9 @@ export const API_ENDPOINTS = {
   subCategories: {
     base: `${API_BASE_URL}/helpdesk/sub-categories`
   },
+  holidays: {
+    base: `${API_BASE_URL}/helpdesk/holidays`
+  },
   analytics: {
     base: `${API_BASE_URL}/helpdesk/analytics`,
     dashboard: `${API_BASE_URL}/analytics/dashboard`
@@ -43,6 +46,14 @@ export const API_ENDPOINTS = {
   },
   notifications: {
     base: `${API_BASE_URL}/helpdesk/notifications`
+  },
+  skills: {
+    base: `${API_BASE_URL}/helpdesk/skills`,
+    agent: (agentId: number) => `${API_BASE_URL}/helpdesk/skills/agent/${agentId}`,
+    subCategory: (subCategoryId: number) => `${API_BASE_URL}/helpdesk/skills/subcategory/${subCategoryId}`
+  },
+  slaPolicies: {
+    base: `${API_BASE_URL}/helpdesk/sla-policies`
   }
 } as const;
 
