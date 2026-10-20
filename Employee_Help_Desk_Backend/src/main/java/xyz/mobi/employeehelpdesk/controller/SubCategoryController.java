@@ -36,4 +36,14 @@ public class SubCategoryController {
         SubCategoryResponseDTO subCategory = subCategoryService.getSubCategoryById(id);
         return ResponseEntity.ok(subCategory);
     }
+
+    @Operation(summary = "Create a new subcategory")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping
+    public ResponseEntity<SubCategoryResponseDTO> createSubCategory(
+            @jakarta.validation.Valid @RequestBody xyz.mobi.employeehelpdesk.dto.subcategory.CreateSubCategoryRequestDTO request
+    ) {
+        SubCategoryResponseDTO subCategory = subCategoryService.createSubCategory(request);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(subCategory);
+    }
 }

@@ -72,6 +72,7 @@ export interface RecentTicket {
   createdAt: string;
   resolvedAt?: string;
   currentDeadlineAt?: string;
+  reopenCount?: number;
 }
 
 export interface DashboardAnalyticsResponse {

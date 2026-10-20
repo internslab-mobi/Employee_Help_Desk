@@ -2,9 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AgentDashboard } from './agent-dashboard';
-import { AnalyticsService } from '../../../core/services/analytics.service';
-import { AuthService } from '../../../core/services/auth.service';
-import { DashboardAnalyticsResponse } from '../../../core/models/dashboard.models';
+import { AnalyticsService } from '../../../../core/services/analytics.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { DashboardAnalyticsResponse } from '../../../../core/models/dashboard.models';
 
 describe('AgentDashboard', () => {
   let component: AgentDashboard;

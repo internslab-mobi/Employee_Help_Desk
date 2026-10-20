@@ -13,4 +13,5 @@ public interface SubCategorySkillRepository
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"skill"})
     List<SubCategorySkill> findBySubCategoryId(Long subCategoryId);
 
+    void deleteBySubCategoryId(Long subCategoryId);
 }

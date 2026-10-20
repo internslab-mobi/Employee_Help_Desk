@@ -37,6 +37,21 @@ public class DepartmentServiceImpl implements DepartmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + id));
     }
 
+    @Override
+    @Transactional
+    public DepartmentResponseDTO createDepartment(xyz.mobi.employeehelpdesk.dto.department.CreateDepartmentRequestDTO request) {
+        log.info("Creating new department: code={}, name={}", request.code(), request.name());
+        Department department = new Department();
+        department.setCode(request.code().trim().toUpperCase());
+        department.setName(request.name().trim());
+        department.setDescription(request.description() != null ? request.description().trim() : null);
+        department.setTimezone(request.timezone() != null && !request.timezone().isBlank() ? request.timezone().trim() : "UTC");
+        department.setIsActive(true);
+
+        Department saved = departmentRepository.save(department);
+        return toResponse(saved);
+    }
+
     private DepartmentResponseDTO toResponse(Department department) {
         return DepartmentResponseDTO.builder()
                 .id(department.getId())

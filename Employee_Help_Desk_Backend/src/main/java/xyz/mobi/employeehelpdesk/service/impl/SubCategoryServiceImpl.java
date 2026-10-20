@@ -24,6 +24,8 @@ public class SubCategoryServiceImpl implements SubCategoryService {
 
     private final SubCategoryRepository subCategoryRepository;
     private final CategoryRepository categoryRepository;
+    private final xyz.mobi.employeehelpdesk.repository.SubCategorySkillRepository subCategorySkillRepository;
+    private final xyz.mobi.employeehelpdesk.repository.SkillRepository skillRepository;
 
     @Override
     public List<SubCategoryResponseDTO> getSubCategories(Long categoryId) {
@@ -51,6 +53,37 @@ public class SubCategoryServiceImpl implements SubCategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Subcategory not found with id: " + id));
     }
 
+    @Override
+    @Transactional
+    public SubCategoryResponseDTO createSubCategory(xyz.mobi.employeehelpdesk.dto.subcategory.CreateSubCategoryRequestDTO request) {
+        log.info("Creating new subcategory: categoryId={}, name={}", request.categoryId(), request.name());
+        Category category = categoryRepository.findByIdAndIsActiveTrue(request.categoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + request.categoryId()));
+
+        SubCategory sc = new SubCategory();
+        sc.setCategory(category);
+        sc.setName(request.name().trim());
+        sc.setDescription(request.description() != null ? request.description().trim() : null);
+        sc.setPriority(request.priority() != null ? request.priority() : xyz.mobi.employeehelpdesk.entity.enums.Priority.MEDIUM);
+        sc.setIsActive(true);
+
+        SubCategory saved = subCategoryRepository.save(sc);
+
+        // Associate skills if provided
+        if (request.skillIds() != null && !request.skillIds().isEmpty()) {
+            for (Long skillId : request.skillIds()) {
+                skillRepository.findById(skillId).ifPresent(skill -> {
+                    xyz.mobi.employeehelpdesk.entity.SubCategorySkill scs = new xyz.mobi.employeehelpdesk.entity.SubCategorySkill();
+                    scs.setSubCategory(saved);
+                    scs.setSkill(skill);
+                    subCategorySkillRepository.save(scs);
+                });
+            }
+        }
+
+        return toResponse(saved);
+    }
+
     private SubCategoryResponseDTO toResponse(SubCategory sc) {
         Category cat = sc.getCategory();
         Department dept = (cat != null) ? cat.getDepartment() : null;
@@ -60,6 +93,10 @@ public class SubCategoryServiceImpl implements SubCategoryService {
         if (creator != null) {
             creatorName = (creator.getFirstName() + (creator.getLastName() != null ? " " + creator.getLastName() : "")).trim();
         }
+
+        List<xyz.mobi.employeehelpdesk.entity.SubCategorySkill> skills = subCategorySkillRepository.findBySubCategoryId(sc.getId());
+        List<Long> skillIds = (skills != null) ? skills.stream().map(s -> s.getSkill().getId()).toList() : java.util.Collections.emptyList();
+        List<String> skillNames = (skills != null) ? skills.stream().map(s -> s.getSkill().getName()).toList() : java.util.Collections.emptyList();
 
         return SubCategoryResponseDTO.builder()
                 .id(sc.getId())
@@ -73,6 +110,8 @@ public class SubCategoryServiceImpl implements SubCategoryService {
                 .isActive(sc.getIsActive())
                 .createdById(creator != null ? creator.getId() : null)
                 .createdByName(creatorName)
+                .skillIds(skillIds)
+                .skillNames(skillNames)
                 .build();
     }
 }

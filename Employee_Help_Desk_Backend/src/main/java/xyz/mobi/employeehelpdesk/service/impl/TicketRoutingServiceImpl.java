@@ -49,12 +49,9 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
         Long departmentId = ticket.getDepartment() != null ? ticket.getDepartment().getId() : null;
         Long categoryId = ticket.getCategory() != null ? ticket.getCategory().getId() : null;
 
-        // Find eligible agents in the ticket's department
+        // Find eligible agents in the ticket's department (ACTIVE status and AGENT role)
         List<DepartmentAgent> eligibleAgents =
-                departmentAgentRepository.findEligibleAgents(
-                        departmentId,
-                        categoryId
-                );
+                departmentAgentRepository.findEligibleAgents(departmentId);
 
         // Nobody available -> leave ticket OPEN and unassigned
         // then it should route and notify to department manager
@@ -190,7 +187,7 @@ public class TicketRoutingServiceImpl implements TicketRoutingService {
 
         ticketRepository.save(ticket);
 
-        ticketHistoryService.record(ticket, HistoryEventType.ASSIGNED, TicketStatus.OPEN, TicketStatus.OPEN);
+        ticketHistoryService.record(ticket, HistoryEventType.ASSIGNED, ticket.getStatus(), ticket.getStatus());
 
         log.info("Ticket routed and assigned: ticketId={}, ticketNumber={}, agentId={}, managerId={}",
                 ticket.getId(), ticket.getTicketNumber(), agent.getId(),
