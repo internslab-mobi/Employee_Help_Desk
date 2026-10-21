@@ -130,9 +130,9 @@ export class DashboardStateService {
   }
 
   // ===================== TOAST NOTIFICATIONS =====================
-  notification = signal<{ type: 'success' | 'error'; message: string } | null>(null);
+  notification = signal<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
 
-  showNotification(type: 'success' | 'error', message: string): void {
+  showNotification(type: 'success' | 'error' | 'warning', message: string): void {
     this.notification.set({ type, message });
     setTimeout(() => {
       this.notification.set(null);
@@ -454,7 +454,7 @@ export class DashboardStateService {
       this.loadTicketMessages(ticketId);
     } else if (tab === 'attachments' && this.ticketAttachments().length === 0) {
       this.loadTicketAttachments(ticketId);
-    } else if (tab === 'sla' && !this.ticketSla()) {
+    } else if (tab === 'sla') {
       this.loadTicketSla(ticketId);
     } else if (tab === 'history' && this.ticketHistory().length === 0) {
       this.loadTicketHistory(ticketId);
@@ -518,9 +518,20 @@ export class DashboardStateService {
   }
 
   submitReply(): void {
-    const ticketId = this.selectedTicketForPreview()?.id;
+    const ticket = this.selectedTicketForPreview();
+    const ticketId = ticket?.id;
     const content = this.replyContent().trim();
     if (!ticketId || !content) return;
+
+    const status = (ticket.status || '').toUpperCase();
+    if (status === 'OPEN' || status === 'REOPENED') {
+      this.showNotification('warning', 'Ticket is not started yet. Messages and attachments can only be sent once it is in progress.');
+      return;
+    }
+    if (status === 'RESOLVED' || status === 'WITHDRAWN') {
+      this.showNotification('warning', 'Messages and attachments are not allowed on resolved or withdrawn tickets.');
+      return;
+    }
 
     this.isPostingReply.set(true);
     this.ticketService.addMessage(ticketId, content, this.replyFiles()).subscribe({
@@ -835,9 +846,30 @@ export class DashboardStateService {
 
   isSubmittingAction = signal<boolean>(false);
 
+  isWithinBusinessHours(): boolean {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const totalMinutes = hours * 60 + minutes;
+    // Business hours: 8:30 AM (510 min) to 5:30 PM (1050 min)
+    return totalMinutes >= 510 && totalMinutes < 1050;
+  }
+
+  checkBusinessHours(actionName: string): boolean {
+    if (!this.isWithinBusinessHours()) {
+      this.showNotification('warning', `Cannot ${actionName} now: Outside business hours (8:30 AM - 5:30 PM)`);
+      return false;
+    }
+    return true;
+  }
+
   startWorkingTicket(ticket?: RecentTicket | TicketResponse | null, onSuccess?: () => void): void {
     const target = ticket || this.selectedTicketForPreview();
     if (!target) return;
+
+    if (!this.checkBusinessHours('start working')) {
+      return;
+    }
 
     if (this.isTicketRaisedByCurrentUser(target)) {
       this.showNotification('error', 'You cannot start working on a ticket that you raised.');
@@ -862,6 +894,11 @@ export class DashboardStateService {
   openHoldModal(ticket?: RecentTicket | TicketResponse | null): void {
     const target = ticket || this.selectedTicketForPreview();
     if (!target) return;
+
+    if (!this.checkBusinessHours('request employee')) {
+      return;
+    }
+
     this.selectedTicketForHold.set(target);
     this.holdReasonInput.set('');
     this.showHoldModal.set(true);
@@ -877,6 +914,10 @@ export class DashboardStateService {
     const target = this.selectedTicketForHold();
     const reason = this.holdReasonInput().trim();
     if (!target || !reason) return;
+
+    if (!this.checkBusinessHours('request employee')) {
+      return;
+    }
 
     this.isSubmittingAction.set(true);
     this.ticketService.updateTicket(target.id, { status: 'ON_HOLD', reason }).subscribe({
@@ -916,6 +957,11 @@ export class DashboardStateService {
   openResolveModal(ticket?: RecentTicket | TicketResponse | null): void {
     const target = ticket || this.selectedTicketForPreview();
     if (!target) return;
+
+    if (!this.checkBusinessHours('resolve')) {
+      return;
+    }
+
     this.selectedTicketForResolve.set(target);
     this.resolutionSummaryInput.set('');
     this.showResolveModal.set(true);
@@ -931,6 +977,10 @@ export class DashboardStateService {
     const target = this.selectedTicketForResolve();
     const summary = this.resolutionSummaryInput().trim();
     if (!target || !summary) return;
+
+    if (!this.checkBusinessHours('resolve')) {
+      return;
+    }
 
     this.isSubmittingAction.set(true);
     this.ticketService.updateTicket(target.id, { status: 'RESOLVED', resolution: summary }).subscribe({

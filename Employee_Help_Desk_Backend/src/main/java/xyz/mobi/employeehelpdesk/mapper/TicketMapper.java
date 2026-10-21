@@ -44,7 +44,7 @@ public interface TicketMapper {
     @Mapping(source = "ticket.updatedAt", target = "updatedAt")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
-    @Mapping(target = "slaDeadline", ignore = true)
+    @Mapping(source = "slaInstance.currentDeadlineAt", target = "slaDeadline")
     TicketResponseDTO toUpdateResponse(Ticket ticket, SlaInstance slaInstance);
 
     @Mapping(source = "ticket.id", target = "id")
@@ -61,7 +61,7 @@ public interface TicketMapper {
     @Mapping(source = "ticket.updatedAt", target = "updatedAt")
     @Mapping(source = "ticket.resolvedAt", target = "resolvedAt")
     @Mapping(source = "ticket.reopenedAt", target = "reopenedAt")
-    @Mapping(target = "slaDeadline", ignore = true)
+    @Mapping(source = "slaInstance.currentDeadlineAt", target = "slaDeadline")
     TicketResponseDTO toResponse(Ticket ticket, SlaInstance slaInstance);
 
     @Mapping(target = "id", source = "id")

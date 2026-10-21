@@ -67,7 +67,7 @@
 
       <!-- VIEW 1A: OVERALL OVERVIEW -->
       @if (selectedAnalyticsView() === 'OVERALL_OVERVIEW') {
-      <section class="summary-cards-grid">
+      <section class="summary-cards-grid employee-summary-grid">
         <!-- 1. Open Help Desk Tickets -->
         <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ status: 'OPEN' })">
           <span class="card-label">Open Help Desk Tickets</span>
@@ -77,16 +77,7 @@
           </div>
         </div>
 
-        <!-- 2. Assigned Tickets -->
-        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ status: 'IN_PROGRESS' })">
-          <span class="card-label">Assigned Tickets</span>
-          <div class="card-bottom">
-            <span class="card-value">{{ analytics()?.summary?.assignedTickets ?? 0 }}</span>
-            <button type="button" class="card-link link-blue">View</button>
-          </div>
-        </div>
-
-        <!-- 3. In Progress Tickets -->
+        <!-- 2. In Progress Tickets -->
         <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ status: 'IN_PROGRESS' })">
           <span class="card-label">In Progress Tickets</span>
           <div class="card-bottom">
@@ -95,7 +86,7 @@
           </div>
         </div>
 
-        <!-- 4. SLA Overdue Tickets -->
+        <!-- 3. SLA Overdue Tickets -->
         <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ status: 'OPEN' })">
           <span class="card-label">SLA Overdue Tickets</span>
           <div class="card-bottom">

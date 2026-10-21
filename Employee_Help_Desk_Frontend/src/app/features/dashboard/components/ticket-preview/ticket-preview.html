@@ -13,18 +13,27 @@
         <!-- AGENT QUICK ACTIONS IN PREVIEW (Only for assigned tickets, not for tickets raised by self) -->
         @if (canShowAgentActions()) {
           @if (state.selectedTicketForPreview()?.status === 'OPEN' || state.selectedTicketForPreview()?.status === 'REOPENED') {
-            <button type="button" class="btn-action-start sm" [disabled]="state.isSubmittingAction()"
+            <button type="button" class="btn-action-start sm"
+              [class.outside-hours]="!state.isWithinBusinessHours()"
+              [disabled]="state.isSubmittingAction()"
+              [title]="!state.isWithinBusinessHours() ? 'Outside business hours (8:30 AM - 5:30 PM)' : 'Start SLA and begin working'"
               (click)="onStartWorking()">▶ Start Working</button>
           }
           @if (state.selectedTicketForPreview()?.status === 'IN_PROGRESS') {
-            <button type="button" class="btn-action-hold sm" [disabled]="state.isSubmittingAction()"
+            <button type="button" class="btn-action-hold sm"
+              [class.outside-hours]="!state.isWithinBusinessHours()"
+              [disabled]="state.isSubmittingAction()"
+              [title]="!state.isWithinBusinessHours() ? 'Outside business hours (8:30 AM - 5:30 PM)' : 'Request information from employee (puts ON HOLD)'"
               (click)="onOpenHold()">Request Employee</button>
           } @else if (state.selectedTicketForPreview()?.status === 'ON_HOLD') {
             <button type="button" class="btn-action-resume sm" [disabled]="state.isSubmittingAction()"
               (click)="onResume()">▶ Resume</button>
           }
           @if (state.selectedTicketForPreview()?.status === 'IN_PROGRESS' || state.selectedTicketForPreview()?.status === 'ON_HOLD') {
-            <button type="button" class="btn-action-resolve sm" [disabled]="state.isSubmittingAction()"
+            <button type="button" class="btn-action-resolve sm"
+              [class.outside-hours]="!state.isWithinBusinessHours()"
+              [disabled]="state.isSubmittingAction()"
+              [title]="!state.isWithinBusinessHours() ? 'Outside business hours (8:30 AM - 5:30 PM)' : 'Resolve ticket'"
               (click)="onOpenResolve()">✓ Resolve</button>
           }
         }
@@ -159,6 +168,32 @@
         }
       </div>
 
+      <!-- Reply Box / Status Restrictions -->
+      @if (selected.status === 'OPEN' || selected.status === 'REOPENED') {
+      <div class="composer-locked-notice">
+        <span class="notice-icon">⏳</span>
+        <div class="notice-body">
+          <strong>Ticket Not Started Yet</strong>
+          <p>Messaging and attachments will be enabled once the agent begins working on this ticket (IN PROGRESS).</p>
+        </div>
+      </div>
+      } @else if (selected.status === 'RESOLVED') {
+      <div class="composer-locked-notice resolved">
+        <span class="notice-icon">✓</span>
+        <div class="notice-body">
+          <strong>Ticket Resolved</strong>
+          <p>This ticket has been marked as resolved. Further messages and attachments are disabled unless reopened.</p>
+        </div>
+      </div>
+      } @else if (selected.status === 'WITHDRAWN') {
+      <div class="composer-locked-notice withdrawn">
+        <span class="notice-icon">✕</span>
+        <div class="notice-body">
+          <strong>Ticket Withdrawn</strong>
+          <p>This ticket was withdrawn and is closed for messages and attachments.</p>
+        </div>
+      </div>
+      } @else {
       <!-- Reply Box -->
       <div class="reply-composer-box">
         <textarea class="reply-input" rows="2" placeholder="Write a response or comment..."
@@ -177,6 +212,7 @@
           </button>
         </div>
       </div>
+      }
     </div>
     }
 
@@ -370,7 +406,10 @@
         <span>If this issue is resolved or no longer needed, you can withdraw this ticket.</span>
       </div>
     </div>
-    <button type="button" class="btn-action-withdraw" [disabled]="state.isSubmittingAction()"
+    <button type="button" class="btn-action-withdraw"
+      [class.outside-hours]="!state.isWithinBusinessHours()"
+      [disabled]="state.isSubmittingAction()"
+      [title]="!state.isWithinBusinessHours() ? 'Outside business hours (8:30 AM - 5:30 PM)' : 'Withdraw ticket'"
       (click)="openWithdrawConfirmation()">
       ✕ Withdraw Ticket
     </button>

@@ -113,6 +113,9 @@ export class TicketPreviewComponent {
   }
 
   openWithdrawConfirmation(): void {
+    if (!this.state.checkBusinessHours('withdraw')) {
+      return;
+    }
     this.withdrawReason.set('');
     this.showWithdrawConfirm.set(true);
   }
@@ -125,6 +128,10 @@ export class TicketPreviewComponent {
   confirmWithdraw(): void {
     const target = this.state.selectedTicketForPreview();
     if (!target) return;
+
+    if (!this.state.checkBusinessHours('withdraw')) {
+      return;
+    }
 
     const reason = this.withdrawReason().trim() || 'Withdrawn by requester';
     this.state.isSubmittingAction.set(true);
