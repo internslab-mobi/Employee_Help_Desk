@@ -1,13 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ProfileComponent } from './profile';
 import { AuthService } from '../../core/services/auth.service';
-import { EmployeeProfile, UpdateProfileRequest } from '../../core/models/auth.models';
+import { EmployeeProfile, UpdateProfileRequest, UserRole } from '../../core/models/auth.models';
 
 describe('ProfileComponent', () => {
-  let component: ProfileComponent;
+  let component: ComponentFixture<ProfileComponent>['componentInstance'];
   let fixture: ComponentFixture<ProfileComponent>;
   let authServiceSpy: any;
   let routerSpy: any;
@@ -31,9 +32,14 @@ describe('ProfileComponent', () => {
   };
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     authServiceSpy = {
       getProfile: vi.fn().mockReturnValue(of(mockProfile)),
       updateProfile: vi.fn().mockReturnValue(of(mockProfile)),
+      getRole: vi.fn().mockReturnValue('EMPLOYEE'),
+      userRole: vi.fn().mockReturnValue('EMPLOYEE'),
+      role: signal<UserRole | null>('EMPLOYEE'),
+      profilePhotoUrl: signal<string | null>(null),
       logout: vi.fn()
     };
     routerSpy = {
@@ -51,6 +57,10 @@ describe('ProfileComponent', () => {
     fixture = TestBed.createComponent(ProfileComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
   });
 
   it('should create and automatically fetch user profile on init', () => {

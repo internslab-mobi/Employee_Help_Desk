@@ -29,26 +29,26 @@ describe('TicketService', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should fetch departments from /departments', () => {
+  it('should fetch departments from API_ENDPOINTS.departments.base', () => {
     const mockDepts = [{ id: 1, code: 'IT', name: 'Information Technology' }];
     service.getDepartments().subscribe((res) => {
       expect(res.length).toBe(1);
       expect(res[0].name).toBe('Information Technology');
     });
 
-    const req = httpMock.expectOne(`${environment.backendUrl}/departments`);
+    const req = httpMock.expectOne('/api/helpdesk/departments');
     expect(req.request.method).toBe('GET');
     req.flush(mockDepts);
   });
 
-  it('should fetch categories from /departments/:id/categories', () => {
+  it('should fetch categories from /categories?departmentId=:id', () => {
     const mockCategories = [{ id: 10, departmentId: 1, name: 'Hardware' }];
     service.getCategories(1).subscribe((res) => {
       expect(res.length).toBe(1);
       expect(res[0].name).toBe('Hardware');
     });
 
-    const req = httpMock.expectOne(`${environment.backendUrl}/departments/1/categories`);
+    const req = httpMock.expectOne('/api/helpdesk/categories?departmentId=1');
     expect(req.request.method).toBe('GET');
     req.flush(mockCategories);
   });
@@ -70,7 +70,7 @@ describe('TicketService', () => {
       expect(res.content[0].ticketNumber).toBe('TCK-101');
     });
 
-    const req = httpMock.expectOne((r) => r.url === `${environment.backendUrl}/tickets/search`);
+    const req = httpMock.expectOne((r) => r.url === '/api/helpdesk/tickets/search');
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('view')).toBe('CREATED');
     expect(req.request.params.get('status')).toBe('OPEN');
@@ -79,15 +79,15 @@ describe('TicketService', () => {
 
   it('should fetch ticket history, sla, attachments, and messages', () => {
     service.getHistory(101).subscribe((res) => expect(res.length).toBe(0));
-    httpMock.expectOne(`${environment.backendUrl}/tickets/101/history`).flush([]);
+    httpMock.expectOne('/api/helpdesk/tickets/101/history').flush([]);
 
     service.getSla(101).subscribe((res) => expect(res.status).toBe('ACTIVE'));
-    httpMock.expectOne(`${environment.backendUrl}/tickets/101/sla`).flush({ id: 1, status: 'ACTIVE' });
+    httpMock.expectOne('/api/helpdesk/tickets/101/sla').flush({ id: 1, status: 'ACTIVE' });
 
     service.getAttachments(101).subscribe((res) => expect(res.length).toBe(0));
-    httpMock.expectOne(`${environment.backendUrl}/tickets/101/attachments`).flush([]);
+    httpMock.expectOne('/api/helpdesk/tickets/101/attachments').flush([]);
 
     service.getMessages(101).subscribe((res) => expect(res.content.length).toBe(0));
-    httpMock.expectOne((r) => r.url === `${environment.backendUrl}/tickets/101/messages`).flush({ content: [] });
+    httpMock.expectOne((r) => r.url === '/api/helpdesk/tickets/101/messages').flush({ content: [] });
   });
 });

@@ -96,6 +96,9 @@ export class ReportService {
     if (request.employeeId !== undefined && request.employeeId !== null) {
       params = params.set('employeeId', request.employeeId.toString());
     }
+    if (request.search && request.search.trim() !== '') {
+      params = params.set('search', request.search.trim());
+    }
 
     return params;
   }

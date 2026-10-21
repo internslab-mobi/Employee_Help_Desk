@@ -55,6 +55,7 @@ export class AuthService {
       }
     }
   }
+  
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(API_ENDPOINTS.auth.login, credentials, { withCredentials: true }).pipe(
@@ -210,8 +211,10 @@ export class AuthService {
       return throwError(() => new Error('Maximum session duration of 45 minutes exceeded'));
     }
 
+    const refreshToken = this.getRefreshToken();
+    const body = refreshToken ? { refreshToken } : {};
     return this.http
-      .post<TokenRefreshResponse>(API_ENDPOINTS.auth.refreshToken, {}, { withCredentials: true })
+      .post<TokenRefreshResponse>(API_ENDPOINTS.auth.refreshToken, body, { withCredentials: true })
       .pipe(
         tap((res) => {
           localStorage.setItem(TOKEN_KEY, res.accessToken);
@@ -372,6 +375,9 @@ export class AuthService {
 
   private saveAuthSession(res: LoginResponse): void {
     localStorage.setItem(TOKEN_KEY, res.accessToken);
+    if (res.refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, res.refreshToken);
+    }
     localStorage.setItem(EMPLOYEE_ID_KEY, String(res.employeeId));
     localStorage.setItem(ROLE_KEY, res.role);
 

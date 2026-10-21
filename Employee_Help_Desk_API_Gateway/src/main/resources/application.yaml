@@ -4,61 +4,22 @@ server:
 spring:
   application:
     name: Employee_Help_Desk_API_Gateway
-  cloud:
-    gateway:
-      server:
-        webmvc:
-          routes:
-            - id: auth-service
-              uri: http://localhost:8081
-              predicates:
-                - Path=/user/**, /helpdesk/auth/**, /auth/user/**
-              filters:
-                - RemoveResponseHeader=access-control-allow-origin
-                - RemoveResponseHeader=access-control-allow-credentials
-                - RemoveResponseHeader=access-control-expose-headers
-            - id: auth-service-api
-              uri: http://localhost:8081
-              predicates:
-                - Path=/api/user/**, /api/helpdesk/auth/**, /api/auth/**
-              filters:
-                - StripPrefix=1
-                - RemoveResponseHeader=access-control-allow-origin
-                - RemoveResponseHeader=access-control-allow-credentials
-                - RemoveResponseHeader=access-control-expose-headers
-            - id: backend-service
-              uri: http://localhost:8082
-              predicates:
-                - Path=/helpdesk/**, /tickets/**, /analytics/**, /reports/**, /notifications/**, /departments/**, /categories/**, /sub-categories/**
-              filters:
-                - RemoveResponseHeader=access-control-allow-origin
-                - RemoveResponseHeader=access-control-allow-credentials
-                - RemoveResponseHeader=access-control-expose-headers
-            - id: backend-service-api
-              uri: http://localhost:8082
-              predicates:
-                - Path=/api/helpdesk/**, /api/tickets/**, /api/analytics/**, /api/reports/**, /api/notifications/**, /api/departments/**, /api/categories/**, /api/sub-categories/**
-              filters:
-                - StripPrefix=1
-                - RemoveResponseHeader=access-control-allow-origin
-                - RemoveResponseHeader=access-control-allow-credentials
-                - RemoveResponseHeader=access-control-expose-headers
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowedOriginPatterns:
-              - "http://localhost:4200"
-              - "http://127.0.0.1:4200"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - PATCH
-              - DELETE
-              - OPTIONS
-            allowedHeaders: "*"
-            allowCredentials: true
-            exposedHeaders:
-              - Authorization
-              - Content-Disposition
-              - Set-Cookie
+
+gateway:
+  services:
+    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    backend-url: ${BACKEND_SERVICE_URL:http://localhost:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    xyz.mobi.gateway: INFO

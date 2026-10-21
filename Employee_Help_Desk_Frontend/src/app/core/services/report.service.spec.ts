@@ -9,6 +9,7 @@ describe('ReportService', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         ReportService,
@@ -23,6 +24,7 @@ describe('ReportService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    TestBed.resetTestingModule();
   });
 
   it('should be created', () => {
@@ -148,5 +150,35 @@ describe('ReportService', () => {
     const req = httpMock.expectOne(request => request.url.startsWith(API_ENDPOINTS.reports.base));
     expect(req.request.url).not.toContain(':8083');
     req.flush({ totalRecords: 0 });
+  });
+
+  it('should call Core Backend for AGENT_SUMMARY Excel export with search, status, and priority filters', () => {
+    const mockBlob = new Blob(['mock agent excel'], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+
+    service.exportSummaryReport({
+      reportType: 'AGENT_SUMMARY',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      search: 'laptop'
+    }).subscribe(response => {
+      expect(response.body).toBeTruthy();
+    });
+
+    const expectedBaseUrl = `${API_ENDPOINTS.reports.base}/summary`;
+    const req = httpMock.expectOne(request => request.url === expectedBaseUrl);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('reportType')).toBe('AGENT_SUMMARY');
+    expect(req.request.params.get('format')).toBe('EXCEL');
+    expect(req.request.params.get('status')).toBe('IN_PROGRESS');
+    expect(req.request.params.get('priority')).toBe('HIGH');
+    expect(req.request.params.get('search')).toBe('laptop');
+
+    req.flush(mockBlob, {
+      headers: {
+        'Content-Disposition': 'attachment; filename="agent-assigned-tickets-summary-2026-10-20.xlsx"'
+      }
+    });
   });
 });

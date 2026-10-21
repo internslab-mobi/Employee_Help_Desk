@@ -87,4 +87,71 @@ class ExcelReportGeneratorServiceTest {
             assertNotNull(workbook.getSheet("Ticket Summary") != null ? workbook.getSheet("Ticket Summary") : workbook.getSheetAt(0));
         }
     }
+
+    @Test
+    @DisplayName("Should generate valid Excel workbook for AGENT_SUMMARY with Agent Summary, Status & Priority, and Ticket Records sheets")
+    void shouldGenerateValidAgentSummaryWorkbook() throws IOException {
+        DashboardSummaryDTO summary = new DashboardSummaryDTO(
+                5L, 2L, 2L, 0L, 1L, 0L, 0L, 0L, 0L, 0L, 5L, 100.0, 1.5, 5L, 0L
+        );
+
+        DashboardAnalyticsResponseDTO analytics = new DashboardAnalyticsResponseDTO(
+                "AGENT",
+                2L,
+                "Support Agent",
+                "agent@company.com",
+                "Agent",
+                "IT Support",
+                1L,
+                summary,
+                List.of(new DistributionItemDTO("IN_PROGRESS", "In Progress", 2L, 40.0)),
+                List.of(new DistributionItemDTO("HIGH", "High", 2L, 40.0)),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                null,
+                Collections.emptyList(),
+                null,
+                "2026-10-01",
+                "2026-10-20"
+        );
+
+        ExportTicketDetailDTO ticket = new ExportTicketDetailDTO(
+                2L,
+                "HD-2026-000002",
+                "VPN access issue",
+                "IT Support",
+                "Network",
+                "VPN",
+                "IN_PROGRESS",
+                "HIGH",
+                "John Doe",
+                "john@company.com",
+                "Support Agent",
+                "COMPLIANT",
+                Instant.parse("2026-10-10T10:00:00Z"),
+                Instant.parse("2026-10-10T11:00:00Z"),
+                null,
+                Instant.parse("2026-10-12T10:00:00Z")
+        );
+
+        byte[] excelBytes = generatorService.generateSummaryWorkbook(
+                analytics,
+                List.of(ticket),
+                "Asia/Kolkata",
+                ReportType.AGENT_SUMMARY
+        );
+
+        assertNotNull(excelBytes);
+        assertTrue(excelBytes.length > 0, "Excel output byte array must not be empty");
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(excelBytes))) {
+            assertNotNull(workbook.getSheet("Agent Summary"), "Workbook must contain 'Agent Summary' sheet");
+            assertNotNull(workbook.getSheet("Status & Priority"), "Workbook must contain 'Status & Priority' sheet");
+            assertNotNull(workbook.getSheet("Ticket Records"), "Workbook must contain 'Ticket Records' sheet");
+            assertEquals("HD-2026-000002", workbook.getSheet("Ticket Records").getRow(1).getCell(0).getStringCellValue());
+            assertEquals("Support Agent", workbook.getSheet("Ticket Records").getRow(1).getCell(10).getStringCellValue());
+        }
+    }
 }
