@@ -125,9 +125,33 @@ export class PasswordResetFlowService {
   }
 
   /**
+   * Starts a reset session in-memory for testing or initial flow.
+   */
+  startResetSession(email: string): void {
+    this.emailSignal.set(email ? email.trim() : '');
+    this.attemptsSignal.set(this.MAX_ATTEMPTS);
+    this.isOtpVerifiedSignal.set(false);
+    this.isSessionActiveSignal.set(true);
+    this.resetTokenSignal.set('');
+    this.sessionStartSignal.set(Date.now());
+  }
+
+  /**
+   * Manually sets verified state (for testing or external completion).
+   */
+  setVerifiedState(verified: boolean, resetToken: string = 'test-token'): void {
+    this.isOtpVerifiedSignal.set(verified);
+    this.resetTokenSignal.set(verified ? resetToken : '');
+  }
+
+  /**
    * Resets all in-memory flow state.
    */
-  resetSession(): void {
+  resetSession(email?: string): void {
+    if (email) {
+      this.startResetSession(email);
+      return;
+    }
     this.emailSignal.set('');
     this.attemptsSignal.set(this.MAX_ATTEMPTS);
     this.isOtpVerifiedSignal.set(false);

@@ -33,6 +33,36 @@ public class JwtTokenProvider {
     @Value("${security.jwt.refresh-expiration-ms:2700000}")
     private long refreshExpirationMs;
 
+    public String generateToken(Long employeeId, UserRole role, String timezone) {
+        try {
+            Date now = new Date();
+            Date expiryDate = new Date(now.getTime() + expirationMs);
+
+            String resolvedTimezone = (timezone != null && !timezone.isBlank()) ? timezone.trim() : "UTC";
+
+            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                    .subject(employeeId.toString())
+                    .claim("role", role != null ? role.name() : UserRole.EMPLOYEE.name())
+                    .claim("timezone", resolvedTimezone)
+                    .issueTime(now)
+                    .expirationTime(expiryDate)
+                    .build();
+
+            SignedJWT signedJWT = new SignedJWT(
+                    new JWSHeader(JWSAlgorithm.HS256),
+                    claimsSet
+            );
+
+            JWSSigner signer = new MACSigner(getSigningKey());
+            signedJWT.sign(signer);
+
+            return signedJWT.serialize();
+        } catch (Exception ex) {
+            log.error("Error creating JWT token: {}", ex.getMessage(), ex);
+            throw new RuntimeException("Could not generate JWT token", ex);
+        }
+    }
+
     public boolean validateToken(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);

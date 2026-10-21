@@ -40,7 +40,7 @@ describe('Auth Flow Guards', () => {
 
     it('should allow access if OTP has been verified', () => {
       flowService.startResetSession('user@example.com');
-      flowService.verifyOtp('123456');
+      flowService.setVerifiedState(true, 'valid-token');
       const result = TestBed.runInInjectionContext(() => resetPasswordGuard({} as any, {} as any));
       expect(result).toBe(true);
     });

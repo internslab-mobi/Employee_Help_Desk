@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { of, throwError } from 'rxjs';
 import { VerifyOtp } from './verify-otp';
 import { PasswordResetFlowService } from '../../services/password-reset-flow.service';
 
@@ -13,14 +16,18 @@ describe('VerifyOtp Component', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [VerifyOtp],
-      providers: [provideRouter([])]
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting()
+      ]
     }).compileComponents();
 
     flowService = TestBed.inject(PasswordResetFlowService);
     router = TestBed.inject(Router);
 
     // Initialize mock session
-    flowService.startResetSession('jane.doe@company.com');
+    flowService.resetSession('jane.doe@company.com');
 
     fixture = TestBed.createComponent(VerifyOtp);
     component = fixture.componentInstance;
@@ -47,13 +54,6 @@ describe('VerifyOtp Component', () => {
     const el = fixture.nativeElement as HTMLElement;
     const boxes = el.querySelectorAll('.otp-digit-box');
     expect(boxes.length).toBe(6);
-  });
-
-  it('should display the mock OTP dev hint', () => {
-    const el = fixture.nativeElement as HTMLElement;
-    const hint = el.querySelector('.mock-otp-badge');
-    expect(hint).toBeTruthy();
-    expect(hint?.textContent).toContain('123456');
   });
 
   it('should display initial 3 attempts remaining', () => {
@@ -86,6 +86,11 @@ describe('VerifyOtp Component', () => {
   it('should handle incorrect OTP verification and decrease attempts', async () => {
     vi.useFakeTimers();
 
+    vi.spyOn(flowService, 'verifyOtp').mockImplementation(() => {
+      flowService['attemptsSignal'].set(2);
+      return throwError(() => ({ error: { message: 'Incorrect OTP' } }));
+    });
+
     component.otpDigits.set(['9', '9', '9', '9', '9', '9']);
     component.onVerify();
 
@@ -101,18 +106,12 @@ describe('VerifyOtp Component', () => {
   it('should disable verification and show locked state after 3 failed attempts', async () => {
     vi.useFakeTimers();
 
-    // 1st attempt
+    vi.spyOn(flowService, 'verifyOtp').mockImplementation(() => {
+      flowService['attemptsSignal'].set(0);
+      return throwError(() => ({ error: { message: 'max retry exceeded' } }));
+    });
+
     component.otpDigits.set(['1', '1', '1', '1', '1', '1']);
-    component.onVerify();
-    vi.advanceTimersByTime(500);
-
-    // 2nd attempt
-    component.otpDigits.set(['2', '2', '2', '2', '2', '2']);
-    component.onVerify();
-    vi.advanceTimersByTime(500);
-
-    // 3rd attempt
-    component.otpDigits.set(['3', '3', '3', '3', '3', '3']);
     component.onVerify();
     vi.advanceTimersByTime(500);
 
@@ -120,7 +119,7 @@ describe('VerifyOtp Component', () => {
 
     expect(component.remainingAttempts()).toBe(0);
     expect(component.isLocked()).toBe(true);
-    expect(component.errorMessage()).toContain('exhausted all 3 attempts');
+    expect(component.errorMessage()).toContain('max retry exceeded');
 
     const el = fixture.nativeElement as HTMLElement;
     const verifyBtn = el.querySelector('.btn-submit') as HTMLButtonElement;
@@ -129,9 +128,35 @@ describe('VerifyOtp Component', () => {
     vi.useRealTimers();
   });
 
+  it('should redirect to /forgot-password when retries are exceeded', async () => {
+    vi.useFakeTimers();
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    vi.spyOn(flowService, 'verifyOtp').mockImplementation(() => {
+      flowService['attemptsSignal'].set(0);
+      return throwError(() => ({ error: { message: 'max retry exceeded' } }));
+    });
+
+    component.otpDigits.set(['1', '1', '1', '1', '1', '1']);
+    component.onVerify();
+    vi.advanceTimersByTime(500);
+
+    expect(component.errorMessage()).toBe('max retry exceeded');
+
+    // Wait for redirect timeout
+    vi.advanceTimersByTime(1600);
+    expect(navigateSpy).toHaveBeenCalledWith(['/forgot-password']);
+
+    vi.useRealTimers();
+  });
+
   it('should navigate to /reset-password upon entering 123456', async () => {
     vi.useFakeTimers();
     const navigateSpy = vi.spyOn(router, 'navigate');
+
+    vi.spyOn(flowService, 'verifyOtp').mockReturnValue(
+      of({ resetToken: 'mock-valid-token' })
+    );
 
     component.otpDigits.set(['1', '2', '3', '4', '5', '6']);
     component.onVerify();
