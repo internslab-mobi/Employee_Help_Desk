@@ -3,7 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { API_ENDPOINTS } from '../config/api.config';
+<<<<<<< HEAD
 import { EmployeeProfile, LoginRequest, LoginResponse, UserRole } from '../models/auth.models';
+=======
+import { EmployeeProfile, LoginRequest, LoginResponse, TokenRefreshResponse, UpdateProfileRequest, UserRole } from '../models/auth.models';
+>>>>>>> 14450b4c (Fixed profile page)
 
 const TOKEN_KEY = 'ehd_access_token';
 const REFRESH_TOKEN_KEY = 'ehd_refresh_token';
@@ -42,6 +46,39 @@ export class AuthService {
       tap((profile) => {
         this.currentUser.set(profile);
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      })
+    );
+  }
+
+  getProfile(): Observable<EmployeeProfile> {
+    const employeeId = this.getEmployeeId();
+    if (employeeId) {
+      return this.loadProfile(employeeId);
+    }
+    return this.http.get<EmployeeProfile>(API_ENDPOINTS.user.profileMe).pipe(
+      tap((profile) => {
+        this.currentUser.set(profile);
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      })
+    );
+  }
+
+  updateProfile(request: UpdateProfileRequest, profileImage?: File): Observable<EmployeeProfile> {
+    const employeeId = this.getEmployeeId();
+    const url = employeeId ? API_ENDPOINTS.user.profile(employeeId) : API_ENDPOINTS.user.profileMe;
+
+    const formData = new FormData();
+    const jsonBlob = new Blob([JSON.stringify(request)], { type: 'application/json' });
+    formData.append('request', jsonBlob);
+
+    if (profileImage) {
+      formData.append('profileImage', profileImage, profileImage.name);
+    }
+
+    return this.http.patch<EmployeeProfile>(url, formData).pipe(
+      tap((updated) => {
+        this.currentUser.set(updated);
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
       })
     );
   }
