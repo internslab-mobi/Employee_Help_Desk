@@ -24,7 +24,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketView;
 import xyz.mobi.employeehelpdesk.service.TicketService;
-
+import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
@@ -121,7 +121,7 @@ public class TicketController {
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long agentId,
             @RequestParam(required = false) TicketStatus status,
-            @RequestParam(required = false) xyz.mobi.employeehelpdesk.entity.enums.Priority priority,
+            @RequestParam(required = false) Priority priority,
             @RequestParam(required = false) LocalDate fromDate,
             @RequestParam(required = false) LocalDate toDate,
             @RequestParam(required = false) String search,

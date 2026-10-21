@@ -334,35 +334,6 @@ public class TicketServiceImpl implements TicketService {
     public Page<TicketResponseDTO> searchTickets(
             TicketView view,
             Long employeeId,
-            TicketStatus status,
-            LocalDate fromDate,
-            LocalDate toDate,
-            String search,
-            Boolean unassigned,
-            SlaStatus slaStatus,
-            Pageable pageable
-    ) {
-        return searchTickets(
-                view,
-                employeeId,
-                null,
-                null,
-                status,
-                null,
-                fromDate,
-                toDate,
-                search,
-                unassigned,
-                slaStatus,
-                pageable
-        );
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<TicketResponseDTO> searchTickets(
-            TicketView view,
-            Long employeeId,
             Long departmentId,
             Long agentId,
             TicketStatus status,

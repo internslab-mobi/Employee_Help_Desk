@@ -8,6 +8,8 @@ import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketView;
+import xyz.mobi.employeehelpdesk.entity.enums.Priority;
+import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -32,27 +34,15 @@ public interface TicketService {
     Page<TicketResponseDTO> searchTickets(
             TicketView view,
             Long employeeId,
-            TicketStatus status,
-            LocalDate fromDate,
-            LocalDate toDate,
-            String search,
-            Boolean unassigned,
-            xyz.mobi.employeehelpdesk.entity.enums.SlaStatus slaStatus,
-            Pageable pageable
-    );
-
-    Page<TicketResponseDTO> searchTickets(
-            TicketView view,
-            Long employeeId,
             Long departmentId,
             Long agentId,
             TicketStatus status,
-            xyz.mobi.employeehelpdesk.entity.enums.Priority priority,
+            Priority priority,
             LocalDate fromDate,
             LocalDate toDate,
             String search,
             Boolean unassigned,
-            xyz.mobi.employeehelpdesk.entity.enums.SlaStatus slaStatus,
+            SlaStatus slaStatus,
             Pageable pageable
     );
 
