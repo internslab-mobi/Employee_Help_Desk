@@ -1,9 +1,11 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AnalyticsService } from '../../../../core/services/analytics.service';
 import { TicketService } from '../../../../core/services/ticket.service';
+import { ReportService } from '../../../../core/services/report.service';
 import { DashboardAnalyticsResponse, RecentTicket } from '../../../../core/models/dashboard.models';
 import { TicketResponse } from '../../../../core/models/ticket.models';
 import { DashboardStateService } from '../../services/dashboard-state.service';
@@ -39,6 +41,7 @@ export class AgentDashboard implements OnInit {
   readonly state = inject(DashboardStateService);
   private readonly analyticsService = inject(AnalyticsService);
   private readonly ticketService = inject(TicketService);
+  private readonly reportService = inject(ReportService);
   private readonly router = inject(Router);
 
   // Backward compatibility fields for legacy specs
@@ -80,6 +83,7 @@ export class AgentDashboard implements OnInit {
   assignedSearchTerm = signal<string>('');
   assignedStatusFilter = signal<string>('ALL');
   assignedPriorityFilter = signal<string>('ALL');
+  isExportingAssigned = signal<boolean>(false);
 
   // Filters & Toggles
   selectedDateRange = signal<string>('all');
@@ -344,6 +348,85 @@ export class AgentDashboard implements OnInit {
     if (this.assignedCurrentPage() + 1 < this.assignedTotalPages()) {
       this.loadAssignedTickets(this.assignedCurrentPage() + 1);
     }
+  }
+
+  clearAssignedSearch(): void {
+    this.assignedSearchTerm.set('');
+    this.loadAssignedTickets(0);
+  }
+
+  exportAssignedSummary(): void {
+    if (this.isExportingAssigned()) return;
+
+    if (this.assignedTotalElements() === 0 || this.assignedTickets().length === 0) {
+      this.state.showNotification('error', 'No assigned tickets match the selected criteria to export.');
+      return;
+    }
+
+    this.isExportingAssigned.set(true);
+    this.state.showNotification('success', 'Generating assigned tickets summary Excel report...');
+
+    const { from, to } = this.resolveDateRange();
+    const status = this.assignedStatusFilter() !== 'ALL' ? this.assignedStatusFilter() : undefined;
+    const priority = this.assignedPriorityFilter() !== 'ALL' ? this.assignedPriorityFilter() : undefined;
+    const search = this.assignedSearchTerm().trim() || undefined;
+
+    this.reportService
+      .exportSummaryReport({
+        reportType: 'AGENT_SUMMARY',
+        format: 'EXCEL',
+        fromDate: from,
+        toDate: to,
+        status,
+        priority,
+        search
+      })
+      .subscribe({
+        next: (response: HttpResponse<Blob>) => {
+          this.isExportingAssigned.set(false);
+          const blob = response?.body;
+          if (blob) {
+            const disposition = response.headers ? response.headers.get('Content-Disposition') : null;
+            const todayStr = new Date().toISOString().split('T')[0];
+            const defaultFilename = `agent-assigned-tickets-summary-${todayStr}.xlsx`;
+            this.reportService.downloadBlob(blob, defaultFilename, disposition);
+            this.state.showNotification(
+              'success',
+              'Assigned tickets summary exported and downloaded successfully! A copy has also been sent to your registered email.'
+            );
+          } else {
+            this.state.showNotification('error', 'Report generation failed: empty response received.');
+          }
+        },
+        error: async (err: any) => {
+          this.isExportingAssigned.set(false);
+          let errorMsg = 'Failed to export assigned tickets summary. Please try again.';
+
+          if (err?.status === 404) {
+            errorMsg = 'No assigned tickets match the selected criteria to export.';
+          } else if (err?.status === 401) {
+            errorMsg = 'Your session has expired. Please log in again.';
+          } else if (err?.status === 403) {
+            errorMsg = 'You are not authorized to export this report.';
+          } else if (err?.status === 503) {
+            errorMsg = 'Report microservice unavailable. Ensure the service is running on port 8083.';
+          } else if (err?.error instanceof Blob) {
+            try {
+              const text = await err.error.text();
+              const parsed = JSON.parse(text);
+              if (parsed?.message) {
+                errorMsg = parsed.message;
+              }
+            } catch {
+              // fallback to status-based error message
+            }
+          } else if (err?.error?.message) {
+            errorMsg = err.error.message;
+          }
+
+          this.state.showNotification('error', errorMsg);
+        }
+      });
   }
 
   onSearchInput(term: string): void {

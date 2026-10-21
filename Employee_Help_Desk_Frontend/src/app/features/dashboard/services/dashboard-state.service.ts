@@ -33,9 +33,9 @@ export class DashboardStateService {
 
   // ===================== USER & AUTH =====================
   readonly currentUser = computed(() => this.authService.currentUser());
-  readonly userRole = computed<UserRole>(() => this.authService.getRole() || 'EMPLOYEE');
+  readonly userRole = computed<UserRole>(() => (typeof this.authService.getRole === 'function' ? this.authService.getRole() : (this.currentUser()?.role as UserRole)) || 'EMPLOYEE');
   readonly currentUserId = computed<number | null>(() => {
-    return this.currentUser()?.id ?? this.authService.getEmployeeId();
+    return this.currentUser()?.id ?? (typeof this.authService.getEmployeeId === 'function' ? this.authService.getEmployeeId() : null);
   });
 
   isTicketRaisedByCurrentUser(ticket?: RecentTicket | TicketResponse | null): boolean {
@@ -109,7 +109,7 @@ export class DashboardStateService {
     return 'Employee';
   });
 
-  readonly profilePhotoUrl = computed(() => this.authService.profilePhotoUrl());
+  readonly profilePhotoUrl = computed(() => typeof this.authService?.profilePhotoUrl === 'function' ? this.authService.profilePhotoUrl() : null);
 
   logout(): void {
     this.authService.logout();

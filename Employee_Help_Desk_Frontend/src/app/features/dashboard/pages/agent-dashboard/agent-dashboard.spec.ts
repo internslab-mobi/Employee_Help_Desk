@@ -1,9 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { HttpResponse, HttpErrorResponse } from '@angular/common/http';
+import { vi } from 'vitest';
 import { AgentDashboard } from './agent-dashboard';
 import { AnalyticsService } from '../../../../core/services/analytics.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ReportService } from '../../../../core/services/report.service';
 import { DashboardAnalyticsResponse } from '../../../../core/models/dashboard.models';
 
 describe('AgentDashboard', () => {
@@ -61,22 +64,34 @@ describe('AgentDashboard', () => {
     ]
   };
 
-  const analyticsServiceSpy = {
-    getDashboardAnalytics: vi.fn().mockReturnValue(of(mockAnalytics))
-  };
-
-  const authServiceSpy = {
-    currentUser: vi.fn().mockReturnValue({ firstName: 'Sarah', lastName: 'Connor' }),
-    isAuthenticated: vi.fn().mockReturnValue(true)
-  };
+  let analyticsServiceSpy: any;
+  let authServiceSpy: any;
+  let reportServiceSpy: any;
 
   beforeEach(async () => {
+    analyticsServiceSpy = {
+      getDashboardAnalytics: vi.fn().mockReturnValue(of(mockAnalytics))
+    };
+
+    authServiceSpy = {
+      currentUser: vi.fn().mockReturnValue({ firstName: 'Sarah', lastName: 'Connor', role: 'AGENT' }),
+      isAuthenticated: vi.fn().mockReturnValue(true),
+      getRole: vi.fn().mockReturnValue('AGENT'),
+      getEmployeeId: vi.fn().mockReturnValue(2)
+    };
+
+    reportServiceSpy = {
+      exportSummaryReport: vi.fn(),
+      downloadBlob: vi.fn()
+    };
+
     await TestBed.configureTestingModule({
       imports: [AgentDashboard],
       providers: [
         provideRouter([]),
         { provide: AnalyticsService, useValue: analyticsServiceSpy },
-        { provide: AuthService, useValue: authServiceSpy }
+        { provide: AuthService, useValue: authServiceSpy },
+        { provide: ReportService, useValue: reportServiceSpy }
       ]
     }).compileComponents();
 
@@ -110,6 +125,111 @@ describe('AgentDashboard', () => {
     component.statusFilter = 'NEW';
     expect(component.filteredTickets.length).toBe(1);
     expect(component.filteredTickets[0].ticketNumber).toBe('TKT-202');
+  });
+
+  it('should render Export Summary button on assigned tickets view for AGENT', async () => {
+    component.setActiveNav('assigned-tickets');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const exportBtn = compiled.querySelector('#export-assigned-summary-btn');
+    expect(exportBtn).toBeTruthy();
+    expect(exportBtn?.textContent).toContain('Export Summary');
+  });
+
+  it('should call exportSummaryReport with AGENT_SUMMARY, EXCEL format, and active filters', () => {
+    component.assignedTickets.set([
+      {
+        id: 1,
+        ticketNumber: 'HD-2026-000001',
+        subject: 'Hardware failure',
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
+        category: { id: 1, name: 'IT' },
+        createdAt: '2026-10-10'
+      } as any
+    ]);
+    component.assignedTotalElements.set(1);
+    component.assignedSearchTerm.set('Hardware');
+    component.assignedStatusFilter.set('IN_PROGRESS');
+    component.assignedPriorityFilter.set('HIGH');
+
+    const mockBlob = new Blob(['xlsx-content'], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const mockResponse = new HttpResponse({
+      body: mockBlob,
+      headers: undefined
+    });
+    reportServiceSpy.exportSummaryReport.mockReturnValue(of(mockResponse));
+
+    component.exportAssignedSummary();
+
+    expect(reportServiceSpy.exportSummaryReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reportType: 'AGENT_SUMMARY',
+        format: 'EXCEL',
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
+        search: 'Hardware'
+      })
+    );
+    expect(reportServiceSpy.downloadBlob).toHaveBeenCalled();
+    expect(component.isExportingAssigned()).toBe(false);
+  });
+
+  it('should display error notification when no assigned tickets match filters', () => {
+    component.assignedTickets.set([]);
+    component.assignedTotalElements.set(0);
+
+    const showNotifSpy = vi.spyOn(component.state, 'showNotification');
+    component.exportAssignedSummary();
+
+    expect(reportServiceSpy.exportSummaryReport).not.toHaveBeenCalled();
+    expect(showNotifSpy).toHaveBeenCalledWith(
+      'error',
+      'No assigned tickets match the selected criteria to export.'
+    );
+    expect(component.isExportingAssigned()).toBe(false);
+  });
+
+  it('should handle backend HTTP 404 error and reset loading state', () => {
+    component.assignedTickets.set([
+      {
+        id: 1,
+        ticketNumber: 'HD-2026-000001',
+        subject: 'VPN Issue',
+        status: 'OPEN',
+        priority: 'LOW',
+        createdAt: '2026-10-10'
+      } as any
+    ]);
+    component.assignedTotalElements.set(1);
+
+    const errorResponse = new HttpErrorResponse({
+      status: 404,
+      statusText: 'Not Found',
+      error: { message: 'No assigned tickets match the selected criteria to export.' }
+    });
+    reportServiceSpy.exportSummaryReport.mockReturnValue(throwError(() => errorResponse));
+
+    const showNotifSpy = vi.spyOn(component.state, 'showNotification');
+    component.exportAssignedSummary();
+
+    expect(showNotifSpy).toHaveBeenCalledWith(
+      'error',
+      'No assigned tickets match the selected criteria to export.'
+    );
+    expect(component.isExportingAssigned()).toBe(false);
+  });
+
+  it('should prevent repeated export clicks while export is in progress', () => {
+    component.isExportingAssigned.set(true);
+
+    component.exportAssignedSummary();
+
+    expect(reportServiceSpy.exportSummaryReport).not.toHaveBeenCalled();
   });
 });
 

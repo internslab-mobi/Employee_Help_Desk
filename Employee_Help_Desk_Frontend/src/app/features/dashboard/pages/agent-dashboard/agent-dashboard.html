@@ -189,7 +189,7 @@
         </div>
 
         <!-- Trends -->
-        @if (data.trends.length) {
+        @if (data.trends?.length) {
         <div class="content-card span-full">
           <h4 class="card-title">Creation vs Resolution Trends</h4>
           <div class="trends-timeline">
@@ -520,6 +520,9 @@
           </svg>
           <input type="text" class="search-tickets-input" placeholder="Search assigned tickets by ID, subject, requester..."
             [ngModel]="assignedSearchTerm()" (ngModelChange)="onAssignedSearchInput($event)" />
+          @if (assignedSearchTerm()) {
+          <button type="button" class="btn-clear-search" (click)="clearAssignedSearch()">&times;</button>
+          }
         </div>
 
         <div class="toolbar-actions">
@@ -539,6 +542,25 @@
             <option value="MEDIUM">Medium</option>
             <option value="LOW">Low</option>
           </select>
+
+          <!-- Export Summary to Excel button for AGENT -->
+          @if (state.userRole() === 'AGENT') {
+          <button id="export-assigned-summary-btn" class="btn-excel-export" [disabled]="isExportingAssigned() || isLoadingAssignedTickets()"
+            (click)="exportAssignedSummary()" title="Export assigned tickets summary to Excel">
+            @if (isExportingAssigned()) {
+            <span class="export-spinner"></span>
+            <span>Exporting...</span>
+            } @else {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            <span>Export Summary</span>
+            }
+          </button>
+          }
 
           <button type="button" class="btn-refresh-sm" (click)="loadAssignedTickets(0)" title="Refresh assigned tickets">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
