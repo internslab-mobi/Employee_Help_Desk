@@ -1,6 +1,11 @@
 package com.example.helpdesk.service.impl;
 
+<<<<<<< HEAD
 import com.example.helpdesk.config.WorkingHoursConfig;
+=======
+import com.example.helpdesk.config.HolidayConfig;
+import com.example.helpdesk.service.WorkingHours;
+>>>>>>> c5b2367e (updated reworks)
 import com.example.helpdesk.service.BusinessTimeService;
 import com.example.helpdesk.service.HolidayService;
 import lombok.RequiredArgsConstructor;
@@ -77,7 +82,7 @@ public class BusinessTimeServiceImpl implements BusinessTimeService {
             return false;
         }
 
-        return WorkingHoursConfig.isWorkingHour(time);
+        return WorkingHours.isWithinWorkingHours(time);
     }
 
     @Override
@@ -93,7 +98,16 @@ public class BusinessTimeServiceImpl implements BusinessTimeService {
 
     private LocalDateTime getEndOfWorkingDay(LocalDateTime dateTime) {
         LocalDate date = dateTime.toLocalDate();
+<<<<<<< HEAD
         LocalTime endTime = WorkingHoursConfig.getWorkEndTime();
         return LocalDateTime.of(date, endTime);
+=======
+        LocalTime endTime = WorkingHours.END;
+        return LocalDateTime.of(date, endTime).atZone(zoneId).toInstant();
+>>>>>>> c5b2367e (updated reworks)
     }
 }
+
+
+
+

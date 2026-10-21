@@ -10,4 +10,10 @@ public class HelpdeskApplication {
 		SpringApplication.run(HelpdeskApplication.class, args);
 	}
 
+<<<<<<< HEAD
 }
+=======
+
+
+
+>>>>>>> c5b2367e (updated reworks)

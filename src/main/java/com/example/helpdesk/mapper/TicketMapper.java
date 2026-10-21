@@ -1,7 +1,11 @@
 package com.example.helpdesk.mapper;
 
+<<<<<<< HEAD
 import com.example.helpdesk.dto.request.CreateTicketRequest;
 import com.example.helpdesk.dto.response.TicketResponse;
+=======
+import com.example.helpdesk.dto.request.CreateTicketRequestDTO;
+>>>>>>> c5b2367e (updated reworks)
 import com.example.helpdesk.entity.Category;
 import com.example.helpdesk.entity.Department;
 import com.example.helpdesk.entity.DepartmentAgent;
@@ -42,7 +46,7 @@ public interface TicketMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Ticket toEntity(
-            CreateTicketRequest request,
+            CreateTicketRequestDTO request,
             Employee requester,
             Department department,
             Category category,
@@ -51,6 +55,7 @@ public interface TicketMapper {
             String priority
     );
 
+<<<<<<< HEAD
     @Mapping(target = "requesterId", source = "requester", qualifiedByName = "extractIdFromEmployee")
     @Mapping(target = "requesterName", ignore = true)
     @Mapping(target = "departmentId", source = "department", qualifiedByName = "extractIdFromDepartment")
@@ -106,3 +111,9 @@ public interface TicketMapper {
         return slaRule != null ? slaRule.getId() : null;
     }
 }
+=======
+}
+
+
+
+>>>>>>> c5b2367e (updated reworks)

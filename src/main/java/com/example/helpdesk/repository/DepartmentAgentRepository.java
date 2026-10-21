@@ -13,3 +13,6 @@ public interface DepartmentAgentRepository extends JpaRepository<DepartmentAgent
     List<DepartmentAgent> findByDepartmentId(Long departmentId);
     Optional<DepartmentAgent> findByEmployeeId(Long employeeId);
 }
+
+
+

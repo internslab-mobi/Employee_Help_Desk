@@ -12,3 +12,11 @@ public interface BusinessTimeService {
     
     LocalDateTime getNextWorkingTime(LocalDateTime dateTime);
 }
+<<<<<<< HEAD
+=======
+
+
+
+
+
+>>>>>>> c5b2367e (updated reworks)

@@ -44,3 +44,4 @@ public class SubCategorySkill {
         updatedAt = LocalDateTime.now();
     }
 }
+

@@ -1,10 +1,14 @@
 package com.example.helpdesk.controller;
 
+<<<<<<< HEAD
 import com.example.helpdesk.entity.Employee;
 import com.example.helpdesk.entity.Ticket;
 import com.example.helpdesk.enums.NotificationType;
 import com.example.helpdesk.repository.EmployeeRepository;
 import com.example.helpdesk.repository.TicketRepository;
+=======
+import com.example.helpdesk.dto.response.NotificationResponseDTO;
+>>>>>>> c5b2367e (updated reworks)
 import com.example.helpdesk.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +27,7 @@ public class NotificationController {
     private final EmployeeRepository employeeRepository;
     private final TicketRepository ticketRepository;
 
+<<<<<<< HEAD
     @PostMapping("/send")
     @Operation(summary = "Send notification", description = "Send a notification to an employee about a ticket")
     public ResponseEntity<Void> sendNotification(
@@ -37,6 +42,14 @@ public class NotificationController {
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
         notificationService.sendNotification(employee, ticket, type, title, message);
         return ResponseEntity.ok().build();
+=======
+    @GetMapping("/{employeeId}")
+    @Operation(summary = "Get notifications", description = "🔔 Access: All roles — users can view only their own notifications; ADMIN can view notifications for any employee.")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<List<NotificationResponseDTO>> getNotificationsByEmployee(
+            @Parameter(description = "Employee ID") @PathVariable Long employeeId) {
+        return ResponseEntity.ok(notificationService.getNotificationsByEmployee(employeeId));
+>>>>>>> c5b2367e (updated reworks)
     }
 
     @PutMapping("/read/{notificationId}")
@@ -55,3 +68,11 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 }
+<<<<<<< HEAD
+=======
+
+
+
+
+
+>>>>>>> c5b2367e (updated reworks)

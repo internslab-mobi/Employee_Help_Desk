@@ -7,3 +7,8 @@ public enum SlaStatus {
     PAUSED,
     COMPLETED
 }
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> c5b2367e (updated reworks)
