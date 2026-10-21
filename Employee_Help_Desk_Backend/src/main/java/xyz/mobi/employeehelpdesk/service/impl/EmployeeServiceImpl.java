@@ -470,6 +470,16 @@ public class EmployeeServiceImpl implements EmployeeService {
                 "You are not authorized to view this employee");
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public EmployeeResponseDTO getCurrentEmployeeProfile() {
+        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        Employee employee = employeeRepository.findById(currentEmployeeId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Employee not found with id: " + currentEmployeeId));
+        return toResponse(employee);
+    }
+
     @Transactional
     @Override
     public void deactivateEmployee(Long id) {
@@ -543,7 +553,9 @@ public class EmployeeServiceImpl implements EmployeeService {
             UpdateEmployeeRequestDTO request,
             MultipartFile profileImage
     ) throws IOException {
-        if (employeeId == null) {
+        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        final Long targetEmployeeId = employeeId != null ? employeeId : currentEmployeeId;
+        if (targetEmployeeId == null) {
             throw new BadRequestException("Employee ID is required");
         }
 
@@ -552,21 +564,20 @@ public class EmployeeServiceImpl implements EmployeeService {
                 : UpdateEmployeeRequestDTO.builder().build();
 
         // 2. Fetch current authenticated employee
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
         Employee currentEmployee = employeeRepository.findById(currentEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + currentEmployeeId));
 
         // 3. Fetch target employee to update
-        Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+        Employee employee = employeeRepository.findById(targetEmployeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + targetEmployeeId));
 
         boolean isAdmin = currentEmployee.getRole() == UserRole.ADMIN;
 
         // 4. Role-based Scope & Field-level Authorization
         if (!isAdmin) {
             // EMPLOYEE, AGENT, MANAGER can only update their own profile
-            if (!currentEmployeeId.equals(employeeId)) {
-                log.warn("Employee update rejected: user {} is not authorized to update employee {}", currentEmployeeId, employeeId);
+            if (!currentEmployeeId.equals(targetEmployeeId)) {
+                log.warn("Employee update rejected: user {} is not authorized to update employee {}", currentEmployeeId, targetEmployeeId);
                 throw new AccessDeniedException("You are not authorized to update another employee's profile");
             }
 

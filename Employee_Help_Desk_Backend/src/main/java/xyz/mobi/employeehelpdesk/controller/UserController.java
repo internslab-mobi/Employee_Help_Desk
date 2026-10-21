@@ -63,6 +63,27 @@ public class UserController {
     }
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN', 'MANAGER', 'AGENT')")
+    @GetMapping("/me")
+    public ResponseEntity<EmployeeResponseDTO> getCurrentUserProfile() {
+        EmployeeResponseDTO response = employeeService.getCurrentEmployeeProfile();
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
+    @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<EmployeeResponseDTO> updateCurrentUserProfile(
+            @Valid @RequestPart(value = "request", required = true) UpdateEmployeeRequestDTO request,
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
+    ) throws IOException {
+        EmployeeResponseDTO response = employeeService.updateEmployee(
+                null,
+                request,
+                profileImage
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN', 'MANAGER', 'AGENT')")
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeResponseDTO> getEmployeeById(
             @PathVariable Long id

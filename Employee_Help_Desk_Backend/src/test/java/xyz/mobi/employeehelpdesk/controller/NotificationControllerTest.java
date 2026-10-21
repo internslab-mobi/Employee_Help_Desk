@@ -12,7 +12,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import xyz.mobi.employeehelpdesk.dto.notification.NotificationResponseDTO;
-import xyz.mobi.employeehelpdesk.dto.notification.NotificationUpdateResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.notification.UnreadNotificationCountResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
 import xyz.mobi.employeehelpdesk.service.NotificationService;
@@ -58,12 +57,12 @@ public class NotificationControllerTest {
         NotificationResponseDTO dto = new NotificationResponseDTO(
                 1L, 10L, 101L, "TKT-001",
                 NotificationType.TICKET_CREATED, "Ticket Created",
-                "Your ticket TKT-001 has been logged", false, Instant.now()
+                "Your ticket TKT-001 has been logged", false, Instant.now(), Instant.now()
         );
         when(notificationService.getNotifications(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(dto), org.springframework.data.domain.PageRequest.of(0, 20), 1));
 
-        mockMvc.perform(get("/notifications")
+        mockMvc.perform(get("/helpdesk/notifications")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(1L))
@@ -76,12 +75,12 @@ public class NotificationControllerTest {
         NotificationResponseDTO dto = new NotificationResponseDTO(
                 2L, 10L, 102L, "TKT-002",
                 NotificationType.TICKET_ASSIGNED, "Ticket Assigned",
-                "Ticket assigned to support agent", false, Instant.now()
+                "Ticket assigned to support agent", false, Instant.now(), Instant.now()
         );
         when(notificationService.getUnreadNotifications(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(dto), org.springframework.data.domain.PageRequest.of(0, 20), 1));
 
-        mockMvc.perform(get("/notifications/unread")
+        mockMvc.perform(get("/helpdesk/notifications/unread")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(2L))
@@ -93,7 +92,7 @@ public class NotificationControllerTest {
         when(notificationService.getUnreadCount())
                 .thenReturn(new UnreadNotificationCountResponseDTO(5L));
 
-        mockMvc.perform(get("/notifications/unread/count")
+        mockMvc.perform(get("/helpdesk/notifications/unread/count")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unreadCount").value(5));
@@ -102,13 +101,13 @@ public class NotificationControllerTest {
     @Test
     void testMarkAsRead() throws Exception {
         when(notificationService.markAsRead(eq(1L)))
-                .thenReturn(new NotificationUpdateResponseDTO(
+                .thenReturn(new NotificationResponseDTO(
                         1L, 10L, 101L, "TKT-001",
                         NotificationType.TICKET_CREATED, "Ticket Created",
-                        "Your ticket has been logged", true, Instant.now()
+                        "Your ticket has been logged", true, Instant.now(), Instant.now()
                 ));
 
-        mockMvc.perform(patch("/notifications/1/read")
+        mockMvc.perform(patch("/helpdesk/notifications/1/read")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L))

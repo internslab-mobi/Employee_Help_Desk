@@ -20,18 +20,29 @@ import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import xyz.mobi.employeehelpdesk.exception.ErrorResponse;
 import xyz.mobi.employeehelpdesk.service.helperservice.ErrorCodeCacheService;
 
+import org.springframework.context.annotation.Lazy;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
     private final ObjectMapper objectMapper;
     private final ErrorCodeCacheService errorCodeCacheService;
+
+    public JwtAuthenticationFilter(
+            JwtTokenProvider tokenProvider,
+            ObjectMapper objectMapper,
+            @Lazy ErrorCodeCacheService errorCodeCacheService
+    ) {
+        this.tokenProvider = tokenProvider;
+        this.objectMapper = objectMapper;
+        this.errorCodeCacheService = errorCodeCacheService;
+    }
 
     @Override
     protected void doFilterInternal(

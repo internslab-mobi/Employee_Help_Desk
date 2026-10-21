@@ -36,7 +36,19 @@ export interface EmployeeProfile {
   departmentName?: string;
   employmentStatus: string;
   role: UserRole;
+  dateOfJoining?: string;
+  dateOfExit?: string;
   timezone?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  profileImageUrl?: string;
+}
+
+export interface UpdateProfileRequest {
+  firstName: string;
+  lastName?: string;
+  phone?: string;
+  designation?: string;
 }
 <<<<<<< HEAD
 

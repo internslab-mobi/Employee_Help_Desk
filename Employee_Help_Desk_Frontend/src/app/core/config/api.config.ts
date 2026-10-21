@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   },
   user: {
     base: `${API_BASE_URL}/helpdesk/user`,
+    profileMe: `${API_BASE_URL}/helpdesk/user/me`,
     profile: (id: number) => `${API_BASE_URL}/helpdesk/user/${id}`,
     search: `${API_BASE_URL}/helpdesk/user/search`
   },
@@ -34,3 +35,4 @@ export const API_ENDPOINTS = {
     base: `${API_BASE_URL}/helpdesk/notifications`
   }
 } as const;
+
