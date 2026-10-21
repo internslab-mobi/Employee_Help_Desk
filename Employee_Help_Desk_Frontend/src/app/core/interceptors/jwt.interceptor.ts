@@ -1,16 +1,10 @@
-<<<<<<< HEAD
 import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpEvent, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Observable, catchError, filter, switchMap, take, throwError } from 'rxjs';
-=======
-import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
->>>>>>> 22515536 (microservices summary report)
 import { AuthService } from '../services/auth.service';
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
-<<<<<<< HEAD
 
   // Do not attach Authorization header to public auth endpoints
   const isAuthEndpoint =
@@ -96,19 +90,3 @@ function handle401Error(
     );
   }
 }
-
-=======
-  const token = authService.getToken();
-
-  if (token && !req.headers.has('Authorization')) {
-    const authReq = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return next(authReq);
-  }
-
-  return next(req);
-};
->>>>>>> 22515536 (microservices summary report)

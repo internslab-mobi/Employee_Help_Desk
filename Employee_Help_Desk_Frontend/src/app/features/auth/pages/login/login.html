@@ -141,19 +141,14 @@
           <button
             type="submit"
             class="login-button"
-<<<<<<< HEAD
-            [disabled] = "isLoading">
-            {{isLoading ? 'Signing in...' : 'Login'}}
-=======
             [disabled]="isLoading"
           >
             {{ isLoading ? 'Signing in...' : 'Login' }}
->>>>>>> 22515536 (microservices summary report)
           </button>
 
-          @if (loginError) {
+          @if (errorMessage) {
             <p class="error-message" role="alert">
-              {{ loginError }}
+              {{ errorMessage }}
             </p>
           }
 
