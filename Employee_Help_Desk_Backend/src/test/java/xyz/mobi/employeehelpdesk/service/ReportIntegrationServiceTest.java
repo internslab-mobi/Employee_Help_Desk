@@ -14,6 +14,8 @@ import xyz.mobi.employeehelpdesk.dto.analytics.DashboardAnalyticsResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.analytics.ExportTicketDetailDTO;
 import xyz.mobi.employeehelpdesk.dto.report.*;
 import xyz.mobi.employeehelpdesk.entity.Employee;
+import xyz.mobi.employeehelpdesk.entity.enums.Priority;
+import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
 import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
@@ -235,5 +237,72 @@ class ReportIntegrationServiceTest {
         assertThrows(xyz.mobi.employeehelpdesk.exception.UnauthorizedException.class, () ->
                 reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token")
         );
+    }
+
+    @Test
+    @DisplayName("Should apply status, priority, and search filters to AGENT_SUMMARY tickets")
+    void shouldFilterTicketsByStatusPriorityAndSearchForAgentSummary() {
+        Employee agentEmployee = new Employee();
+        agentEmployee.setId(2L);
+        agentEmployee.setEmail("agent@company.com");
+        agentEmployee.setFirstName("Bob");
+        agentEmployee.setLastName("Agent");
+        agentEmployee.setRole(UserRole.AGENT);
+
+        ReportSummaryRequestDTO request = new ReportSummaryRequestDTO();
+        request.setReportType(ReportType.AGENT_SUMMARY);
+        request.setFormat(ReportFormat.EXCEL);
+        request.setStatus(TicketStatus.IN_PROGRESS);
+        request.setPriority(Priority.HIGH);
+        request.setSearch("laptop");
+
+        when(authService.getCurrentEmployeeId()).thenReturn(2L);
+        when(employeeRepository.findById(2L)).thenReturn(Optional.of(agentEmployee));
+
+        DashboardAnalyticsResponseDTO mockAnalytics = DashboardAnalyticsResponseDTO.builder()
+                .role(UserRole.AGENT)
+                .employeeId(2L)
+                .build();
+        when(analyticsService.getDashboardAnalytics(any(), any(), any())).thenReturn(mockAnalytics);
+
+        ExportTicketDetailDTO ticket1 = ExportTicketDetailDTO.builder()
+                .id(101L)
+                .ticketNumber("HD-2026-000101")
+                .subject("Repair laptop display")
+                .status(TicketStatus.IN_PROGRESS)
+                .priority(Priority.HIGH)
+                .assignedAgentName("Bob Agent")
+                .build();
+
+        ExportTicketDetailDTO ticket2 = ExportTicketDetailDTO.builder()
+                .id(102L)
+                .ticketNumber("HD-2026-000102")
+                .subject("Printer toner low")
+                .status(TicketStatus.RESOLVED)
+                .priority(Priority.LOW)
+                .assignedAgentName("Bob Agent")
+                .build();
+
+        when(analyticsService.getExportTicketDetails(any(), any(), any())).thenReturn(List.of(ticket1, ticket2));
+
+        byte[] fakeExcelBytes = "FILTERED-EXCEL-DATA".getBytes();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentDispositionFormData("attachment", "agent-assigned-tickets-summary-" + LocalDate.now() + ".xlsx");
+
+        ResponseEntity<byte[]> mockResponse = ResponseEntity.ok().headers(headers).body(fakeExcelBytes);
+        when(reportServiceClient.generateExcelReport(any(ReportGenerationPayloadDTO.class), anyString()))
+                .thenReturn(mockResponse);
+
+        ResponseEntity<byte[]> result = reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token");
+
+        assertNotNull(result);
+        assertEquals(200, result.getStatusCode().value());
+        verify(reportServiceClient).generateExcelReport(argThat(payload -> {
+            assertEquals(1, payload.tickets().size());
+            assertEquals(101L, payload.tickets().get(0).id());
+            assertEquals("HD-2026-000101", payload.tickets().get(0).ticketNumber());
+            return true;
+        }), eq("Bearer agent-token"));
     }
 }
