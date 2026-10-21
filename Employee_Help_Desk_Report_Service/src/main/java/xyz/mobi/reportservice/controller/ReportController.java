@@ -9,7 +9,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-<<<<<<< HEAD
 import org.springframework.web.bind.annotation.*;
 import xyz.mobi.reportservice.dto.*;
 import xyz.mobi.reportservice.security.ReportUserPrincipal;
@@ -20,35 +19,16 @@ import xyz.mobi.reportservice.service.SummaryReportService;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
-=======
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import xyz.mobi.reportservice.dto.DashboardAnalyticsResponseDTO;
-import xyz.mobi.reportservice.dto.ExportTicketDetailDTO;
-import xyz.mobi.reportservice.security.ReportUserPrincipal;
-import xyz.mobi.reportservice.service.BackendClientService;
-import xyz.mobi.reportservice.service.ExcelReportGeneratorService;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
->>>>>>> 22515536 (microservices summary report)
 import java.util.List;
 
 @Slf4j
 @RestController
-<<<<<<< HEAD
 @RequestMapping("/helpdesk/reports")
-=======
-@RequestMapping("/api/reports")
->>>>>>> 22515536 (microservices summary report)
 @RequiredArgsConstructor
 public class ReportController {
 
     private final BackendClientService backendClientService;
     private final ExcelReportGeneratorService excelReportGeneratorService;
-<<<<<<< HEAD
     private final SummaryReportService summaryReportService;
 
     /**
@@ -106,9 +86,6 @@ public class ReportController {
     /**
      * Direct legacy export endpoint.
      */
-=======
-
->>>>>>> 22515536 (microservices summary report)
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/summary/export")
     public ResponseEntity<byte[]> exportSummaryToExcel(

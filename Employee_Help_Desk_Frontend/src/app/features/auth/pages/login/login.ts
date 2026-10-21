@@ -1,15 +1,8 @@
-<<<<<<< HEAD
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
-import {  FormBuilder,  FormGroup,  ReactiveFormsModule, Validators } from '@angular/forms';
-import {RouterLink, Router} from '@angular/router';
-import { AuthService } from '../../../../core/services/auth.service';
-import {finalize} from 'rxjs';
-=======
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
->>>>>>> 22515536 (microservices summary report)
 
 @Component({
   selector: 'app-login',
@@ -19,21 +12,6 @@ import { AuthService } from '../../../../core/services/auth.service';
   styleUrl: './login.css'
 })
 export class Login {
-<<<<<<< HEAD
-
-  private cdr = inject(ChangeDetectorRef);
-  private fb = inject(FormBuilder);
-  private authService = inject(AuthService);
-  private router = inject(Router);
-
-  loginForm: FormGroup;
-  showPassword = false;
-  isLoading = false;
-  loginError = '';
-
-  constructor() {
-
-=======
   loginForm: FormGroup;
   showPassword = false;
   isLoading = false;
@@ -44,7 +22,6 @@ export class Login {
     private authService: AuthService,
     private router: Router
   ) {
->>>>>>> 22515536 (microservices summary report)
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required]
@@ -64,74 +41,48 @@ export class Login {
   }
 
   onLogin(): void {
-
     if (this.isLoading) {
       return;
     }
-
-    this.loginError = '';
 
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
     }
-  
-    this.isLoading = true;
 
-<<<<<<< HEAD
-    this.authService.login(this.loginForm.value)
-    .pipe(
-      finalize( () => {
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      })
-    )
-    .subscribe({
-      next: (response) => {
-        console.log('Login successful');
-        console.log('Employee Id: ', response.employeeId);
-        console.log('Role: ', response.role);
-
-        if (response.role === 'EMPLOYEE') {
-          this.router.navigate(['/dashboard/employee']);
-        } else {
-          this.loginError = 'This dashboard is for support agents only.';
-        }
-      },
-
-      error: (error) => {
-        console.log('Login error:', error.status);
-
-        if(error.status === 401 || error.status === 403){
-          this.loginError = 'Invalid email or pasword.';
-        }
-        else if(error.status === 0){
-          this.loginError = 'Unable to connect to the server. Please try again.';
-        }
-        else{
-          this.loginError = 'Login failed. Please try again later.';
-        }
-        this.cdr.detectChanges();
-        console.error('Login request failed: ', error);
-      }
-    });
-  }
-=======
     this.isLoading = true;
     this.errorMessage = '';
->>>>>>> 22515536 (microservices summary report)
 
-    this.authService.login(this.loginForm.value).subscribe({
-      next: () => {
-        this.isLoading = false;
-        this.router.navigate(['/dashboard']);
-      },
-      error: (err) => {
-        this.isLoading = false;
-        this.errorMessage =
-          err?.error?.message ||
-          'Invalid work email or password. Please try again.';
-      }
-    });
+    const credentials = {
+      email: this.loginForm.value.email?.trim() || '',
+      password: this.loginForm.value.password || ''
+    };
+
+    this.authService
+      .login(credentials)
+      .pipe(
+        finalize(() => {
+          this.isLoading = false;
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.router.navigate(['/dashboard']);
+        },
+        error: (err) => {
+          if (err?.status === 0) {
+            this.errorMessage =
+              'Unable to connect to the authentication server. Please ensure the backend is running.';
+          } else if (err?.status === 401) {
+            this.errorMessage =
+              err?.error?.message ||
+              'Invalid work email or password. Please try again.';
+          } else {
+            this.errorMessage =
+              err?.error?.message ||
+              'Authentication failed. Please try again.';
+          }
+        }
+      });
   }
 }

@@ -16,11 +16,6 @@ spring:
     username: ${db_uname:InternX}
     password: ${db_pass:MobiInterns@2026}
     driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      keepalive-time: 30000
-      max-lifetime: 300000
-      idle-timeout: 120000
-      connection-timeout: 20000
 
   jpa:
     hibernate:
@@ -74,7 +69,3 @@ logging:
     root: INFO
     xyz.mobi.Employee_Help_Desk_Auth: DEBUG
     org.springframework.security: WARN
-
-notification:
-  service:
-    base-url: http://localhost:8085

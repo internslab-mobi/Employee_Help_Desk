@@ -1,15 +1,8 @@
-<<<<<<< HEAD
-import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { LoginRequest} from './models/login-request';
-import { LoginResponse } from './models/login-response';
-=======
 import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { API_ENDPOINTS } from '../config/api.config';
 import { EmployeeProfile, LoginRequest, LoginResponse, UserRole } from '../models/auth.models';
 
 const TOKEN_KEY = 'ehd_access_token';
@@ -17,28 +10,11 @@ const REFRESH_TOKEN_KEY = 'ehd_refresh_token';
 const EMPLOYEE_ID_KEY = 'ehd_employee_id';
 const ROLE_KEY = 'ehd_role';
 const PROFILE_KEY = 'ehd_profile';
->>>>>>> 22515536 (microservices summary report)
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-<<<<<<< HEAD
-
-  private http = inject(HttpClient);
-
-  private apiUrl = 'http://localhost:8082';
-
-  login(credentials: LoginRequest): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(
-      `${this.apiUrl}/user/login`,
-      credentials
-    );
-  }
-}
-=======
-  private readonly baseUrl = environment.backendUrl;
-
   readonly token = signal<string | null>(this.getStoredToken());
   readonly role = signal<UserRole | null>(this.getStoredRole());
   readonly currentUser = signal<EmployeeProfile | null>(this.getStoredProfile());
@@ -50,16 +26,19 @@ export class AuthService {
   ) {}
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.baseUrl}/user/login`, credentials).pipe(
+    return this.http.post<LoginResponse>(API_ENDPOINTS.auth.login, credentials).pipe(
       tap((res) => {
         this.saveAuthSession(res);
-        this.loadProfile(res.employeeId).subscribe();
+        this.loadProfile(res.employeeId).subscribe({
+          next: () => {},
+          error: () => {}
+        });
       })
     );
   }
 
   loadProfile(employeeId: number): Observable<EmployeeProfile> {
-    return this.http.get<EmployeeProfile>(`${this.baseUrl}/user/${employeeId}`).pipe(
+    return this.http.get<EmployeeProfile>(API_ENDPOINTS.user.profile(employeeId)).pipe(
       tap((profile) => {
         this.currentUser.set(profile);
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
@@ -128,4 +107,3 @@ export class AuthService {
     }
   }
 }
->>>>>>> 22515536 (microservices summary report)
