@@ -1,0 +1,94 @@
+@if (state.showNewTicketModal()) {
+<div class="modal-backdrop" (click)="state.closeNewTicketModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Raise a Support Ticket</h3>
+      <button type="button" class="btn-close-modal" (click)="state.closeNewTicketModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Department Select (Live Database) -->
+      <div class="form-group">
+        <label>Department <span class="required-star">*</span></label>
+        <select class="form-control" [ngModel]="state.newTicketDepartmentId()"
+          (ngModelChange)="state.onDepartmentSelect($event)">
+          @for (dept of state.departmentsList(); track dept.id) {
+          <option [value]="dept.id">{{ dept.name }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Cascaded Category & SubCategory Row -->
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Category <span class="required-star">*</span></label>
+          <select class="form-control" [ngModel]="state.newTicketCategoryId()"
+            (ngModelChange)="state.onCategorySelect($event)">
+            @if (state.categoriesList().length === 0) {
+            <option [value]="null">Select Department first</option>
+            }
+            @for (cat of state.categoriesList(); track cat.id) {
+            <option [value]="cat.id">{{ cat.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>SubCategory <span class="required-star">*</span></label>
+          <select class="form-control" [ngModel]="state.newTicketSubCategoryId()"
+            (ngModelChange)="state.onSubCategorySelect($event)">
+            @if (state.subCategoriesList().length === 0) {
+            <option [value]="null">Select Category first</option>
+            }
+            @for (sc of state.subCategoriesList(); track sc.id) {
+            <option [value]="sc.id">{{ sc.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <!-- Auto-derived Priority Display -->
+      <div class="form-group">
+        <label>Default Priority (Derived from SubCategory)</label>
+        <div class="derived-priority-box">
+          <span class="priority-pill" [class]="state.getPriorityClass(state.newTicketPriority())">
+            {{ state.newTicketPriority() }}
+          </span>
+          <small class="text-muted">Determined by SLA routing policy</small>
+        </div>
+      </div>
+
+      <!-- Subject -->
+      <div class="form-group">
+        <label>Subject <span class="required-star">*</span></label>
+        <input type="text" class="form-control" placeholder="Brief summary of your request (e.g. VPN Access Issue)"
+          [ngModel]="state.newTicketSubject()" (ngModelChange)="state.newTicketSubject.set($event)" maxlength="255" />
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label>Description <span class="required-star">*</span></label>
+        <textarea class="form-control text-area" rows="3" placeholder="Describe your issue or request in detail"
+          [ngModel]="state.newTicketDescription()" (ngModelChange)="state.newTicketDescription.set($event)"></textarea>
+      </div>
+
+      <!-- Optional File Attachments -->
+      <div class="form-group">
+        <label>Attachments (Optional)</label>
+        <input type="file" class="form-control-file" (change)="state.onNewTicketFilesSelected($event)" multiple />
+        @if (state.newTicketFiles().length) {
+        <span class="attached-files-chip">{{ state.newTicketFiles().length }} file(s) selected</span>
+        }
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-outline" (click)="state.closeNewTicketModal()">Cancel</button>
+      <button type="button" class="btn-primary-blue" [disabled]="state.isSubmittingTicket() || !state.newTicketSubject().trim()"
+        (click)="onSubmit()">
+        {{ state.isSubmittingTicket() ? 'Submitting...' : 'Submit Ticket' }}
+      </button>
+    </div>
+  </div>
+</div>
+}

@@ -1,0 +1,1699 @@
+<div class="peoplehub-layout">
+  <!-- Shared Left Sidebar -->
+  <app-dashboard-sidebar [activeNav]="activeNav()" (navChange)="setActiveNav($event)"></app-dashboard-sidebar>
+
+  <!-- Main Content Area -->
+  <main class="peoplehub-main">
+    <!-- Shared Top Header -->
+    <app-dashboard-header [activeNav]="activeNav()" [selectedAnalyticsView]="selectedAnalyticsView()"
+      (analyticsViewChange)="setAnalyticsView($event)" (refresh)="loadAllData()">
+    </app-dashboard-header>
+
+    <!-- Global Notification Banner -->
+    @if (state.notification(); as notif) {
+    <div class="toast-banner notif-{{ notif.type }}">
+      <span>{{ notif.message }}</span>
+    </div>
+    }
+
+    <!-- Analytics Date & Department Filter Bar (Dashboard View Only) -->
+    @if (activeNav() === 'dashboard') {
+    <section class="dashboard-filter-bar">
+      <div class="filter-pill-group">
+        <span class="filter-group-label">Date Filter:</span>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === 'all'"
+          (click)="setDateRange('all')">All Time</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === 'today'"
+          (click)="setDateRange('today')">Today</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === '7days'"
+          (click)="setDateRange('7days')">Last 7 Days</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === '30days'"
+          (click)="setDateRange('30days')">Last 30 Days</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === 'thisMonth'"
+          (click)="setDateRange('thisMonth')">This Month</button>
+        <button type="button" class="date-pill" [class.active]="selectedDateRange() === 'custom'"
+          (click)="setDateRange('custom')">Custom</button>
+      </div>
+
+      @if (selectedDateRange() === 'custom') {
+      <div class="custom-date-inputs">
+        <input type="date" [(ngModel)]="customFromDate" class="date-input" aria-label="From Date" />
+        <span class="date-sep">to</span>
+        <input type="date" [(ngModel)]="customToDate" class="date-input" aria-label="To Date" />
+        <button type="button" class="btn-apply-date" (click)="applyCustomDateRange()">Apply</button>
+      </div>
+      }
+
+      @if (departmentsList().length) {
+      <div class="dept-scope-select-wrap">
+        <label>Dept:</label>
+        <select [ngModel]="selectedDepartmentId()" (ngModelChange)="onDepartmentChange($event)">
+          <option [ngValue]="null">All Departments</option>
+          @for (d of departmentsList(); track d.id) {
+          <option [ngValue]="d.id">{{ d.name }}</option>
+          }
+        </select>
+      </div>
+      }
+    </section>
+    }
+
+    <!-- Loading / Error States -->
+    @if (isLoading()) {
+    <div class="state-container loading-state">
+      <div class="loading-ring"></div>
+      <p>Loading real-time help desk data...</p>
+    </div>
+    } @else if (errorMessage()) {
+    <div class="state-container error-state">
+      <h3>Unable to load dashboard data</h3>
+      <p>{{ errorMessage() }}</p>
+      <button class="btn-primary-blue" (click)="loadDashboardData()">Retry</button>
+    </div>
+    } @else {
+
+    <!-- ============================================== -->
+    <!-- VIEW 1: DASHBOARD ANALYTICS                    -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'dashboard') {
+
+      <!-- VIEW 1A: OVERALL OVERVIEW -->
+      @if (selectedAnalyticsView() === 'OVERALL_OVERVIEW') {
+      <section class="summary-cards-grid">
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ status: 'OPEN' })">
+          <span class="card-label">Open Help Desk Tickets</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.openTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-blue">View</button>
+          </div>
+        </div>
+
+        <div class="summary-card clickable" (click)="setActiveNav('assign')">
+          <span class="card-label">SLA Overdue / Breached</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.overdueTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-red">Reassign</button>
+          </div>
+        </div>
+
+        <div class="summary-card clickable" (click)="navigateToTicketsWithFilter({ status: 'IN_PROGRESS' })">
+          <span class="card-label">In Progress Tickets</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.inProgressTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-orange">View</button>
+          </div>
+        </div>
+
+        <div class="summary-card clickable" (click)="setActiveNav('all-tickets')">
+          <span class="card-label">Total Org-Wide Tickets</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.totalTickets ?? 0 }}</span>
+            <button type="button" class="card-link link-blue">Explore</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Secondary Metrics Row -->
+      <section class="metrics-row-cards">
+        <div class="sub-metric-card clickable" (click)="navigateToTicketsWithFilter({ status: 'ALL' })">
+          <span class="sub-lbl">Total Tickets Logged</span>
+          <strong class="sub-val">{{ analytics()?.summary?.totalTickets ?? 0 }}</strong>
+        </div>
+        <div class="sub-metric-card clickable" (click)="navigateToTicketsWithFilter({ status: 'RESOLVED' })">
+          <span class="sub-lbl">Resolved Tickets</span>
+          <strong class="sub-val text-green">{{ analytics()?.summary?.resolvedTickets ?? 0 }}</strong>
+        </div>
+        <div class="sub-metric-card clickable" (click)="navigateToTicketsWithFilter({ status: 'ON_HOLD' })">
+          <span class="sub-lbl">Awaiting Response / On Hold</span>
+          <strong class="sub-val text-amber">{{ analytics()?.summary?.onHoldTickets ?? 0 }}</strong>
+        </div>
+        <div class="sub-metric-card clickable" (click)="setActiveNav('users')">
+          <span class="sub-lbl">Active Agents In Org</span>
+          <strong class="sub-val text-purple">{{ agentsList().length }}</strong>
+        </div>
+      </section>
+
+      <!-- Recent Activity -->
+      <section class="content-card recent-activity-card">
+        <div class="card-header-clean">
+          <h3 class="card-title">Recent activity</h3>
+        </div>
+
+        <div class="activity-list">
+          @if (analytics()?.recentTickets?.length) {
+            @for (ticket of analytics()!.recentTickets.slice(0, 4); track ticket.id) {
+              <div class="activity-item" (click)="selectTicket(ticket); setActiveNav('all-tickets')" style="cursor: pointer;">
+                <strong class="activity-tag">{{ ticket.ticketNumber }}</strong>
+                <span class="activity-desc">{{ ticket.subject }} ({{ ticket.status }})</span>
+              </div>
+            }
+          } @else {
+            <p class="empty-hint" style="padding: 14px; color: #64748b; font-size: 13px;">No recent activity recorded.</p>
+          }
+        </div>
+      </section>
+
+      <!-- Operational Charts Accordion -->
+      <div class="analytics-accordion-wrapper">
+        <button type="button" class="btn-toggle-analytics" (click)="toggleAnalyticsSection()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+          <span>{{ showAnalyticsSection() ? 'Hide Detailed Operational Analytics & SLA Charts' : 'Show Detailed Operational Analytics & SLA Charts' }}</span>
+          <span class="toggle-arrow">{{ showAnalyticsSection() ? '▲' : '▼' }}</span>
+        </button>
+      </div>
+
+      @if (showAnalyticsSection() && analytics(); as data) {
+      <section class="charts-section-grid">
+        <!-- Ticket Status Distribution -->
+        <div class="content-card">
+          <h4 class="card-title">Ticket Status Distribution</h4>
+          <div class="distribution-list">
+            @for (item of data.statusDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-blue-bar" [style.width.%]="item.percentage"></div>
+              </div>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Ticket Priority Distribution -->
+        <div class="content-card">
+          <h4 class="card-title">Ticket Priority Distribution</h4>
+          <div class="distribution-list">
+            @for (item of data.priorityDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-purple-bar" [style.width.%]="item.percentage"></div>
+              </div>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Trends -->
+        @if (data.trends.length) {
+        <div class="content-card span-full">
+          <h4 class="card-title">Creation vs Resolution Trends</h4>
+          <div class="trends-timeline">
+            @for (t of data.trends; track t.period) {
+            <div class="trend-col">
+              <div class="trend-bars">
+                <div class="bar-created" [style.height.px]="t.createdCount * 14" [title]="'Created: ' + t.createdCount"></div>
+                <div class="bar-resolved" [style.height.px]="t.resolvedCount * 14" [title]="'Resolved: ' + t.resolvedCount"></div>
+              </div>
+              <span class="trend-date">{{ t.period.substring(5) }}</span>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </section>
+      }
+      }
+
+      <!-- VIEW 1B: TICKET ANALYTICS -->
+      @if (selectedAnalyticsView() === 'TICKET_ANALYTICS') {
+      <section class="view-header-strip">
+        <h3>Ticket Analytics & Resolution Metrics</h3>
+        <p>Breakdown of support tickets across statuses, priority tiers, and category volumes.</p>
+      </section>
+
+      <section class="summary-cards-grid">
+        <div class="summary-card">
+          <span class="card-label">Total Tickets</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.totalTickets ?? 0 }}</span>
+          </div>
+        </div>
+        <div class="summary-card">
+          <span class="card-label">Open / In Progress</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ (analytics()?.summary?.openTickets ?? 0) + (analytics()?.summary?.inProgressTickets ?? 0) }}</span>
+          </div>
+        </div>
+        <div class="summary-card">
+          <span class="card-label">Avg Resolution Time</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.avgResolutionHours ?? 0 }}h</span>
+          </div>
+        </div>
+        <div class="summary-card">
+          <span class="card-label">SLA Compliance</span>
+          <div class="card-bottom">
+            <span class="card-value">{{ analytics()?.summary?.slaComplianceRate ?? 100 }}%</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="charts-section-grid">
+        <div class="content-card">
+          <h4 class="card-title">Tickets by Status</h4>
+          <div class="distribution-list">
+            @for (item of analytics()?.statusDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-blue-bar" [style.width.%]="item.percentage"></div>
+              </div>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <div class="content-card">
+          <h4 class="card-title">Tickets by Priority</h4>
+          <div class="distribution-list">
+            @for (item of analytics()?.priorityDistribution; track item.key) {
+            <div class="dist-row">
+              <span class="dist-label">{{ item.label }}</span>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-purple-bar" [style.width.%]="item.percentage"></div>
+              </div>
+              <span class="dist-count">{{ item.count }} ({{ item.percentage }}%)</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        @if (analytics()?.categoryDistribution?.length) {
+        <div class="content-card span-full">
+          <h4 class="card-title">Tickets by Category</h4>
+          <div class="category-chips-grid">
+            @for (cat of analytics()?.categoryDistribution; track cat.key) {
+            <div class="category-metric-chip">
+              <div class="chip-header">
+                <strong>{{ cat.label }}</strong>
+                <span>{{ cat.percentage }}%</span>
+              </div>
+              <div class="chip-count">{{ cat.count }} tickets</div>
+              <div class="dist-bar-wrap">
+                <div class="dist-bar bg-green-bar" [style.width.%]="cat.percentage"></div>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        @if (analytics()?.trends?.length) {
+        <div class="content-card span-full">
+          <h4 class="card-title">Daily Ticket Intake vs Resolution</h4>
+          <div class="trends-timeline">
+            @for (t of analytics()?.trends; track t.period) {
+            <div class="trend-col">
+              <div class="trend-bars">
+                <div class="bar-created" [style.height.px]="t.createdCount * 14" [title]="'Created: ' + t.createdCount"></div>
+                <div class="bar-resolved" [style.height.px]="t.resolvedCount * 14" [title]="'Resolved: ' + t.resolvedCount"></div>
+              </div>
+              <span class="trend-date">{{ t.period.substring(5) }}</span>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </section>
+      }
+    }
+
+    <!-- ============================================== -->
+    <!-- VIEW 2: ALL TICKETS (ORG-WIDE WITH FILTERS)    -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'all-tickets') {
+    <section class="all-tickets-section">
+      <!-- Toolbar -->
+      <section class="helpdesk-toolbar">
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" class="search-tickets-input" placeholder="Search tickets across all departments by ID, subject, requester..."
+            [ngModel]="ticketSearchTerm()" (ngModelChange)="onSearchInput($event)" />
+          @if (ticketSearchTerm()) {
+          <button type="button" class="btn-clear-search" (click)="clearSearch()">&times;</button>
+          }
+        </div>
+
+        <div class="toolbar-actions">
+          <select id="report-type-select" class="select-report-type" [ngModel]="state.selectedReportType()"
+            (ngModelChange)="state.selectedReportType.set($event)" title="Select report summary category">
+            @for (type of state.permittedReportTypes(); track type) {
+            <option [value]="type">{{ state.formatReportTypeName(type) }}</option>
+            }
+          </select>
+
+          <button id="view-json-summary-btn" class="btn-summary-view" [disabled]="state.isLoadingReportJson() || isLoading()"
+            (click)="state.fetchSummaryJson(resolveDateRange(), selectedDepartmentId())" title="View on-screen summary report">
+            @if (state.isLoadingReportJson()) {
+            <span class="export-spinner"></span><span>Loading...</span>
+            } @else {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            <span>Summary</span>
+            }
+          </button>
+
+          <button id="export-excel-btn" class="btn-excel-export" [disabled]="state.isExporting() || isLoading()"
+            (click)="state.exportSummaryToExcel(resolveDateRange(), selectedDepartmentId())" title="Export Excel summary report">
+            @if (state.isExporting()) {
+            <span class="export-spinner"></span><span>Exporting...</span>
+            } @else {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            <span>Export Excel</span>
+            }
+          </button>
+
+          <button type="button" class="btn-outline-filters" [class.active]="showFilters()" (click)="toggleFilters()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            <span>Filters</span>
+          </button>
+
+          <button type="button" class="btn-refresh-sm" (click)="loadTicketsPage(ticketCurrentPage())" title="Refresh tickets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M23 4v6h-6" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Advanced Filters Drawer -->
+      @if (showFilters()) {
+      <section class="filters-drawer admin-filter-drawer">
+        <div class="filter-item">
+          <label>Department:</label>
+          <select [ngModel]="selectedDepartmentId()" (ngModelChange)="onDepartmentChange($event)">
+            <option [ngValue]="null">All Departments</option>
+            @for (d of departmentsList(); track d.id) {
+            <option [ngValue]="d.id">{{ d.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label>Assigned Agent:</label>
+          <select [ngModel]="selectedAgentId()" (ngModelChange)="onAgentFilterChange($event)">
+            <option [ngValue]="null">All Agents</option>
+            @for (agent of agentsList(); track agent.id) {
+            <option [ngValue]="agent.id">{{ agent.firstName }} {{ agent.lastName || '' }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label>Status:</label>
+          <select [ngModel]="ticketStatusFilter()" (ngModelChange)="onStatusFilterChange($event)">
+            <option value="ALL">All Statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="ON_HOLD">On Hold</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="WITHDRAWN">Withdrawn</option>
+            <option value="REOPENED">Reopened</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label>Priority:</label>
+          <select [ngModel]="ticketPriorityFilter()" (ngModelChange)="onPriorityFilterChange($event)">
+            <option value="ALL">All Priorities</option>
+            <option value="CRITICAL">Critical</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label>SLA Status:</label>
+          <select [ngModel]="ticketSlaFilter()" (ngModelChange)="onSlaFilterChange($event)">
+            <option value="ALL">All SLA Statuses</option>
+            <option value="BREACHED">Breached</option>
+            <option value="WARNING">Warning</option>
+            <option value="HEALTHY">Healthy</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label>Date Range:</label>
+          <select [ngModel]="selectedDateRange()" (ngModelChange)="setDateRange($event)">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="7days">Last 7 Days</option>
+            <option value="30days">Last 30 Days</option>
+            <option value="thisMonth">This Month</option>
+            <option value="custom">Custom Range</option>
+          </select>
+        </div>
+
+        @if (selectedDateRange() === 'custom') {
+        <div class="filter-item custom-range-inline">
+          <label>Custom Date:</label>
+          <div class="inline-dates">
+            <input type="date" [(ngModel)]="customFromDate" class="date-input-sm" />
+            <span>to</span>
+            <input type="date" [(ngModel)]="customToDate" class="date-input-sm" />
+            <button type="button" class="btn-apply-date-sm" (click)="applyCustomDateRange()">Apply</button>
+          </div>
+        </div>
+        }
+
+        <div class="filter-item-actions">
+          <button type="button" class="btn-reset-filters" (click)="clearAllFilters()">Reset All Filters</button>
+        </div>
+      </section>
+      }
+
+      <!-- All Tickets Table -->
+      <section class="content-card my-tickets-card">
+        <div class="card-header-clean table-header-flex">
+          <div>
+            <h3 class="card-title">All Organization Tickets</h3>
+            <p class="card-subtitle">Comprehensive org-wide ticket view across all departments, categories, and support queues.</p>
+          </div>
+          <span class="ticket-count-badge">{{ ticketTotalElements() || displayTickets().length }} total tickets</span>
+        </div>
+
+        <div class="table-container">
+          @if (isLoadingTickets()) {
+          <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading org-wide tickets...</span></div>
+          }
+          <table class="tickets-table-clean">
+            <thead>
+              <tr>
+                <th style="width: 12%;">Ticket #</th>
+                <th style="width: 24%;">Subject</th>
+                <th style="width: 13%;">Department</th>
+                <th style="width: 13%;">Category</th>
+                <th style="width: 13%;">Requester</th>
+                <th style="width: 13%;">Assigned Agent</th>
+                <th style="width: 8%;">Priority</th>
+                <th style="width: 10%;">Status</th>
+                <th style="width: 9%;">SLA</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (displayTickets().length > 0) {
+              @for (ticket of displayTickets(); track ticket.id; let idx = $index) {
+              <tr class="ticket-row-clean" [class.row-selected]="state.selectedTicketForPreview()?.id === ticket.id"
+                (click)="selectTicket(ticket)">
+                <td><span class="ticket-link">{{ ticket.ticketNumber }}</span></td>
+                <td><span class="ticket-subject">{{ ticket.subject }}</span></td>
+                <td><span class="badge-dept-code">{{ ticket.department?.name || 'General' }}</span></td>
+                <td><span class="ticket-category">{{ state.getPreviewCategoryName(ticket) }}</span></td>
+                <td><span class="ticket-requester-text">{{ state.getPreviewRequesterName(ticket) }}</span></td>
+                <td>
+                  @if (ticket.assignedAgent) {
+                  <span class="ticket-agent-text">{{ ticket.assignedAgent.name }}</span>
+                  } @else {
+                  <span class="text-unassigned">Unassigned</span>
+                  }
+                </td>
+                <td>
+                  <span class="priority-pill" [class]="state.getPriorityClass(ticket.priority)">
+                    {{ ticket.priority }}
+                  </span>
+                </td>
+                <td>
+                  <span class="status-pill" [class]="state.getStatusClass(ticket.status)">
+                    {{ ticket.status }}
+                  </span>
+                </td>
+                <td>
+                  @if (ticket.slaStatus === 'BREACHED') {
+                  <span class="sla-badge-pill sla-breached">Breached</span>
+                  } @else if (ticket.slaStatus === 'WARNING') {
+                  <span class="sla-badge-pill sla-warning">Warning</span>
+                  } @else {
+                  <span class="sla-badge-pill sla-healthy">Healthy</span>
+                  }
+                </td>
+              </tr>
+              }
+              } @else {
+              <tr><td colspan="9" class="empty-table-state"><p>No tickets found matching current search and filter criteria.</p></td></tr>
+              }
+            </tbody>
+          </table>
+
+          @if (ticketTotalPages() > 1) {
+          <div class="table-pagination-footer">
+            <button type="button" class="pagination-btn" [disabled]="ticketCurrentPage() === 0"
+              (click)="prevTicketsPage()">Previous</button>
+            <span class="pagination-indicator">Page {{ ticketCurrentPage() + 1 }} of {{ ticketTotalPages() }} ({{ ticketTotalElements() }} items)</span>
+            <button type="button" class="pagination-btn" [disabled]="ticketCurrentPage() + 1 >= ticketTotalPages()"
+              (click)="nextTicketsPage()">Next</button>
+          </div>
+          }
+        </div>
+      </section>
+    </section>
+    }
+
+    <!-- ============================================== -->
+    <!-- VIEW 3: BREACHED TICKETS (MONITORING & PREVIEW)-->
+    <!-- ============================================== -->
+    @if (activeNav() === 'assign') {
+    <section class="assign-section">
+      <div class="helpdesk-toolbar">
+        <div class="assign-header-meta">
+          <span class="escalation-alert-badge">⚠️ Escalated SLA Breached Tickets Monitor</span>
+          <p class="assign-desc-text">Overview of tickets that have breached SLA thresholds. Department managers handle manual agent reassignment; admins can monitor and preview details.</p>
+        </div>
+
+        <div class="toolbar-actions">
+          <button type="button" class="btn-refresh-sm" (click)="loadBreachedTickets()" title="Refresh breached tickets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M23 4v6h-6" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <section class="content-card my-tickets-card">
+        <div class="card-header-clean table-header-flex">
+          <div>
+            <h3 class="card-title">Escalated Breached Tickets Monitor</h3>
+            <p class="card-subtitle">Select any breached ticket to preview full conversation, SLA logs, and history.</p>
+          </div>
+          <span class="ticket-count-badge badge-breached-count">{{ breachedTickets().length }} breached tickets</span>
+        </div>
+
+        <div class="table-container">
+          @if (isLoadingBreachedTickets()) {
+          <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading escalated breached tickets...</span></div>
+          }
+          <table class="tickets-table-clean">
+            <thead>
+              <tr>
+                <th style="width: 13%;">Ticket #</th>
+                <th style="width: 25%;">Subject</th>
+                <th style="width: 14%;">Department</th>
+                <th style="width: 14%;">Category</th>
+                <th style="width: 14%;">Requester</th>
+                <th style="width: 10%;">SLA</th>
+                <th style="width: 10%; text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (breachedTickets().length > 0) {
+              @for (ticket of breachedTickets(); track ticket.id) {
+              <tr class="ticket-row-clean" [class.row-selected]="state.selectedTicketForPreview()?.id === ticket.id"
+                (click)="selectTicket(ticket)">
+                <td><span class="ticket-link">{{ ticket.ticketNumber }}</span></td>
+                <td><span class="ticket-subject">{{ ticket.subject }}</span></td>
+                <td><span class="badge-dept-code">{{ ticket.department?.name || 'General' }}</span></td>
+                <td><span class="ticket-category">{{ state.getPreviewCategoryName(ticket) }}</span></td>
+                <td><span class="ticket-requester-text">{{ state.getPreviewRequesterName(ticket) }}</span></td>
+                <td>
+                  <span class="sla-badge-pill sla-breached">Breached</span>
+                </td>
+                <td style="text-align: right;">
+                  <button type="button" class="btn-action-preview" (click)="selectTicket(ticket); $event.stopPropagation()" title="Preview ticket details">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span>Preview</span>
+                  </button>
+                </td>
+              </tr>
+              }
+              } @else {
+              <tr><td colspan="7" class="empty-table-state"><p>No escalated breached tickets recorded. All tickets are healthy.</p></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+    }
+
+    <!-- ============================================== -->
+    <!-- VIEW 4: USER MANAGEMENT                        -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'users') {
+    <section class="users-section">
+      <!-- Toolbar -->
+      <section class="helpdesk-toolbar">
+        <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" class="search-tickets-input" placeholder="Search users by name, email, designation..."
+            [ngModel]="userSearchTerm()" (ngModelChange)="onUserSearchInput($event)" />
+        </div>
+
+        <div class="toolbar-actions">
+          <select class="form-control-sm select-toolbar-filter" [ngModel]="userRoleFilter()" (ngModelChange)="onUserRoleFilterChange($event)">
+            <option value="ALL">All Roles</option>
+            <option value="EMPLOYEE">Employees</option>
+            <option value="AGENT">Agents</option>
+            <option value="MANAGER">Managers</option>
+            <option value="ADMIN">Admins</option>
+          </select>
+
+          <select class="form-control-sm select-toolbar-filter" [ngModel]="userDeptFilter()" (ngModelChange)="onUserDeptFilterChange($event)">
+            <option [ngValue]="null">All Departments</option>
+            @for (dept of departmentsList(); track dept.id) {
+            <option [ngValue]="dept.id">{{ dept.name }}</option>
+            }
+          </select>
+
+          <button type="button" class="btn-primary-blue" (click)="openCreateUserModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Create New User</span>
+          </button>
+
+          <button type="button" class="btn-refresh-sm" (click)="loadUsersPage(userCurrentPage())" title="Refresh users">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+              <path d="M23 4v6h-6" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Users Table -->
+      <section class="content-card my-tickets-card">
+        <div class="card-header-clean table-header-flex">
+          <div>
+            <h3 class="card-title">User Accounts Directory</h3>
+            <p class="card-subtitle">Manage company employees, support agents, departmental managers, and administrators.</p>
+          </div>
+          <span class="ticket-count-badge">{{ userTotalElements() || usersList().length }} users</span>
+        </div>
+
+        <div class="table-container">
+          @if (isLoadingUsers()) {
+          <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading user accounts...</span></div>
+          }
+          <table class="tickets-table-clean">
+            <thead>
+              <tr>
+                <th style="width: 17%;">User</th>
+                <th style="width: 18%;">Email</th>
+                <th style="width: 10%;">Role</th>
+                <th style="width: 13%;">Department</th>
+                <th style="width: 13%;">Designation</th>
+                <th style="width: 13%;">Reporting Manager</th>
+                <th style="width: 8%;">Joined</th>
+                <th style="width: 8%; text-align: center;">Skills</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (usersList().length > 0) {
+              @for (user of usersList(); track user.id) {
+              <tr class="ticket-row-clean">
+                <td>
+                  <div class="user-meta-cell">
+                    <span class="user-cell-name">{{ user.firstName }} {{ user.lastName || '' }}</span>
+                    @if (user.phone) {
+                    <span class="user-cell-sub">{{ user.phone }}</span>
+                    }
+                  </div>
+                </td>
+                <td><span class="ticket-email-text">{{ user.email }}</span></td>
+                <td>
+                  <span class="user-role-badge badge-role-{{ user.role.toLowerCase() }}">
+                    {{ user.role }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge-dept-code">{{ user.departmentName || getDepartmentName(user.departmentId) }}</span>
+                </td>
+                <td><span class="user-designation-text">{{ user.designation || 'Staff Member' }}</span></td>
+                <td>
+                  <span class="user-manager-text">{{ user.managerName || '—' }}</span>
+                </td>
+                <td><span class="ticket-date-text">{{ user.dateOfJoining || '—' }}</span></td>
+                <td style="text-align: center;">
+                  @if (user.role === 'AGENT') {
+                  <button type="button" class="btn-action-primary-sm" (click)="openAgentSkillsModal(user)" title="Configure Agent Skills">
+                    ⚡ Skills
+                  </button>
+                  } @else {
+                  <span class="ticket-date-text">—</span>
+                  }
+                </td>
+              </tr>
+              }
+              } @else {
+              <tr><td colspan="8" class="empty-table-state"><p>No user accounts found matching criteria.</p></td></tr>
+              }
+            </tbody>
+          </table>
+
+          @if (userTotalPages() > 1) {
+          <div class="table-pagination-footer">
+            <button type="button" class="pagination-btn" [disabled]="userCurrentPage() === 0"
+              (click)="prevUsersPage()">Previous</button>
+            <span class="pagination-indicator">Page {{ userCurrentPage() + 1 }} of {{ userTotalPages() }} ({{ userTotalElements() }} users)</span>
+            <button type="button" class="pagination-btn" [disabled]="userCurrentPage() + 1 >= userTotalPages()"
+              (click)="nextUsersPage()">Next</button>
+          </div>
+          }
+        </div>
+      </section>
+    </section>
+    }
+
+    <!-- ============================================== -->
+    <!-- VIEW 5: MASTER CONFIGURATION                   -->
+    <!-- ============================================== -->
+    @if (activeNav() === 'config') {
+    <section class="config-section">
+      <!-- Configuration Sub-Tabs Bar -->
+      <div class="config-subtabs-nav">
+        <button type="button" class="config-tab-btn" [class.active]="activeConfigTab() === 'departments'"
+          (click)="switchConfigTab('departments')">
+          <span class="tab-icon">🏢</span>
+          <span>Departments</span>
+          <span class="tab-count-badge">{{ configDepartmentsList().length }}</span>
+        </button>
+
+        <button type="button" class="config-tab-btn" [class.active]="activeConfigTab() === 'categories'"
+          (click)="switchConfigTab('categories')">
+          <span class="tab-icon">📁</span>
+          <span>Categories</span>
+          <span class="tab-count-badge">{{ configCategoriesList().length }}</span>
+        </button>
+
+        <button type="button" class="config-tab-btn" [class.active]="activeConfigTab() === 'subcategories'"
+          (click)="switchConfigTab('subcategories')">
+          <span class="tab-icon">🏷️</span>
+          <span>Subcategories</span>
+          <span class="tab-count-badge">{{ configSubCategoriesList().length }}</span>
+        </button>
+
+        <button type="button" class="config-tab-btn" [class.active]="activeConfigTab() === 'holidays'"
+          (click)="switchConfigTab('holidays')">
+          <span class="tab-icon">📅</span>
+          <span>Holiday Calendar</span>
+          <span class="tab-count-badge">{{ holidaysList().length }}</span>
+        </button>
+
+        <button type="button" class="config-tab-btn" [class.active]="activeConfigTab() === 'sla-policies'"
+          (click)="switchConfigTab('sla-policies')">
+          <span class="tab-icon">⏱️</span>
+          <span>SLA Policies</span>
+          <span class="tab-count-badge">{{ slaPoliciesList().length }}</span>
+        </button>
+
+        <button type="button" class="config-tab-btn" [class.active]="activeConfigTab() === 'skills'"
+          (click)="switchConfigTab('skills')">
+          <span class="tab-icon">⚡</span>
+          <span>Skills Directory</span>
+          <span class="tab-count-badge">{{ skillsList().length }}</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: DEPARTMENTS -->
+      @if (activeConfigTab() === 'departments') {
+      <div class="config-tab-content">
+        <div class="helpdesk-toolbar">
+          <div>
+            <h3 class="config-title">Configured Business Departments</h3>
+            <p class="config-subtitle">Departments isolate SLA policies, agent skill pools, and ticket queues.</p>
+          </div>
+          <button type="button" class="btn-primary-blue" (click)="openAddDeptModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Add Department</span>
+          </button>
+        </div>
+
+        <section class="content-card my-tickets-card">
+          <div class="table-container">
+            <table class="tickets-table-clean">
+              <thead>
+                <tr>
+                  <th style="width: 10%;">ID</th>
+                  <th style="width: 15%;">Code</th>
+                  <th style="width: 25%;">Department Name</th>
+                  <th style="width: 20%;">Timezone</th>
+                  <th style="width: 30%;">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (configDepartmentsList().length > 0) {
+                @for (d of configDepartmentsList(); track d.id) {
+                <tr class="ticket-row-clean">
+                  <td><span class="ticket-id-dim">#{{ d.id }}</span></td>
+                  <td><span class="badge-dept-code">{{ d.code }}</span></td>
+                  <td><strong class="config-entity-name">{{ d.name }}</strong></td>
+                  <td><span class="timezone-badge">{{ d.timezone || 'Asia/Kolkata' }}</span></td>
+                  <td><span class="config-desc-text">{{ d.description || 'No description provided' }}</span></td>
+                </tr>
+                }
+                } @else {
+                <tr><td colspan="5" class="empty-table-state"><p>No departments configured yet.</p></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      }
+
+      <!-- TAB 2: CATEGORIES -->
+      @if (activeConfigTab() === 'categories') {
+      <div class="config-tab-content">
+        <div class="helpdesk-toolbar">
+          <div class="filter-group-inline">
+            <label>Filter Department:</label>
+            <select class="form-control-sm select-toolbar-filter" [ngModel]="configCategoryDeptFilter()"
+              (ngModelChange)="onConfigCategoryDeptFilterChange($event)">
+              <option [ngValue]="null">All Departments</option>
+              @for (d of departmentsList(); track d.id) {
+              <option [ngValue]="d.id">{{ d.name }}</option>
+              }
+            </select>
+          </div>
+
+          <button type="button" class="btn-primary-blue" (click)="openAddCatModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Add Category</span>
+          </button>
+        </div>
+
+        <section class="content-card my-tickets-card">
+          <div class="table-container">
+            <table class="tickets-table-clean">
+              <thead>
+                <tr>
+                  <th style="width: 10%;">ID</th>
+                  <th style="width: 28%;">Category Name</th>
+                  <th style="width: 22%;">Department</th>
+                  <th style="width: 40%;">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (configCategoriesList().length > 0) {
+                @for (c of configCategoriesList(); track c.id) {
+                <tr class="ticket-row-clean">
+                  <td><span class="ticket-id-dim">#{{ c.id }}</span></td>
+                  <td><strong class="config-entity-name">{{ c.name }}</strong></td>
+                  <td><span class="badge-dept-code">{{ getDepartmentName(c.departmentId) }}</span></td>
+                  <td><span class="config-desc-text">{{ c.description || '—' }}</span></td>
+                </tr>
+                }
+                } @else {
+                <tr><td colspan="4" class="empty-table-state"><p>No categories found for selected department.</p></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      }
+
+      <!-- TAB 3: SUBCATEGORIES -->
+      @if (activeConfigTab() === 'subcategories') {
+      <div class="config-tab-content">
+        <div class="helpdesk-toolbar">
+          <div class="filter-group-inline">
+            <label>Filter Category:</label>
+            <select class="form-control-sm select-toolbar-filter" [ngModel]="configSubCatCategoryFilter()"
+              (ngModelChange)="onConfigSubCatCategoryFilterChange($event)">
+              <option [ngValue]="null">All Categories</option>
+              @for (c of configCategoriesList(); track c.id) {
+              <option [ngValue]="c.id">{{ c.name }}</option>
+              }
+            </select>
+          </div>
+
+          <button type="button" class="btn-primary-blue" (click)="openAddSubCatModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Add Subcategory</span>
+          </button>
+        </div>
+
+        <section class="content-card my-tickets-card">
+          <div class="table-container">
+            <table class="tickets-table-clean">
+              <thead>
+                <tr>
+                  <th style="width: 8%;">ID</th>
+                  <th style="width: 22%;">Subcategory Name</th>
+                  <th style="width: 18%;">Parent Category</th>
+                  <th style="width: 14%;">Default Priority</th>
+                  <th style="width: 20%;">Required Skills</th>
+                  <th style="width: 18%;">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (configSubCategoriesList().length > 0) {
+                @for (sc of configSubCategoriesList(); track sc.id) {
+                <tr class="ticket-row-clean">
+                  <td><span class="ticket-id-dim">#{{ sc.id }}</span></td>
+                  <td><strong class="config-entity-name">{{ sc.name }}</strong></td>
+                  <td><span class="ticket-category">{{ getCategoryName(sc.categoryId) }}</span></td>
+                  <td>
+                    <span class="priority-pill" [class]="state.getPriorityClass(sc.priority)">
+                      {{ sc.priority }}
+                    </span>
+                  </td>
+                  <td>
+                    @if (sc.skillNames && sc.skillNames.length > 0) {
+                    <div class="skills-badge-list">
+                      @for (s of sc.skillNames; track s) {
+                      <span class="skill-tag-pill">{{ s }}</span>
+                      }
+                    </div>
+                    } @else {
+                    <span class="config-desc-text">None</span>
+                    }
+                  </td>
+                  <td><span class="config-desc-text">{{ sc.description || '—' }}</span></td>
+                </tr>
+                }
+                } @else {
+                <tr><td colspan="6" class="empty-table-state"><p>No subcategories found for selected category.</p></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      }
+
+      <!-- TAB 4: HOLIDAY CALENDAR -->
+      @if (activeConfigTab() === 'holidays') {
+      <div class="config-tab-content">
+        <div class="helpdesk-toolbar">
+          <div class="filter-group-inline">
+            <label>Department:</label>
+            <select class="form-control-sm select-toolbar-filter" [ngModel]="holidayDeptFilter()"
+              (ngModelChange)="onHolidayDeptFilterChange($event)">
+              <option [ngValue]="null">All Departments</option>
+              @for (d of departmentsList(); track d.id) {
+              <option [ngValue]="d.id">{{ d.name }}</option>
+              }
+            </select>
+
+            <label style="margin-left: 12px;">Year:</label>
+            <input type="number" class="year-input-sm" [ngModel]="holidayYearFilter()"
+              (ngModelChange)="onHolidayYearFilterChange($event)" min="2020" max="2035" />
+          </div>
+
+          <button type="button" class="btn-primary-blue" (click)="openAddHolidayModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Add Holiday to Calendar</span>
+          </button>
+        </div>
+
+        <section class="content-card my-tickets-card">
+          <div class="card-header-clean table-header-flex">
+            <div>
+              <h3 class="card-title">SLA Calendar Holidays — {{ holidayYearFilter() }}</h3>
+              <p class="card-subtitle">Tickets created on or spanning holidays automatically pause SLA escalation timers.</p>
+            </div>
+            <span class="ticket-count-badge">{{ holidaysList().length }} holidays recorded</span>
+          </div>
+
+          <div class="table-container">
+            <table class="tickets-table-clean">
+              <thead>
+                <tr>
+                  <th style="width: 15%;">Holiday Date</th>
+                  <th style="width: 18%;">Day of Week</th>
+                  <th style="width: 32%;">Holiday Name</th>
+                  <th style="width: 20%;">Department Scope</th>
+                  <th style="width: 15%; text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (holidaysList().length > 0) {
+                @for (h of holidaysList(); track h.id) {
+                <tr class="ticket-row-clean">
+                  <td>
+                    <div class="holiday-date-badge">
+                      <span class="cal-icon">📅</span>
+                      <strong>{{ h.holidayDate }}</strong>
+                    </div>
+                  </td>
+                  <td><span class="day-of-week-text">{{ formatHolidayDay(h.holidayDate) }}</span></td>
+                  <td><strong class="holiday-name-text">{{ h.holidayName }}</strong></td>
+                  <td><span class="badge-dept-code">{{ h.departmentName || getDepartmentName(h.departmentId) }}</span></td>
+                  <td style="text-align: right;">
+                    <button type="button" class="btn-action-delete" [disabled]="isDeletingHoliday()[h.id]"
+                      (click)="deleteHoliday(h.id)" title="Remove holiday">
+                      @if (isDeletingHoliday()[h.id]) { Deleting... } @else { Remove }
+                    </button>
+                  </td>
+                </tr>
+                }
+                } @else {
+                <tr><td colspan="5" class="empty-table-state"><p>No holidays found for year {{ holidayYearFilter() }}.</p></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      }
+
+      <!-- TAB 5: SLA POLICIES -->
+      @if (activeConfigTab() === 'sla-policies') {
+      <div class="config-tab-content">
+        <div class="helpdesk-toolbar">
+          <div class="filter-group-inline">
+            <label>Filter Department:</label>
+            <select class="form-control-sm select-toolbar-filter" [ngModel]="slaPolicyDeptFilter()"
+              (ngModelChange)="onSlaPolicyDeptFilterChange($event)">
+              <option [ngValue]="null">All Departments</option>
+              @for (d of departmentsList(); track d.id) {
+              <option [ngValue]="d.id">{{ d.name }}</option>
+              }
+            </select>
+          </div>
+
+          <button type="button" class="btn-primary-blue" (click)="openAddSlaModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Add SLA Policy</span>
+          </button>
+        </div>
+
+        <section class="content-card my-tickets-card">
+          <div class="card-header-clean table-header-flex">
+            <div>
+              <h3 class="card-title">Department Service Level Agreements</h3>
+              <p class="card-subtitle">Define maximum resolution timeframes and warning thresholds for tickets.</p>
+            </div>
+            <span class="ticket-count-badge">{{ slaPoliciesList().length }} policies active</span>
+          </div>
+
+          <div class="table-container">
+            @if (isLoadingSla()) {
+            <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading SLA policies...</span></div>
+            }
+            <table class="tickets-table-clean">
+              <thead>
+                <tr>
+                  <th style="width: 10%;">ID</th>
+                  <th style="width: 25%;">Department</th>
+                  <th style="width: 25%;">Subcategory Scope</th>
+                  <th style="width: 20%;">Target Resolution Time</th>
+                  <th style="width: 20%;">Warning Threshold</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (slaPoliciesList().length > 0) {
+                @for (p of slaPoliciesList(); track p.id) {
+                <tr class="ticket-row-clean">
+                  <td><span class="ticket-id-dim">#{{ p.id }}</span></td>
+                  <td><strong class="config-entity-name">{{ p.departmentName || getDepartmentName(p.departmentId) }}</strong></td>
+                  <td>
+                    @if (p.subCategoryName) {
+                    <span class="ticket-category">{{ p.subCategoryName }}</span>
+                    } @else {
+                    <span class="badge-dept-code">Department Default</span>
+                    }
+                  </td>
+                  <td><span class="sla-duration-badge">⏱️ {{ p.durationMinutes / 60 }}h ({{ p.durationMinutes }}m)</span></td>
+                  <td>
+                    @if (p.warningMinutes) {
+                    <span class="config-desc-text">⚠️ {{ p.warningMinutes / 60 }}h ({{ p.warningMinutes }}m)</span>
+                    } @else {
+                    <span class="config-desc-text">—</span>
+                    }
+                  </td>
+                </tr>
+                }
+                } @else {
+                <tr><td colspan="5" class="empty-table-state"><p>No SLA policies configured yet.</p></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      }
+
+      <!-- TAB 6: SKILLS DIRECTORY -->
+      @if (activeConfigTab() === 'skills') {
+      <div class="config-tab-content">
+        <div class="helpdesk-toolbar">
+          <div>
+            <h3 class="config-title">Master Skills Directory</h3>
+            <p class="config-subtitle">Skills are matched against ticket subcategories during auto-routing to select the best agent.</p>
+          </div>
+          <button type="button" class="btn-primary-blue" (click)="openAddSkillModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Add Skill</span>
+          </button>
+        </div>
+
+        <section class="content-card my-tickets-card">
+          <div class="card-header-clean table-header-flex">
+            <div>
+              <h3 class="card-title">Configured Skills</h3>
+              <p class="card-subtitle">Agents possessing these skills will be prioritized when routing corresponding tickets.</p>
+            </div>
+            <span class="ticket-count-badge">{{ skillsList().length }} skills registered</span>
+          </div>
+
+          <div class="table-container">
+            @if (isLoadingSkills()) {
+            <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading skills...</span></div>
+            }
+            <table class="tickets-table-clean">
+              <thead>
+                <tr>
+                  <th style="width: 10%;">ID</th>
+                  <th style="width: 30%;">Skill Name</th>
+                  <th style="width: 60%;">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (skillsList().length > 0) {
+                @for (sk of skillsList(); track sk.id) {
+                <tr class="ticket-row-clean">
+                  <td><span class="ticket-id-dim">#{{ sk.id }}</span></td>
+                  <td>
+                    <span class="skill-tag-pill" style="font-size: 13px; padding: 4px 10px;">⚡ {{ sk.name }}</span>
+                  </td>
+                  <td><span class="config-desc-text">{{ sk.description || 'No description provided' }}</span></td>
+                </tr>
+                }
+                } @else {
+                <tr><td colspan="3" class="empty-table-state"><p>No skills configured yet. Click "Add Skill" to register one.</p></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      }
+    </section>
+    }
+
+    <!-- Shared Ticket Detail Preview Card (Ticket-related sections only) -->
+    @if (activeNav() === 'dashboard' || activeNav() === 'all-tickets' || activeNav() === 'assign') {
+    <app-ticket-preview [activeNav]="activeNav()" (actionCompleted)="loadAllData()"></app-ticket-preview>
+    }
+    }
+  </main>
+
+  <!-- ============================================== -->
+  <!-- MODALS                                         -->
+  <!-- ============================================== -->
+
+  <!-- 1. CREATE USER MODAL -->
+  @if (showCreateUserModal()) {
+  <div class="modal-backdrop" (click)="closeCreateUserModal()">
+    <div class="modal-card modal-card-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Create New User Account</h3>
+          <p class="modal-subtitle">Register a company employee, agent, manager, or administrator.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeCreateUserModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>First Name <span class="required-star">*</span></label>
+            <input type="text" class="form-control" placeholder="e.g. John" [(ngModel)]="userFirstName" />
+          </div>
+
+          <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" class="form-control" placeholder="e.g. Doe" [(ngModel)]="userLastName" />
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Email Address <span class="required-star">*</span></label>
+            <input type="email" class="form-control" placeholder="john.doe@company.com" [(ngModel)]="userEmail" />
+          </div>
+
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="tel" class="form-control" placeholder="+91 9876543210" [(ngModel)]="userPhone" />
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Role <span class="required-star">*</span></label>
+            <select class="form-control" [(ngModel)]="userRole">
+              <option value="EMPLOYEE">Employee (Can raise tickets)</option>
+              <option value="AGENT">Support Agent (Solves department tickets)</option>
+              <option value="MANAGER">Department Manager (Team oversight & approvals)</option>
+              <option value="ADMIN">Administrator (Full system configuration)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Department @if (userRole() === 'EMPLOYEE' || userRole() === 'AGENT') { <span class="required-star">*</span> }</label>
+            <select class="form-control" [ngModel]="userDepartmentId()" (ngModelChange)="onUserDeptSelect($event)">
+              <option [ngValue]="null">Select Department</option>
+              @for (dept of departmentsList(); track dept.id) {
+              <option [ngValue]="dept.id">{{ dept.name }} ({{ dept.code }})</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        @if (userRole() === 'EMPLOYEE' || userRole() === 'AGENT') {
+        <div class="form-group">
+          <label>Reporting Manager <span class="required-star">*</span></label>
+          <select class="form-control" [(ngModel)]="userManagerId">
+            <option [ngValue]="null">Select Reporting Manager</option>
+            @for (mgr of availableManagers(); track mgr.id) {
+            <option [ngValue]="mgr.id">{{ mgr.firstName }} {{ mgr.lastName || '' }} ({{ mgr.designation || 'Manager' }})</option>
+            }
+          </select>
+          @if (!availableManagers().length && userDepartmentId()) {
+          <small class="form-hint text-amber">No managers found in this department. Please create a Manager first.</small>
+          }
+        </div>
+        }
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Designation</label>
+            <input type="text" class="form-control" placeholder="e.g. Senior Software Engineer" [(ngModel)]="userDesignation" />
+          </div>
+
+          <div class="form-group">
+            <label>Date of Joining</label>
+            <input type="date" class="form-control" [(ngModel)]="userDateOfJoining" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Timezone</label>
+          <select class="form-control" [(ngModel)]="userTimezone">
+            <option value="Asia/Kolkata">Asia/Kolkata (IST +5:30)</option>
+            <option value="UTC">UTC (GMT +0:00)</option>
+            <option value="America/New_York">America/New_York (EST -5:00)</option>
+            <option value="Europe/London">Europe/London (GMT +0:00)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeCreateUserModal()">Cancel</button>
+        <button type="button" class="btn-primary-blue" [disabled]="isSubmittingUser()" (click)="submitCreateUser()">
+          @if (isSubmittingUser()) { Creating User... } @else { Create User }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 2. ADD DEPARTMENT MODAL -->
+  @if (showAddDeptModal()) {
+  <div class="modal-backdrop" (click)="closeAddDeptModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Add New Department</h3>
+          <p class="modal-subtitle">Define a new functional unit for ticketing & SLAs.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAddDeptModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Department Code <span class="required-star">*</span></label>
+          <input type="text" class="form-control" placeholder="e.g. IT, HR, FIN, OPS" [(ngModel)]="newDeptCode" maxlength="20" />
+        </div>
+
+        <div class="form-group">
+          <label>Department Name <span class="required-star">*</span></label>
+          <input type="text" class="form-control" placeholder="e.g. Information Technology" [(ngModel)]="newDeptName" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea class="form-control" rows="3" placeholder="Brief scope of the department..." [(ngModel)]="newDeptDesc"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Operational Timezone</label>
+          <select class="form-control" [(ngModel)]="newDeptTimezone">
+            <option value="Asia/Kolkata">Asia/Kolkata</option>
+            <option value="UTC">UTC</option>
+            <option value="America/New_York">America/New_York</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeAddDeptModal()">Cancel</button>
+        <button type="button" class="btn-primary-blue" [disabled]="isSubmittingDept()" (click)="submitAddDept()">
+          @if (isSubmittingDept()) { Saving... } @else { Save Department }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 3. ADD CATEGORY MODAL -->
+  @if (showAddCatModal()) {
+  <div class="modal-backdrop" (click)="closeAddCatModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Add New Ticket Category</h3>
+          <p class="modal-subtitle">Classify issues under a parent department.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAddCatModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Department <span class="required-star">*</span></label>
+          <select class="form-control" [(ngModel)]="newCatDeptId">
+            @for (dept of departmentsList(); track dept.id) {
+            <option [value]="dept.id">{{ dept.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Category Name <span class="required-star">*</span></label>
+          <input type="text" class="form-control" placeholder="e.g. Hardware Issues, Payroll, Network" [(ngModel)]="newCatName" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea class="form-control" rows="3" placeholder="What kind of tickets belong here..." [(ngModel)]="newCatDesc"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeAddCatModal()">Cancel</button>
+        <button type="button" class="btn-primary-blue" [disabled]="isSubmittingCat()" (click)="submitAddCat()">
+          @if (isSubmittingCat()) { Saving... } @else { Save Category }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 4. ADD SUBCATEGORY MODAL -->
+  @if (showAddSubCatModal()) {
+  <div class="modal-backdrop" (click)="closeAddSubCatModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Add New Subcategory</h3>
+          <p class="modal-subtitle">Specify fine-grained ticket topics with SLA default priorities.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAddSubCatModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Parent Category <span class="required-star">*</span></label>
+          <select class="form-control" [(ngModel)]="newSubCatCatId">
+            @for (cat of configCategoriesList(); track cat.id) {
+            <option [value]="cat.id">{{ cat.name }} ({{ getDepartmentName(cat.departmentId) }})</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Subcategory Name <span class="required-star">*</span></label>
+          <input type="text" class="form-control" placeholder="e.g. Laptop Keyboard Failure, VPN Access" [(ngModel)]="newSubCatName" />
+        </div>
+
+        <div class="form-group">
+          <label>Default Priority Tier <span class="required-star">*</span></label>
+          <select class="form-control" [(ngModel)]="newSubCatPriority">
+            <option value="CRITICAL">Critical (Immediate SLA response)</option>
+            <option value="HIGH">High (4-hour SLA)</option>
+            <option value="MEDIUM">Medium (8-hour SLA)</option>
+            <option value="LOW">Low (24-hour SLA)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <div class="label-with-counter">
+            <label>Required Skills (for ticket auto-routing)</label>
+            <span class="selected-count-badge">{{ selectedSubCatSkillIds().length }} selected</span>
+          </div>
+          <div class="skills-selection-grid">
+            @for (sk of skillsList(); track sk.id) {
+            <label class="skill-check-item" [class.selected]="isSubCatSkillSelected(sk.id)">
+              <input type="checkbox" [checked]="isSubCatSkillSelected(sk.id)" (change)="toggleSubCatSkill(sk.id)" />
+              <span class="skill-name-text">⚡ {{ sk.name }}</span>
+            </label>
+            }
+            @if (skillsList().length === 0) {
+            <span class="form-hint">No skills created yet. Skills can be added in the Skills Directory tab.</span>
+            }
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea class="form-control" rows="2" placeholder="Detailed guidance for this ticket subcategory..." [(ngModel)]="newSubCatDesc"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeAddSubCatModal()">Cancel</button>
+        <button type="button" class="btn-primary-blue" [disabled]="isSubmittingSubCat()" (click)="submitAddSubCat()">
+          @if (isSubmittingSubCat()) { Saving... } @else { Save Subcategory }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 5. ADD HOLIDAY MODAL -->
+  @if (showAddHolidayModal()) {
+  <div class="modal-backdrop" (click)="closeAddHolidayModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Add Holiday to SLA Calendar</h3>
+          <p class="modal-subtitle">Exempt specific dates from SLA response and resolution countdowns.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAddHolidayModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Department Scope <span class="required-star">*</span></label>
+          <select class="form-control" [(ngModel)]="newHolidayDeptId">
+            @for (dept of departmentsList(); track dept.id) {
+            <option [value]="dept.id">{{ dept.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Holiday Date <span class="required-star">*</span></label>
+          <input type="date" class="form-control" [(ngModel)]="newHolidayDate" />
+        </div>
+
+        <div class="form-group">
+          <label>Holiday Name <span class="required-star">*</span></label>
+          <input type="text" class="form-control" placeholder="e.g. Independence Day, New Year's Day" [(ngModel)]="newHolidayName" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeAddHolidayModal()">Cancel</button>
+        <button type="button" class="btn-primary-blue" [disabled]="isSubmittingHoliday()" (click)="submitAddHoliday()">
+          @if (isSubmittingHoliday()) { Adding... } @else { Add to Calendar }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 6. ADD SKILL MODAL -->
+  @if (showAddSkillModal()) {
+  <div class="modal-backdrop" (click)="closeAddSkillModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Add New Skill</h3>
+          <p class="modal-subtitle">Define an agent technical capability or competency domain.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAddSkillModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Skill Name <span class="required-star">*</span></label>
+          <input type="text" class="form-control" placeholder="e.g. Java, Network Security, Payroll, AWS" [(ngModel)]="newSkillName" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea class="form-control" rows="3" placeholder="Brief details about this skill..." [(ngModel)]="newSkillDesc"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeAddSkillModal()">Cancel</button>
+        <button type="button" class="btn-primary-blue" [disabled]="isSubmittingSkill()" (click)="submitAddSkill()">
+          @if (isSubmittingSkill()) { Saving... } @else { Save Skill }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 7. ADD SLA POLICY MODAL -->
+  @if (showAddSlaModal()) {
+  <div class="modal-backdrop" (click)="closeAddSlaModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Add SLA Policy</h3>
+          <p class="modal-subtitle">Set resolution targets and breach thresholds for department tickets.</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAddSlaModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Department Scope <span class="required-star">*</span></label>
+          <select class="form-control" [(ngModel)]="newSlaDeptId">
+            @for (dept of departmentsList(); track dept.id) {
+            <option [value]="dept.id">{{ dept.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Subcategory (Optional - leave empty for department default)</label>
+          <select class="form-control" [(ngModel)]="newSlaSubCatId">
+            <option [ngValue]="null">Department Default (All subcategories)</option>
+            @for (sc of configSubCategoriesList(); track sc.id) {
+            <option [ngValue]="sc.id">{{ sc.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Target Resolution Time (Hours) <span class="required-star">*</span></label>
+            <input type="number" class="form-control" min="1" max="720" [(ngModel)]="newSlaDuration" />
+          </div>
+
+          <div class="form-group">
+            <label>Warning Alert Threshold (Hours)</label>
+            <input type="number" class="form-control" min="1" max="720" [(ngModel)]="newSlaWarning" placeholder="e.g. 4" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeAddSlaModal()">Cancel</button>
+        <button type="button" class="btn-primary-blue" [disabled]="isSubmittingSla()" (click)="submitAddSla()">
+          @if (isSubmittingSla()) { Saving... } @else { Save SLA Policy }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- 8. CONFIGURE AGENT SKILLS MODAL -->
+  @if (showAgentSkillsModal()) {
+  <div class="modal-backdrop" (click)="closeAgentSkillsModal()">
+    <div class="modal-card modal-card-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Configure Agent Skills</h3>
+          <p class="modal-subtitle">Assign technical skills to {{ selectedAgentForSkills()?.firstName }} {{ selectedAgentForSkills()?.lastName || '' }} ({{ selectedAgentForSkills()?.departmentName || getDepartmentName(selectedAgentForSkills()?.departmentId) }})</p>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAgentSkillsModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        @if (isLoadingAgentSkills()) {
+        <div class="table-loading-bar"><div class="loading-ring-small"></div><span>Loading agent skills...</span></div>
+        }
+        <div class="form-group">
+          <div class="label-with-counter">
+            <label>Select Agent Skills (used for ticket auto-routing hierarchy)</label>
+            <span class="selected-count-badge">{{ selectedAgentSkillIds().length }} selected</span>
+          </div>
+          <div class="skills-selection-grid">
+            @for (sk of skillsList(); track sk.id) {
+            <label class="skill-check-item" [class.selected]="isAgentSkillSelected(sk.id)">
+              <input type="checkbox" [checked]="isAgentSkillSelected(sk.id)" (change)="toggleAgentSkill(sk.id)" />
+              <span class="skill-name-text">⚡ {{ sk.name }}</span>
+            </label>
+            }
+            @if (skillsList().length === 0) {
+            <span class="form-hint">No skills defined yet. Please add skills under the Skills Directory tab first.</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeAgentSkillsModal()">Cancel</button>
+        <button type="button" class="btn-primary-blue" [disabled]="isSubmittingAgentSkills() || isLoadingAgentSkills()" (click)="submitAgentSkills()">
+          @if (isSubmittingAgentSkills()) { Saving Skills... } @else { Save Agent Skills }
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Shared Report Summary Modal & Notification Drawer -->
+  <app-report-summary-modal [dateRange]="resolveDateRange()" [departmentId]="selectedDepartmentId()"></app-report-summary-modal>
+  <app-notification-drawer></app-notification-drawer>
+</div>

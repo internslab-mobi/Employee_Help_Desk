@@ -1,0 +1,9 @@
+@if (userRole() === 'AGENT') {
+  <app-agent-dashboard></app-agent-dashboard>
+} @else if (userRole() === 'MANAGER') {
+  <app-manager-dashboard></app-manager-dashboard>
+} @else if (userRole() === 'ADMIN') {
+  <app-admin-dashboard></app-admin-dashboard>
+} @else {
+  <app-employee-dashboard></app-employee-dashboard>
+}

@@ -1,0 +1,36 @@
+package xyz.mobi.employeehelpdesk.security;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import xyz.mobi.employeehelpdesk.entity.Employee;
+import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
+
+@Service
+@RequiredArgsConstructor
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final EmployeeRepository employeeRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        Employee employee = employeeRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Employee not found with email: " + email));
+
+        return UserPrincipal.create(employee);
+    }
+}
+
+<<<<<<< HEAD
+<<<<<<< HEAD:Employee_Help_Desk_Backend/src/main/java/xyz/mobi/employeehelpdesk/security/CustomUserDetailsService.java
+=======
+
+
+
+>>>>>>> c5b2367e (updated reworks):src/main/java/com/example/helpdesk/security/CustomUserDetailsService.java
+=======
+>>>>>>> 22515536 (microservices summary report)

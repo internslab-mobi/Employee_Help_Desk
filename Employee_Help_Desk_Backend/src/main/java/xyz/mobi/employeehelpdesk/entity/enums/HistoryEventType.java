@@ -1,0 +1,33 @@
+package xyz.mobi.employeehelpdesk.entity.enums;
+
+public enum HistoryEventType {
+
+    TICKET_CREATED,
+
+    STATUS_CHANGED,
+    PRIORITY_CHANGED,
+    CATEGORY_CHANGED,
+    SUB_CATEGORY_CHANGED,
+
+    ASSIGNED,
+    REASSIGNED,
+
+    HOLD,
+    RESUMED,
+
+    SLA_STARTED,
+    SLA_WARNING,
+    SLA_BREACHED,
+
+    MESSAGE_ADDED,
+    ATTACHMENT_ADDED,
+
+    RESOLVED,
+
+    WITHDRAWN,
+    REOPENED,
+
+    FEEDBACK_SUBMITTED,
+
+    ESCALATED
+}

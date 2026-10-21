@@ -1,0 +1,64 @@
+@if (state.showNotificationDrawer()) {
+<div class="drawer-backdrop" (click)="state.closeNotificationDrawer()">
+  <div class="notification-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div class="drawer-title-group">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <h3>Notifications</h3>
+        @if (state.unreadNotificationCount() > 0) {
+        <span class="unread-pill">{{ state.unreadNotificationCount() }} unread</span>
+        }
+      </div>
+      <button type="button" class="btn-close-drawer" (click)="state.closeNotificationDrawer()" aria-label="Close notifications">&times;</button>
+    </div>
+
+    <div class="drawer-body">
+      @if (state.isLoadingNotifications()) {
+      <div class="drawer-state-loading">
+        <div class="loading-ring-small"></div>
+        <span>Loading notifications...</span>
+      </div>
+      } @else if (state.notificationDrawerError()) {
+      <div class="drawer-state-error">
+        <p>{{ state.notificationDrawerError() }}</p>
+        <button type="button" class="btn-retry" (click)="state.loadNotifications()">Retry</button>
+      </div>
+      } @else if (state.notificationsList().length === 0) {
+      <div class="drawer-state-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" color="#94a3b8">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <p class="empty-title">No notifications yet</p>
+        <p class="empty-desc">When ticket assignments or updates occur, they will appear here.</p>
+      </div>
+      } @else {
+      <div class="notifications-stream">
+        @for (notif of state.notificationsList(); track notif.id) {
+        <div class="notification-item-card" [class.unread]="!notif.read">
+          <div class="notif-card-top">
+            <span class="notif-type-badge">{{ notif.type.replace('_', ' ') }}</span>
+            <span class="notif-time">{{ state.formatNotificationTime(notif.createdAt) }}</span>
+          </div>
+          <h4 class="notif-title">{{ notif.title }}</h4>
+          <p class="notif-message">{{ notif.message }}</p>
+          <div class="notif-card-actions">
+            @if (!notif.read) {
+            <button type="button" class="btn-seen" (click)="state.markNotificationSeen(notif.id, $event)">
+              Seen
+            </button>
+            } @else {
+            <span class="seen-tag">✓ Seen</span>
+            }
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+</div>
+}

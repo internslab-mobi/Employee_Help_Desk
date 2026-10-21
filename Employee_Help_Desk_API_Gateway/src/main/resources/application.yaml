@@ -1,0 +1,25 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: Employee_Help_Desk_API_Gateway
+
+gateway:
+  services:
+    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    backend-url: ${BACKEND_SERVICE_URL:http://localhost:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    xyz.mobi.gateway: INFO

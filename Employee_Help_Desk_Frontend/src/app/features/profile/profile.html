@@ -1,0 +1,578 @@
+<div class="peoplehub-layout">
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside class="peoplehub-sidebar">
+    <!-- Brand / Logo -->
+    <div class="sidebar-brand">
+      <h1 class="brand-title">HELP DESK</h1>
+      <span class="brand-subtitle">Employee Management Portal</span>
+    </div>
+
+    <!-- Navigation Menu -->
+    <!-- Navigation Menu (Role-Adaptive, No Profile Section) -->
+    <nav class="sidebar-nav">
+      <!-- 1. Dashboard (All roles) -->
+      <button type="button" class="nav-item" (click)="navigateToDashboard()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+        <span class="nav-label">Dashboard</span>
+      </button>
+
+      <!-- AGENT: Dashboard, My Tickets, Assigned Tickets -->
+      @if (userRole() === 'AGENT') {
+        <button type="button" class="nav-item" (click)="navigateToTickets()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span class="nav-label">My Tickets</span>
+        </button>
+
+        <button type="button" class="nav-item" (click)="navigateToAssigned()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8.5" cy="7" r="4" />
+            <polyline points="17 11 19 13 23 9" />
+          </svg>
+          <span class="nav-label">Assigned Tickets</span>
+        </button>
+      }
+
+      <!-- MANAGER: Dashboard, Assign, My Tickets -->
+      @else if (userRole() === 'MANAGER') {
+        <button type="button" class="nav-item" (click)="navigateToAssign()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span class="nav-label">Assign</span>
+        </button>
+
+        <button type="button" class="nav-item" (click)="navigateToTickets()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span class="nav-label">My Tickets</span>
+        </button>
+      }
+
+      <!-- ADMIN: Dashboard, Assign, Assigned Tickets, My Tickets -->
+      @else if (userRole() === 'ADMIN') {
+        <button type="button" class="nav-item" (click)="navigateToAssign()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span class="nav-label">Assign</span>
+        </button>
+
+        <button type="button" class="nav-item" (click)="navigateToAssigned()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8.5" cy="7" r="4" />
+            <polyline points="17 11 19 13 23 9" />
+          </svg>
+          <span class="nav-label">Assigned Tickets</span>
+        </button>
+
+        <button type="button" class="nav-item" (click)="navigateToTickets()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span class="nav-label">My Tickets</span>
+        </button>
+      }
+
+      <!-- EMPLOYEE: Dashboard, My Tickets -->
+      @else {
+        <button type="button" class="nav-item" (click)="navigateToTickets()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          <span class="nav-label">My Tickets</span>
+        </button>
+      }
+    </nav>
+
+    <!-- Signed In As (Footer) -->
+    <div class="sidebar-footer">
+      <div class="sidebar-user-avatar">
+        @if (authService.profilePhotoUrl()) {
+          <img class="avatar-img-circle small" [src]="authService.profilePhotoUrl()" alt="Profile photo" />
+        } @else {
+          <div class="profile-avatar small">{{ getInitials(displayUserName()) }}</div>
+        }
+      </div>
+      <div class="sidebar-user-meta">
+        <span class="signed-label">Signed in as</span>
+        <strong class="signed-name">{{ displayUserName() }}</strong>
+        <span class="signed-role">{{ displayUserRole() }}</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN CONTENT AREA ================= -->
+  <main class="peoplehub-main">
+    <!-- Top Header Bar -->
+    <header class="main-header">
+      <div class="header-titles">
+        <div class="breadcrumb">
+          <a (click)="navigateToDashboard()" class="breadcrumb-link">Dashboard</a>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current">User Profile</span>
+        </div>
+        <h2 class="page-title">User Profile</h2>
+        <p class="page-subtitle">View and manage your account details and organizational profile.</p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="header-right">
+        <!-- User Profile Area -->
+        <div id="profile-page-chip" class="profile-chip" title="Active Profile">
+          <div class="profile-avatar">
+            @if (authService.profilePhotoUrl()) {
+              <img class="avatar-img-circle" [src]="authService.profilePhotoUrl()" alt="Profile photo" />
+            } @else {
+              {{ getInitials(displayUserName()) }}
+            }
+          </div>
+          <div class="profile-info">
+            <span class="profile-name">{{ displayUserName() }}</span>
+            <span class="profile-role">{{ displayUserRole() }}</span>
+          </div>
+        </div>
+
+        <button id="btn-back-dashboard" class="btn-secondary" (click)="navigateToDashboard()" title="Return to Dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span>Back to Dashboard</span>
+        </button>
+
+        <button class="btn-icon-header" (click)="logout()" title="Sign out" aria-label="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Feedback Banners -->
+    @if (successMessage(); as msg) {
+    <div id="profile-success-banner" class="toast-banner notif-SUCCESS">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+      <span>{{ msg }}</span>
+    </div>
+    }
+
+    @if (errorMessage(); as err) {
+    <div id="profile-error-banner" class="toast-banner notif-ERROR">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span class="error-text">{{ err }}</span>
+      <button class="btn-retry" (click)="loadProfile()">Retry</button>
+    </div>
+    }
+
+    <!-- Loading State -->
+    @if (isLoading()) {
+    <div id="profile-loading-state" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Retrieving user profile from database...</p>
+    </div>
+    }
+
+    <!-- Profile Details View -->
+    @if (!isLoading() && profile(); as p) {
+    <div class="profile-content-container">
+      <!-- Profile Hero Card -->
+      <section class="profile-hero-card">
+        <div class="hero-avatar-wrapper">
+          @if (imagePreviewUrl()) {
+          <img [src]="imagePreviewUrl()" alt="Avatar preview" class="hero-avatar-img" />
+          } @else if (authService.profilePhotoUrl()) {
+          <img [src]="authService.profilePhotoUrl()" alt="Profile photo" class="hero-avatar-img" />
+          } @else {
+          <div class="hero-avatar-placeholder">
+            {{ getInitials(displayUserName()) }}
+          </div>
+          }
+        </div>
+
+        <div class="hero-details">
+          <div class="hero-title-row">
+            <h3 class="hero-name">{{ displayUserName() }}</h3>
+            <span class="badge-role badge-role-{{ p.role }}">{{ displayUserRole() }}</span>
+            <span class="badge-status status-{{ (p.employmentStatus || 'ACTIVE').toLowerCase() }}">
+              {{ p.employmentStatus || 'ACTIVE' }}
+            </span>
+          </div>
+
+          <div class="hero-meta-row">
+            <span class="hero-meta-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+              {{ p.designation || 'Staff Member' }}
+            </span>
+            <span class="hero-meta-separator">•</span>
+            <span class="hero-meta-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              </svg>
+              {{ p.departmentName || 'General Department' }}
+            </span>
+            <span class="hero-meta-separator">•</span>
+            <span class="hero-meta-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Joined {{ p.dateOfJoining || 'N/A' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="hero-actions">
+          @if (!isEditMode()) {
+          <button id="btn-edit-profile" class="btn-primary" (click)="enterEditMode()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            <span>Edit Profile</span>
+          </button>
+          } @else {
+          <div class="edit-actions-group">
+            <button id="btn-cancel-edit" type="button" class="btn-secondary" (click)="cancelEdit()" [disabled]="isSaving()">
+              Cancel
+            </button>
+            <button id="btn-save-profile" type="button" class="btn-primary" (click)="saveProfile()" [disabled]="isSaving() || profileForm.invalid">
+              @if (isSaving()) {
+              <span class="spinner-small"></span>
+              <span>Saving...</span>
+              } @else {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              <span>Save Changes</span>
+              }
+            </button>
+          </div>
+          }
+        </div>
+      </section>
+
+      <!-- Profile Form & Field Sections -->
+      <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+        <div class="profile-cards-grid">
+          <!-- CARD 1: Personal Details (Editable) -->
+          <section class="profile-section-card">
+            <div class="section-card-header">
+              <div class="header-icon-wrap primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <div>
+                <h4 class="section-title">Personal Details</h4>
+                <p class="section-desc">Manage your public identity and direct contact information.</p>
+              </div>
+              @if (isEditMode()) {
+              <span class="badge-edit-mode">Editable</span>
+              }
+            </div>
+
+            <div class="form-grid">
+              <!-- First Name -->
+              <div class="form-group">
+                <label for="profile-first-name" class="field-label">
+                  First Name <span class="required-indicator">*</span>
+                </label>
+                <input
+                  id="profile-first-name"
+                  type="text"
+                  class="form-control"
+                  [class.is-invalid]="profileForm.get('firstName')?.invalid && (profileForm.get('firstName')?.touched || isEditMode())"
+                  formControlName="firstName"
+                  [readonly]="!isEditMode()"
+                  placeholder="Enter first name"
+                />
+                @if (profileForm.get('firstName')?.hasError('required') && (profileForm.get('firstName')?.touched || isEditMode())) {
+                <span class="field-error">First name is required.</span>
+                }
+              </div>
+
+              <!-- Last Name -->
+              <div class="form-group">
+                <label for="profile-last-name" class="field-label">Last Name</label>
+                <input
+                  id="profile-last-name"
+                  type="text"
+                  class="form-control"
+                  formControlName="lastName"
+                  [readonly]="!isEditMode()"
+                  placeholder="Enter last name"
+                />
+              </div>
+
+              <!-- Phone Number -->
+              <div class="form-group">
+                <label for="profile-phone" class="field-label">Contact Phone</label>
+                <input
+                  id="profile-phone"
+                  type="tel"
+                  class="form-control"
+                  formControlName="phone"
+                  [readonly]="!isEditMode()"
+                  placeholder="e.g. +91 9876543210"
+                />
+              </div>
+
+              <!-- Designation -->
+              <div class="form-group">
+                <label for="profile-designation" class="field-label">Designation / Title</label>
+                <input
+                  id="profile-designation"
+                  type="text"
+                  class="form-control"
+                  formControlName="designation"
+                  [readonly]="!isEditMode()"
+                  placeholder="e.g. Software Engineer"
+                />
+              </div>
+
+              <!-- Profile Avatar Upload (Visible in Edit Mode) -->
+              @if (isEditMode()) {
+              <div class="form-group full-width">
+                <label for="profile-image-upload" class="field-label">Update Avatar Image (JPG / PNG)</label>
+                <input
+                  id="profile-image-upload"
+                  type="file"
+                  class="form-control file-input"
+                  accept="image/png, image/jpeg"
+                  (change)="onImageSelected($event)"
+                />
+                <span class="field-hint">Max file size 5MB. Supported formats: JPEG, PNG.</span>
+              </div>
+              }
+            </div>
+          </section>
+
+          <!-- CARD 2: Employment & Organization Credentials (Read-Only) -->
+          <section class="profile-section-card">
+            <div class="section-card-header">
+              <div class="header-icon-wrap secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+              </div>
+              <div>
+                <h4 class="section-title">Organizational Credentials</h4>
+                <p class="section-desc">Enterprise credentials synchronized with central employee directory.</p>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <!-- Employee Code / ID -->
+              <div class="form-group">
+                <label class="field-label">Employee ID / Code</label>
+                <div class="readonly-input-wrap">
+                  <input
+                    id="profile-employee-code"
+                    type="text"
+                    class="form-control readonly-field"
+                    [value]="p.employeeCode || ('EMP-' + p.id)"
+                    readonly
+                    disabled
+                  />
+                  <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Corporate Email -->
+              <div class="form-group">
+                <label class="field-label">Corporate Email Address</label>
+                <div class="readonly-input-wrap">
+                  <input
+                    id="profile-email"
+                    type="email"
+                    class="form-control readonly-field"
+                    [value]="p.email"
+                    readonly
+                    disabled
+                  />
+                  <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Department -->
+              <div class="form-group">
+                <label class="field-label">Department</label>
+                <div class="readonly-input-wrap">
+                  <input
+                    id="profile-department"
+                    type="text"
+                    class="form-control readonly-field"
+                    [value]="p.departmentName || 'N/A'"
+                    readonly
+                    disabled
+                  />
+                  <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Role -->
+              <div class="form-group">
+                <label class="field-label">Access Role</label>
+                <div class="readonly-input-wrap">
+                  <input
+                    id="profile-role"
+                    type="text"
+                    class="form-control readonly-field"
+                    [value]="displayUserRole()"
+                    readonly
+                    disabled
+                  />
+                  <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Employment Status -->
+              <div class="form-group">
+                <label class="field-label">Employment Status</label>
+                <div class="readonly-input-wrap">
+                  <input
+                    id="profile-status"
+                    type="text"
+                    class="form-control readonly-field"
+                    [value]="p.employmentStatus || 'ACTIVE'"
+                    readonly
+                    disabled
+                  />
+                  <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Date of Joining -->
+              <div class="form-group">
+                <label class="field-label">Date of Joining</label>
+                <div class="readonly-input-wrap">
+                  <input
+                    id="profile-doj"
+                    type="text"
+                    class="form-control readonly-field"
+                    [value]="p.dateOfJoining || 'Not Specified'"
+                    readonly
+                    disabled
+                  />
+                  <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Timezone -->
+              <div class="form-group">
+                <label class="field-label">Assigned Timezone</label>
+                <div class="readonly-input-wrap">
+                  <input
+                    id="profile-timezone"
+                    type="text"
+                    class="form-control readonly-field"
+                    [value]="p.timezone || 'Asia/Kolkata'"
+                    readonly
+                    disabled
+                  />
+                  <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Exit Date (if any) -->
+              @if (p.dateOfExit) {
+              <div class="form-group">
+                <label class="field-label">Date of Exit</label>
+                <div class="readonly-input-wrap">
+                  <input
+                    id="profile-exit-date"
+                    type="text"
+                    class="form-control readonly-field"
+                    [value]="p.dateOfExit"
+                    readonly
+                    disabled
+                  />
+                </div>
+              </div>
+              }
+            </div>
+
+            <!-- Directory notice -->
+            <div class="notice-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span>Organizational credentials are governed by IT Administration. To request changes to your corporate email, role, or department, submit an internal support ticket.</span>
+            </div>
+          </section>
+        </div>
+      </form>
+    </div>
+    }
+  </main>
+</div>
