@@ -18,12 +18,14 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
     req.url.includes('/user/refresh-token') ||
     req.url.includes('/user/forgot-password');
 
-  let requestToForward = req;
+  let requestToForward = req.clone({
+    withCredentials: true
+  });
 
   if (!isAuthEndpoint) {
     const token = authService.getToken();
     if (token && !req.headers.has('Authorization')) {
-      requestToForward = req.clone({
+      requestToForward = requestToForward.clone({
         setHeaders: {
           Authorization: `Bearer ${token}`
         }
@@ -48,8 +50,7 @@ function handle401Error(
   authService: AuthService,
   originalError: HttpErrorResponse
 ): Observable<HttpEvent<unknown>> {
-  const refreshToken = typeof authService.getRefreshToken === 'function' ? authService.getRefreshToken() : null;
-  if (!refreshToken || typeof authService.refreshToken !== 'function') {
+  if (typeof authService.refreshToken !== 'function') {
     authService.logout();
     return throwError(() => originalError);
   }
@@ -64,6 +65,7 @@ function handle401Error(
         authService.refreshTokenSubject.next(response.accessToken);
         return next(
           req.clone({
+            withCredentials: true,
             setHeaders: {
               Authorization: `Bearer ${response.accessToken}`
             }
@@ -84,6 +86,7 @@ function handle401Error(
       switchMap((newToken) => {
         return next(
           req.clone({
+            withCredentials: true,
             setHeaders: {
               Authorization: `Bearer ${newToken}`
             }

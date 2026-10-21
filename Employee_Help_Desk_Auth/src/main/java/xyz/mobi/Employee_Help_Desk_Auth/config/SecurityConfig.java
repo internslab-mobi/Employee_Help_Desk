@@ -71,6 +71,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/user/login", "/user/login", "/helpdesk/auth/user/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/user/refresh-token", "/user/refresh-token", "/helpdesk/auth/user/refresh-token").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/user/logout", "/user/logout", "/helpdesk/auth/user/logout").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/user/forgot-password/**", "/user/forgot-password/**", "/helpdesk/auth/user/forgot-password/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(

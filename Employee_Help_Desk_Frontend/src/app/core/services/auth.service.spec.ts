@@ -53,7 +53,7 @@ describe('AuthService', () => {
   });
 
   afterEach(() => {
-    service.logout();
+    service.logout(false);
     httpMock.verify();
     localStorage.clear();
     vi.useRealTimers();
