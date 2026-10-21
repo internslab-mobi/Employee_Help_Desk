@@ -5,11 +5,14 @@ import { VerifyOtp } from './features/auth/pages/verify-otp/verify-otp';
 import { Login } from './features/auth/pages/login/login';
 import { AgentDashboard } from './features/dashboard/agent-dashboard/agent-dashboard';
 import { ChangePassword } from './features/auth/pages/change-password/change-password';
+import { DashboardComponent } from './features/dashboard/dashboard';
 import { resetPasswordGuard, verifyOtpGuard } from './features/auth/guards/auth-flow.guard';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: 'login', component: Login },
+  { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'verify-otp', component: VerifyOtp, canActivate: [verifyOtpGuard] },
   { path: 'reset-password', component: ResetPassword, canActivate: [resetPasswordGuard] },

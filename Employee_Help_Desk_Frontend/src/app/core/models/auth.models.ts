@@ -14,6 +14,7 @@ export interface LoginResponse {
   role: UserRole;
 }
 
+<<<<<<< HEAD
 export interface TokenRefreshResponse {
   accessToken: string;
   refreshToken?: string;
@@ -21,6 +22,8 @@ export interface TokenRefreshResponse {
   expiresIn: number;
 }
 
+=======
+>>>>>>> 22515536 (microservices summary report)
 export interface EmployeeProfile {
   id: number;
   employeeCode?: string;
@@ -47,6 +50,7 @@ export interface UpdateProfileRequest {
   phone?: string;
   designation?: string;
 }
+<<<<<<< HEAD
 
 export interface ForgotPasswordRequest {
   email: string;
@@ -77,3 +81,5 @@ export interface ChangePasswordRequest {
 export interface AuthApiResponse {
   message: string;
 }
+=======
+>>>>>>> 22515536 (microservices summary report)
