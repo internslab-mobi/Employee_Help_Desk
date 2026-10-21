@@ -1,20 +1,16 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
-<<<<<<< HEAD
 import { API_ENDPOINTS } from '../config/api.config';
-import { ReportSummaryRequest, ReportSummaryResponse, ReportType } from '../models/report.models';
-=======
 import { environment } from '../../../environments/environment';
->>>>>>> 22515536 (microservices summary report)
+import { ReportSummaryRequest, ReportSummaryResponse, ReportType } from '../models/report.models';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ReportService {
-<<<<<<< HEAD
   // Integrates strictly through the Core Backend - never calls Report Microservice directly
-  private readonly baseUrl = API_ENDPOINTS.reports.base;
+  private readonly baseUrl = `${environment.backendUrl}/api/reports`;
 
   constructor(private http: HttpClient) {}
 
@@ -48,30 +44,12 @@ export class ReportService {
     const params = this.buildHttpParams(request);
 
     return this.http.get(`${this.baseUrl}/summary`, {
-=======
-  private readonly baseUrl = `${environment.reportServiceUrl}/api/reports`;
-
-  constructor(private http: HttpClient) {}
-
-  exportSummaryReport(
-    fromDate?: string,
-    toDate?: string,
-    departmentId?: number
-  ): Observable<HttpResponse<Blob>> {
-    let params = new HttpParams();
-    if (fromDate) params = params.set('fromDate', fromDate);
-    if (toDate) params = params.set('toDate', toDate);
-    if (departmentId != null) params = params.set('departmentId', departmentId.toString());
-
-    return this.http.get(`${this.baseUrl}/summary/export`, {
->>>>>>> 22515536 (microservices summary report)
       params,
       responseType: 'blob',
       observe: 'response'
     });
   }
 
-<<<<<<< HEAD
   /**
    * Request an on-screen JSON summary report through the Core Backend GET /api/reports/summary.
    */
@@ -129,8 +107,6 @@ export class ReportService {
   /**
    * Trigger browser file download from an HTTP Blob response.
    */
-=======
->>>>>>> 22515536 (microservices summary report)
   downloadBlob(blob: Blob, defaultFilename: string, headerDisposition?: string | null): void {
     let filename = defaultFilename;
     if (headerDisposition) {

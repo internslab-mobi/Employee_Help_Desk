@@ -19,11 +19,7 @@ import java.util.List;
 
 @Tag(name = "Analytics", description = "Role-based Dashboard Analytics & Export Data APIs")
 @RestController
-<<<<<<< HEAD
 @RequestMapping("/helpdesk/analytics")
-=======
-@RequestMapping("/analytics")
->>>>>>> 22515536 (microservices summary report)
 @RequiredArgsConstructor
 public class AnalyticsController {
 
