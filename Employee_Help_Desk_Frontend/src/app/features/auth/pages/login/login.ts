@@ -1,8 +1,15 @@
+<<<<<<< HEAD
 import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import {  FormBuilder,  FormGroup,  ReactiveFormsModule, Validators } from '@angular/forms';
 import {RouterLink, Router} from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import {finalize} from 'rxjs';
+=======
+import { Component } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
+>>>>>>> 22515536 (microservices summary report)
 
 @Component({
   selector: 'app-login',
@@ -11,8 +18,8 @@ import {finalize} from 'rxjs';
   templateUrl: './login.html',
   styleUrl: './login.css'
 })
-
 export class Login {
+<<<<<<< HEAD
 
   private cdr = inject(ChangeDetectorRef);
   private fb = inject(FormBuilder);
@@ -26,13 +33,22 @@ export class Login {
 
   constructor() {
 
+=======
+  loginForm: FormGroup;
+  showPassword = false;
+  isLoading = false;
+  errorMessage = '';
+
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService,
+    private router: Router
+  ) {
+>>>>>>> 22515536 (microservices summary report)
     this.loginForm = this.fb.group({
-
-      email: ['', [ Validators.required,  Validators.email]],
-      password: [  '',  Validators.required ]
-
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', Validators.required]
     });
-
   }
 
   get email() {
@@ -62,6 +78,7 @@ export class Login {
   
     this.isLoading = true;
 
+<<<<<<< HEAD
     this.authService.login(this.loginForm.value)
     .pipe(
       finalize( () => {
@@ -99,5 +116,22 @@ export class Login {
       }
     });
   }
+=======
+    this.isLoading = true;
+    this.errorMessage = '';
+>>>>>>> 22515536 (microservices summary report)
 
+    this.authService.login(this.loginForm.value).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.errorMessage =
+          err?.error?.message ||
+          'Invalid work email or password. Please try again.';
+      }
+    });
+  }
 }

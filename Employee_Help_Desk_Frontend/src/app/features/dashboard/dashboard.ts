@@ -7,7 +7,10 @@ import { AuthService } from '../../core/services/auth.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { ReportService } from '../../core/services/report.service';
 import { DashboardAnalyticsResponse, RecentTicket } from '../../core/models/dashboard.models';
+<<<<<<< HEAD
 import { ReportSummaryResponse, ReportType } from '../../core/models/report.models';
+=======
+>>>>>>> 22515536 (microservices summary report)
 import { UserRole } from '../../core/models/auth.models';
 
 @Component({
@@ -35,6 +38,7 @@ export class DashboardComponent implements OnInit {
   ticketStatusFilter = signal<string>('ALL');
   ticketPriorityFilter = signal<string>('ALL');
 
+<<<<<<< HEAD
   // Report Category State
   selectedReportType = signal<ReportType>('GENERAL_SUMMARY');
   reportSummaryJson = signal<ReportSummaryResponse | null>(null);
@@ -54,10 +58,13 @@ export class DashboardComponent implements OnInit {
   newTicketPriority = signal<string>('MEDIUM');
   newTicketDescription = signal<string>('');
 
+=======
+>>>>>>> 22515536 (microservices summary report)
   // Computed
   readonly currentUser = computed(() => this.authService.currentUser());
   readonly userRole = computed<UserRole>(() => this.authService.getRole() || 'EMPLOYEE');
 
+<<<<<<< HEAD
   readonly permittedReportTypes = computed<ReportType[]>(() => {
     const role = this.userRole();
     switch (role) {
@@ -103,6 +110,8 @@ export class DashboardComponent implements OnInit {
     return 'Employee';
   });
 
+=======
+>>>>>>> 22515536 (microservices summary report)
   readonly filteredTickets = computed<RecentTicket[]>(() => {
     const data = this.analytics();
     if (!data || !data.recentTickets) return [];
@@ -126,11 +135,14 @@ export class DashboardComponent implements OnInit {
     });
   });
 
+<<<<<<< HEAD
   // Strictly returns authorized database-backed tickets (no mock array fallback)
   readonly displayTickets = computed<RecentTicket[]>(() => {
     return this.filteredTickets();
   });
 
+=======
+>>>>>>> 22515536 (microservices summary report)
   constructor(
     public authService: AuthService,
     private analyticsService: AnalyticsService,
@@ -177,6 +189,7 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+<<<<<<< HEAD
   setActiveNav(nav: 'dashboard' | 'helpdesk' | 'assets' | 'exits'): void {
     this.activeNav.set(nav);
   }
@@ -245,6 +258,8 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+=======
+>>>>>>> 22515536 (microservices summary report)
   setDateRange(range: string): void {
     this.selectedDateRange.set(range);
     if (range !== 'custom') {
@@ -267,12 +282,17 @@ export class DashboardComponent implements OnInit {
     if (this.isExporting()) return;
 
     this.isExporting.set(true);
+<<<<<<< HEAD
     const reportType = this.selectedReportType();
     this.showNotification('success', `Generating ${this.formatReportTypeName(reportType)} Excel report via Core Backend...`);
+=======
+    this.showNotification('success', 'Generating Excel summary report...');
+>>>>>>> 22515536 (microservices summary report)
 
     const { from, to } = this.resolveDateRange();
     const deptId = this.selectedDepartmentId();
 
+<<<<<<< HEAD
     this.reportService.exportSummaryReport({
       reportType,
       fromDate: from,
@@ -290,13 +310,30 @@ export class DashboardComponent implements OnInit {
           this.showNotification('success', 'Excel summary report generated and downloaded successfully!');
         } else {
 
+=======
+    this.reportService.exportSummaryReport(from, to, deptId ?? undefined).subscribe({
+      next: (response: HttpResponse<Blob>) => {
+        this.isExporting.set(false);
+        const blob = response.body;
+        if (blob) {
+          const disposition = response.headers.get('Content-Disposition');
+          const role = this.userRole();
+          const defaultFilename = `${role}_Ticket_Summary_${new Date().toISOString().split('T')[0]}.xlsx`;
+          this.reportService.downloadBlob(blob, defaultFilename, disposition);
+          this.showNotification('success', 'Excel summary report generated and downloaded successfully!');
+        } else {
+>>>>>>> 22515536 (microservices summary report)
           this.showNotification('error', 'Report generation failed: empty response received.');
         }
       },
       error: (err: any) => {
         this.isExporting.set(false);
         const errorMsg =
+<<<<<<< HEAD
           err?.status === 503
+=======
+          err?.status === 0
+>>>>>>> 22515536 (microservices summary report)
             ? 'Report microservice unavailable. Ensure the service is running on port 8083.'
             : (err?.error?.message || 'Failed to export summary report. Please try again.');
         this.showNotification('error', errorMsg);
@@ -304,6 +341,7 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+<<<<<<< HEAD
   fetchSummaryJson(): void {
     if (this.isLoadingReportJson()) return;
 
@@ -343,6 +381,8 @@ export class DashboardComponent implements OnInit {
     return type.replace(/_/g, ' ');
   }
 
+=======
+>>>>>>> 22515536 (microservices summary report)
   logout(): void {
     this.authService.logout();
   }

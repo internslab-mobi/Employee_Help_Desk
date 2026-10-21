@@ -143,6 +143,7 @@ describe('DashboardComponent', () => {
     component.ticketSearchTerm.set('NonExistentTerm');
     expect(component.filteredTickets().length).toBe(0);
   });
+<<<<<<< HEAD
 
   it('should switch navigation views correctly', () => {
     expect(component.activeNav()).toBe('dashboard');
@@ -258,3 +259,6 @@ describe('DashboardComponent', () => {
   });
 });
 
+=======
+});
+>>>>>>> 22515536 (microservices summary report)

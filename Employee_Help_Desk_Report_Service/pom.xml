@@ -20,9 +20,12 @@
 
     <properties>
         <java.version>21</java.version>
+<<<<<<< HEAD
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.release>21</maven.compiler.release>
+=======
+>>>>>>> 22515536 (microservices summary report)
         <poi.version>5.3.0</poi.version>
     </properties>
 
@@ -87,6 +90,7 @@
     <build>
         <plugins>
             <plugin>
+<<<<<<< HEAD
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
@@ -103,6 +107,8 @@
                 </configuration>
             </plugin>
             <plugin>
+=======
+>>>>>>> 22515536 (microservices summary report)
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>

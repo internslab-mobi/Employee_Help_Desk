@@ -43,7 +43,11 @@ public class TicketController {
     ) throws IOException {
 
 
+<<<<<<< HEAD
         TicketResponseDTO response = ticketService.createTicket(
+=======
+        TicketCreateResponseDTO response = ticketService.createTicket(
+>>>>>>> 22515536 (microservices summary report)
                 request,
                 attachments
         );

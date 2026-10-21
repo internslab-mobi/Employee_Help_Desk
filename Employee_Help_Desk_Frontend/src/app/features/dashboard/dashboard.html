@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div class="peoplehub-layout">
   <!-- ================= LEFT SIDEBAR ================= -->
   <aside class="peoplehub-sidebar">
@@ -506,11 +507,663 @@
                 <p>No tickets match your filter criteria.</p>
               </td>
             </tr>
+=======
+<div class="dashboard-container">
+  <!-- ================= TOP HEADER ================= -->
+  <header class="dashboard-header">
+    <div class="header-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <path d="M22 6l-10 7L2 6"/>
+        </svg>
+      </div>
+      <div class="brand-info">
+        <h1>Employee Help Desk</h1>
+        <span class="brand-subtitle">Analytics & Performance Dashboard</span>
+      </div>
+    </div>
+
+    <!-- User Profile & Action Bar -->
+    <div class="header-actions">
+      <!-- Profile Chip -->
+      @if (analytics(); as data) {
+        <div class="user-chip">
+          <div class="avatar-circle">
+            {{ getInitials(data.employeeName) }}
+          </div>
+          <div class="user-meta">
+            <span class="user-name">{{ data.employeeName }}</span>
+            <div class="user-submeta">
+              <span class="role-badge role-{{ data.role.toLowerCase() }}">{{ data.role }}</span>
+              @if (data.departmentName) {
+                <span class="dept-tag">{{ data.departmentName }}</span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Export to Excel Button -->
+      <button
+        id="export-excel-btn"
+        class="btn btn-export"
+        [disabled]="isExporting() || isLoading()"
+        (click)="exportSummaryToExcel()"
+        title="Generate and download role-appropriate Excel summary report"
+      >
+        @if (isExporting()) {
+          <svg class="spinner-icon" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="30 60"></circle>
+          </svg>
+          <span>Exporting...</span>
+        } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          <span>Export Summary to Excel</span>
+        }
+      </button>
+
+      <!-- Logout Button -->
+      <button class="btn btn-logout" (click)="logout()" title="Sign out of help desk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Logout</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= NOTIFICATION TOAST ================= -->
+  @if (notification(); as notif) {
+    <div class="toast-banner toast-{{ notif.type }}">
+      <div class="toast-content">
+        @if (notif.type === 'success') {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        }
+        <span>{{ notif.message }}</span>
+      </div>
+    </div>
+  }
+
+  <!-- ================= FILTER CONTROLS TOOLBAR ================= -->
+  <section class="toolbar-section">
+    <div class="filter-group">
+      <span class="filter-label">Date Range:</span>
+      <div class="pills-container">
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedDateRange() === 'all'"
+          (click)="setDateRange('all')"
+        >
+          All Time
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedDateRange() === 'today'"
+          (click)="setDateRange('today')"
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedDateRange() === '7days'"
+          (click)="setDateRange('7days')"
+        >
+          Last 7 Days
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedDateRange() === '30days'"
+          (click)="setDateRange('30days')"
+        >
+          Last 30 Days
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedDateRange() === 'thisMonth'"
+          (click)="setDateRange('thisMonth')"
+        >
+          This Month
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="selectedDateRange() === 'custom'"
+          (click)="setDateRange('custom')"
+        >
+          Custom
+        </button>
+      </div>
+
+      @if (selectedDateRange() === 'custom') {
+        <div class="custom-range-inputs">
+          <input
+            type="date"
+            class="date-input"
+            [ngModel]="customFromDate()"
+            (ngModelChange)="customFromDate.set($event)"
+            placeholder="From Date"
+          />
+          <span class="range-separator">to</span>
+          <input
+            type="date"
+            class="date-input"
+            [ngModel]="customToDate()"
+            (ngModelChange)="customToDate.set($event)"
+            placeholder="To Date"
+          />
+          <button class="btn btn-secondary btn-sm" (click)="applyCustomDateRange()">Apply</button>
+        </div>
+      }
+    </div>
+
+    <!-- Admin Department Filter -->
+    @if (userRole() === 'ADMIN' && analytics()?.departmentDistribution?.length) {
+      <div class="dept-filter-group">
+        <label for="dept-select" class="filter-label">Department:</label>
+        <select
+          id="dept-select"
+          class="dept-select"
+          [ngModel]="selectedDepartmentId()"
+          (ngModelChange)="onDepartmentChange($event)"
+        >
+          <option [ngValue]="null">All Departments</option>
+          @for (d of analytics()?.departmentDistribution; track d.departmentId) {
+            <option [ngValue]="d.departmentId">{{ d.departmentName }}</option>
+          }
+        </select>
+      </div>
+    }
+
+    <!-- Refresh Button -->
+    <button class="btn btn-refresh" (click)="loadDashboardData()" title="Reload dashboard data">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 4v6h-6"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      <span>Refresh</span>
+    </button>
+  </section>
+
+  <!-- ================= ERROR STATE ================= -->
+  @if (errorMessage()) {
+    <div class="error-banner">
+      <div class="error-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div class="error-text">
+        <h3>Unable to load dashboard data</h3>
+        <p>{{ errorMessage() }}</p>
+      </div>
+      <button class="btn btn-secondary" (click)="loadDashboardData()">Retry</button>
+    </div>
+  }
+
+  <!-- ================= LOADING SKELETON ================= -->
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Loading real-time help desk analytics...</p>
+    </div>
+  } @else if (analytics(); as data) {
+
+    <!-- ================= SUMMARY METRIC CARDS ================= -->
+    <section class="metrics-grid">
+      <!-- 1. Total Tickets -->
+      <div class="metric-card card-total">
+        <div class="metric-icon-box bg-blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-title">
+            @if (userRole() === 'EMPLOYEE') { My Raised Tickets }
+            @else if (userRole() === 'AGENT') { Assigned Tickets }
+            @else if (userRole() === 'MANAGER') { Department Tickets }
+            @else { Total Tickets }
+          </span>
+          <span class="metric-number">{{ data.summary.totalTickets | number }}</span>
+          <span class="metric-hint">In selected period</span>
+        </div>
+      </div>
+
+      <!-- 2. Open Tickets -->
+      <div class="metric-card card-open">
+        <div class="metric-icon-box bg-sky">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-title">Open Tickets</span>
+          <span class="metric-number text-sky">{{ data.summary.openTickets | number }}</span>
+          <span class="metric-hint">Awaiting initial action</span>
+        </div>
+      </div>
+
+      <!-- 3. In Progress -->
+      <div class="metric-card card-progress">
+        <div class="metric-icon-box bg-purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-title">In Progress</span>
+          <span class="metric-number text-purple">{{ data.summary.inProgressTickets | number }}</span>
+          <span class="metric-hint">Under investigation</span>
+        </div>
+      </div>
+
+      <!-- 4. Resolved Tickets -->
+      <div class="metric-card card-resolved">
+        <div class="metric-icon-box bg-emerald">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-title">Resolved Tickets</span>
+          <span class="metric-number text-emerald">{{ data.summary.resolvedTickets | number }}</span>
+          <span class="metric-hint">Completed & closed</span>
+        </div>
+      </div>
+
+      <!-- 5. Overdue / SLA Breached -->
+      <div class="metric-card card-overdue">
+        <div class="metric-icon-box bg-rose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-title">Overdue / SLA Breached</span>
+          <span class="metric-number text-rose">{{ data.summary.overdueTickets | number }}</span>
+          <span class="metric-hint">Requires immediate action</span>
+        </div>
+      </div>
+
+      <!-- 6. SLA Compliance Rate -->
+      <div class="metric-card card-sla">
+        <div class="metric-icon-box bg-indigo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-title">SLA Compliance</span>
+          <span class="metric-number text-indigo">{{ data.summary.slaComplianceRate }}%</span>
+          <span class="metric-hint">Target: 95.0%</span>
+        </div>
+      </div>
+
+      <!-- 7. Average Resolution Time -->
+      <div class="metric-card card-time">
+        <div class="metric-icon-box bg-amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 14 14"/>
+          </svg>
+        </div>
+        <div class="metric-body">
+          <span class="metric-title">Avg Resolution Time</span>
+          <span class="metric-number text-amber">{{ data.summary.avgResolutionHours }}h</span>
+          <span class="metric-hint">From creation to resolution</span>
+        </div>
+      </div>
+
+      <!-- 8. Organization Staff Stats (Admin only) -->
+      @if (data.employeeStats) {
+        <div class="metric-card card-emp">
+          <div class="metric-icon-box bg-teal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div class="metric-body">
+            <span class="metric-title">Organization Staff</span>
+            <span class="metric-number text-teal">{{ data.employeeStats.activeEmployees }} Active</span>
+            <span class="metric-hint">{{ data.employeeStats.totalEmployees }} total employees</span>
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- ================= CHARTS & VISUAL ANALYTICS ================= -->
+    <section class="charts-grid">
+      <!-- Chart 1: Status Distribution -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Ticket Status Distribution</h3>
+          <span class="chart-subtitle">Breakdown by current lifecycle status</span>
+        </div>
+        <div class="chart-body">
+          <div class="distribution-list">
+            @for (item of data.statusDistribution; track item.key) {
+              <div class="dist-row">
+                <div class="dist-info">
+                  <span class="status-indicator {{ getStatusClass(item.key) }}"></span>
+                  <span class="dist-label">{{ item.label }}</span>
+                </div>
+                <div class="dist-bar-wrap">
+                  <div
+                    class="dist-bar {{ getStatusClass(item.key) }}-bg"
+                    [style.width.%]="item.percentage"
+                  ></div>
+                </div>
+                <div class="dist-stats">
+                  <span class="dist-count">{{ item.count }}</span>
+                  <span class="dist-pct">{{ item.percentage }}%</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart 2: Priority Distribution -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>Ticket Priority Distribution</h3>
+          <span class="chart-subtitle">Urgency & severity levels</span>
+        </div>
+        <div class="chart-body">
+          <div class="distribution-list">
+            @for (item of data.priorityDistribution; track item.key) {
+              <div class="dist-row">
+                <div class="dist-info">
+                  <span class="status-indicator {{ getPriorityClass(item.key) }}"></span>
+                  <span class="dist-label">{{ item.label }}</span>
+                </div>
+                <div class="dist-bar-wrap">
+                  <div
+                    class="dist-bar {{ getPriorityClass(item.key) }}-bg"
+                    [style.width.%]="item.percentage"
+                  ></div>
+                </div>
+                <div class="dist-stats">
+                  <span class="dist-count">{{ item.count }}</span>
+                  <span class="dist-pct">{{ item.percentage }}%</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart 3: Trends Over Time -->
+      <div class="chart-card chart-span-2">
+        <div class="chart-header">
+          <h3>Ticket Creation vs Resolution Trends</h3>
+          <div class="legend-container">
+            <span class="legend-item"><span class="legend-dot bg-blue"></span> Created</span>
+            <span class="legend-item"><span class="legend-dot bg-emerald"></span> Resolved</span>
+          </div>
+        </div>
+        <div class="chart-body">
+          @if (data.trends.length) {
+            <div class="trends-timeline">
+              @for (t of data.trends; track t.period) {
+                <div class="trend-col">
+                  <div class="trend-bars">
+                    <div
+                      class="bar-created"
+                      [style.height.px]="t.createdCount * 14"
+                      [title]="'Created: ' + t.createdCount"
+                    ></div>
+                    <div
+                      class="bar-resolved"
+                      [style.height.px]="t.resolvedCount * 14"
+                      [title]="'Resolved: ' + t.resolvedCount"
+                    ></div>
+                  </div>
+                  <span class="trend-date">{{ t.period.substring(5) }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-state">No trend activity in selected period.</div>
+          }
+        </div>
+      </div>
+
+      <!-- Chart 4: Department / Category Breakdown (Admin & Manager) -->
+      @if (data.departmentDistribution?.length || data.categoryDistribution?.length) {
+        <div class="chart-card chart-span-2">
+          <div class="chart-header">
+            <h3>Department & Category Analytics</h3>
+            <span class="chart-subtitle">Volume distribution across organizational units</span>
+          </div>
+          <div class="chart-body dual-column">
+            <!-- Left: Department Breakdown -->
+            @if (data.departmentDistribution?.length) {
+              <div class="dept-table-wrap">
+                <h4>Departments</h4>
+                <table class="mini-table">
+                  <thead>
+                    <tr>
+                      <th>Department</th>
+                      <th>Total</th>
+                      <th>Open</th>
+                      <th>Resolved</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (dept of data.departmentDistribution; track dept.departmentId) {
+                      <tr>
+                        <td class="font-medium">{{ dept.departmentName }}</td>
+                        <td>{{ dept.totalTickets }}</td>
+                        <td><span class="badge text-sky">{{ dept.openTickets }}</span></td>
+                        <td><span class="badge text-emerald">{{ dept.resolvedTickets }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+
+            <!-- Right: Category Breakdown -->
+            @if (data.categoryDistribution?.length) {
+              <div class="cat-list-wrap">
+                <h4>Top Categories</h4>
+                <div class="distribution-list">
+                  @for (cat of data.categoryDistribution; track cat.key) {
+                    <div class="dist-row">
+                      <span class="dist-label">{{ cat.label }}</span>
+                      <div class="dist-bar-wrap">
+                        <div class="dist-bar bg-indigo-bar" [style.width.%]="cat.percentage"></div>
+                      </div>
+                      <span class="dist-count">{{ cat.count }} ({{ cat.percentage }}%)</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Chart 5: Agent Workload (Admin & Manager) -->
+      @if (data.agentWorkload?.length) {
+        <div class="chart-card chart-span-2">
+          <div class="chart-header">
+            <h3>Support Agent Workload</h3>
+            <span class="chart-subtitle">Active ticket distribution per support engineer</span>
+          </div>
+          <div class="chart-body">
+            <div class="agent-cards-grid">
+              @for (agent of data.agentWorkload; track agent.agentId) {
+                <div class="agent-card">
+                  <div class="agent-avatar">{{ getInitials(agent.agentName) }}</div>
+                  <div class="agent-details">
+                    <span class="agent-name">{{ agent.agentName }}</span>
+                    <span class="agent-dept">{{ agent.departmentName || 'General Support' }}</span>
+                  </div>
+                  <div class="agent-stat">
+                    <span class="agent-stat-num">{{ agent.activeTickets }}</span>
+                    <span class="agent-stat-label">Active Tickets</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- ================= RECENT ACTIVITY & TICKET HISTORY ================= -->
+    <section class="tickets-section">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2>Ticket Activity & History</h2>
+          <span class="section-subtitle">
+            Showing {{ filteredTickets().length }} of {{ data.recentTickets.length }} recent tickets
+          </span>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div class="table-controls">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="Search by ticket #, subject..."
+              [ngModel]="ticketSearchTerm()"
+              (ngModelChange)="ticketSearchTerm.set($event)"
+            />
+          </div>
+
+          <select
+            class="filter-select"
+            [ngModel]="ticketStatusFilter()"
+            (ngModelChange)="ticketStatusFilter.set($event)"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="ON_HOLD">On Hold</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="WITHDRAWN">Withdrawn</option>
+            <option value="REOPENED">Reopened</option>
+          </select>
+
+          <select
+            class="filter-select"
+            [ngModel]="ticketPriorityFilter()"
+            (ngModelChange)="ticketPriorityFilter.set($event)"
+          >
+            <option value="ALL">All Priorities</option>
+            <option value="CRITICAL">Critical</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tickets Table -->
+      <div class="table-responsive">
+        <table class="tickets-table">
+          <thead>
+            <tr>
+              <th>Ticket #</th>
+              <th>Subject</th>
+              <th>Category</th>
+              @if (userRole() !== 'EMPLOYEE') {
+                <th>Requester</th>
+              }
+              <th>Assigned Agent</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Created At</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (filteredTickets().length) {
+              @for (ticket of filteredTickets(); track ticket.id) {
+                <tr class="ticket-row">
+                  <td class="cell-tkt-number font-mono">{{ ticket.ticketNumber }}</td>
+                  <td class="cell-subject font-medium">{{ ticket.subject }}</td>
+                  <td class="cell-category">
+                    <span class="cat-pill">{{ ticket.categoryName || 'General' }}</span>
+                  </td>
+                  @if (userRole() !== 'EMPLOYEE') {
+                    <td class="cell-requester">{{ ticket.requesterName }}</td>
+                  }
+                  <td class="cell-agent">{{ ticket.assignedAgentName || 'Unassigned' }}</td>
+                  <td>
+                    <span class="pill-priority {{ getPriorityClass(ticket.priority) }}">
+                      {{ ticket.priority }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="pill-status {{ getStatusClass(ticket.status) }}">
+                      {{ ticket.status }}
+                    </span>
+                  </td>
+                  <td class="cell-date font-mono text-muted">
+                    {{ ticket.createdAt | date: 'yyyy-MM-dd HH:mm' }}
+                  </td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="8" class="empty-table-cell">
+                  <div class="empty-state-content">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <circle cx="11" cy="11" r="8"/>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <p>No tickets match your filter criteria.</p>
+                  </div>
+                </td>
+              </tr>
+>>>>>>> 22515536 (microservices summary report)
             }
           </tbody>
         </table>
       </div>
     </section>
+<<<<<<< HEAD
 
     <!-- Ticket detail preview Card -->
     <section class="content-card ticket-preview-card">
@@ -752,3 +1405,7 @@
   </div>
   }
 </div>
+=======
+  }
+</div>
+>>>>>>> 22515536 (microservices summary report)
