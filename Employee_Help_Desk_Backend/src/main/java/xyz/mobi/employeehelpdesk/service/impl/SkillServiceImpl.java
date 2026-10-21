@@ -23,6 +23,9 @@ import xyz.mobi.employeehelpdesk.service.SkillService;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -79,16 +82,20 @@ public class SkillServiceImpl implements SkillService {
         DepartmentAgent agent = resolveAgent(agentOrEmployeeId);
         log.info("Assigning skills to agentId={}: {}", agent.getId(), request != null ? request.skillIds() : null);
 
-        agentSkillRepository.deleteByAgentId(agent.getId());
+        Set<Long> existingSkillIds = agentSkillRepository.findByAgentId(agent.getId()).stream()
+                .map(as -> as.getSkill().getId())
+                .collect(Collectors.toSet());
 
         if (request != null && request.skillIds() != null && !request.skillIds().isEmpty()) {
             for (Long skillId : request.skillIds()) {
-                skillRepository.findById(skillId).ifPresent(skill -> {
-                    AgentSkill as = new AgentSkill();
-                    as.setAgent(agent);
-                    as.setSkill(skill);
-                    agentSkillRepository.save(as);
-                });
+                if(!existingSkillIds.contains(skillId)) {
+                    skillRepository.findById(skillId).ifPresent(skill -> {
+                        AgentSkill as = new AgentSkill();
+                        as.setAgent(agent);
+                        as.setSkill(skill);
+                        agentSkillRepository.save(as);
+                    });
+                }
             }
         }
 
