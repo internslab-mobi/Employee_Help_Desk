@@ -1,4 +1,13 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import { Observable, tap, catchError, throwError } from 'rxjs';
+import { API_ENDPOINTS } from '../../../core/config/api.config';
+import { AuthApiResponse,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+  VerifyOtpRequest,
+  VerifyOtpResponse
+} from '../../../core/models/auth.models';
 
 export interface VerifyOtpResult {
   success: boolean;
@@ -11,88 +20,101 @@ export interface VerifyOtpResult {
   providedIn: 'root'
 })
 export class PasswordResetFlowService {
-  /**
-   * Development-only mock OTP
-   */
-  readonly MOCK_OTP = '123456';
+  private readonly http = inject(HttpClient);
+
   readonly MAX_ATTEMPTS = 3;
+  readonly OTP_VALIDITY_SECONDS = 120; // 2 minutes
 
   private readonly emailSignal = signal<string>('');
   private readonly attemptsSignal = signal<number>(this.MAX_ATTEMPTS);
   private readonly isOtpVerifiedSignal = signal<boolean>(false);
   private readonly isSessionActiveSignal = signal<boolean>(false);
+  private readonly sessionStartSignal = signal<number>(0);
+  private readonly resetTokenSignal = signal<string>('');
 
   readonly email = this.emailSignal.asReadonly();
   readonly remainingAttempts = this.attemptsSignal.asReadonly();
   readonly isOtpVerified = this.isOtpVerifiedSignal.asReadonly();
   readonly isSessionActive = this.isSessionActiveSignal.asReadonly();
+  readonly resetToken = this.resetTokenSignal.asReadonly();
 
   readonly maskedEmail = computed(() => {
     return this.maskEmail(this.emailSignal());
   });
 
   /**
-   * Start a new password reset session with the provided email.
-   * Initializes 3 verification attempts.
-   */
-  startResetSession(email: string): void {
-    this.emailSignal.set(email.trim());
-    this.attemptsSignal.set(this.MAX_ATTEMPTS);
-    this.isOtpVerifiedSignal.set(false);
-    this.isSessionActiveSignal.set(true);
+   * Send OTP - Calls backend POST /api/user/forgot-password/request-otp
+  */
+  requestOtp(email: string): Observable<AuthApiResponse>{
+    const payload: ForgotPasswordRequest = {email: email.trim()};
+
+    return this.http.post<AuthApiResponse>(API_ENDPOINTS.auth.forgotPasswordRequestOtp, payload).pipe(
+      tap(() => {
+        this.emailSignal.set(email.trim());
+        this.attemptsSignal.set(this.MAX_ATTEMPTS);
+        this.isOtpVerifiedSignal.set(false);
+        this.isSessionActiveSignal.set(true);
+        this.resetTokenSignal.set('');
+        this.sessionStartSignal.set(Date.now());
+      })
+    );
   }
 
   /**
-   * Verify entered OTP against the mock OTP.
-   */
-  verifyOtp(enteredOtp: string): VerifyOtpResult {
-    const currentAttempts = this.attemptsSignal();
-
-    if (currentAttempts <= 0) {
-      return {
-        success: false,
-        message: 'Maximum verification attempts exceeded (3/3). Please request a new OTP.',
-        remainingAttempts: 0,
-        isLocked: true
-      };
-    }
-
-    if (enteredOtp === this.MOCK_OTP) {
-      this.isOtpVerifiedSignal.set(true);
-      return {
-        success: true,
-        message: 'OTP verified successfully!',
-        remainingAttempts: currentAttempts,
-        isLocked: false
-      };
-    }
-
-    const updatedAttempts = currentAttempts - 1;
-    this.attemptsSignal.set(updatedAttempts);
-
-    if (updatedAttempts === 0) {
-      return {
-        success: false,
-        message: 'Incorrect OTP. You have exhausted all 3 attempts. Please request a new OTP.',
-        remainingAttempts: 0,
-        isLocked: true
-      };
-    }
-
-    return {
-      success: false,
-      message: `Incorrect OTP. You have ${updatedAttempts} attempt${updatedAttempts === 1 ? '' : 's'} remaining.`,
-      remainingAttempts: updatedAttempts,
-      isLocked: false
+   * Verify OTP - Calls backend POST /api/user/forgot-password/verify-otp
+  */
+  verifyOtp(otp: string): Observable<VerifyOtpResponse> {
+    const payload: VerifyOtpRequest = {
+      email: this.emailSignal(),
+      otp: otp.trim()
     };
+
+    return this.http.post<VerifyOtpResponse>(API_ENDPOINTS.auth.forgotPasswordVerifyOtp, payload).pipe(
+      tap((res) => {
+        this.isOtpVerifiedSignal.set(true);
+        this.resetTokenSignal.set(res.resetToken);
+      }),
+      catchError((err) => {
+        const currentAttempts = this.attemptsSignal();
+        const updated = Math.max(0, currentAttempts - 1);
+        this.attemptsSignal.set(updated);
+        return throwError(() => err);
+      })
+    );
   }
 
   /**
-   * Resend OTP: resets verification attempts to 3 and starts a fresh mock session.
+   * Rest Password - Calls backend POST /api/user/forgot-password/reset-password
    */
-  resendOtp(): void {
-    this.attemptsSignal.set(this.MAX_ATTEMPTS);
-    this.isOtpVerifiedSignal.set(false);
+  resetPassword(newPassword: string, confirmNewPassword: string): Observable<AuthApiResponse>{
+    const payload: ResetPasswordRequest = {
+      email: this.emailSignal(),
+      resetToken: this.resetTokenSignal(),
+      newPassword,
+      confirmNewPassword
+    };
+
+    return this.http.post<AuthApiResponse>(API_ENDPOINTS.auth.forgotPasswordResetPassword, payload).pipe(
+      tap(() => {
+        this.completeReset();
+      })
+    )
+  }
+
+  /**
+   * Resend OTP: triggers a new OTP dispatch from backend
+   */
+  resendOtp(): Observable<AuthApiResponse> {
+    return this.requestOtp(this.emailSignal());
+  }
+
+  /**
+   * Checks if the 2-minute OTP period expired locally
+   */
+  isOtpExpired(): boolean {
+    const start = this.sessionStartSignal();
+    if (!start) return false;
+    return (Date.now() - start) > this.OTP_VALIDITY_SECONDS * 1000;
   }
 
   /**
@@ -110,6 +132,8 @@ export class PasswordResetFlowService {
     this.attemptsSignal.set(this.MAX_ATTEMPTS);
     this.isOtpVerifiedSignal.set(false);
     this.isSessionActiveSignal.set(false);
+    this.resetTokenSignal.set('');
+    this.sessionStartSignal.set(0);
   }
 
   /**
@@ -141,6 +165,6 @@ export class PasswordResetFlowService {
   }
 
   canAccessResetPassword(): boolean {
-    return this.isOtpVerifiedSignal() && this.emailSignal().length > 0;
+    return this.isOtpVerifiedSignal() && this.resetTokenSignal().length > 0  && this.emailSignal().length > 0;
   }
 }
