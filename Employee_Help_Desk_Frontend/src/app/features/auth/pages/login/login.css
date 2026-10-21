@@ -228,14 +228,6 @@ input::-ms-clear {
   font-size: 12px;
 }
 
-.login-alert {
-  display: block;
-  margin-top: 5px;
-  color: #dc2626;
-  font-size: 12px;
-  text-align:center;
-}
-
 /* =========================================
    FORGOT PASSWORD
    ========================================= */
