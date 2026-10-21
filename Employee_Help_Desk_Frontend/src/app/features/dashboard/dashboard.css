@@ -1501,6 +1501,12 @@
   color: #991b1b;
 }
 
+.notif-warning {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
 /* Loading & Error States */
 .state-container {
   padding: 48px;
@@ -3173,6 +3179,23 @@
 .btn-action-resolve:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.btn-action-start.outside-hours,
+.btn-action-hold.outside-hours,
+.btn-action-resolve.outside-hours,
+.btn-action-withdraw.outside-hours {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+}
+
+.btn-action-start.outside-hours:hover,
+.btn-action-hold.outside-hours:hover,
+.btn-action-resolve.outside-hours:hover,
+.btn-action-withdraw.outside-hours:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .badge-resolved-done {

@@ -361,3 +361,56 @@
     justify-content: center;
   }
 }
+
+/* Composer locked notices for OPEN / REOPENED / RESOLVED / WITHDRAWN */
+.composer-locked-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.composer-locked-notice .notice-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.composer-locked-notice .notice-body strong {
+  display: block;
+  font-size: 13.5px;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.composer-locked-notice .notice-body p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.composer-locked-notice.resolved {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.composer-locked-notice.resolved .notice-body strong {
+  color: #166534;
+}
+.composer-locked-notice.resolved .notice-body p {
+  color: #15803d;
+}
+
+.composer-locked-notice.withdrawn {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.composer-locked-notice.withdrawn .notice-body strong {
+  color: #991b1b;
+}
+.composer-locked-notice.withdrawn .notice-body p {
+  color: #b91c1c;
+}

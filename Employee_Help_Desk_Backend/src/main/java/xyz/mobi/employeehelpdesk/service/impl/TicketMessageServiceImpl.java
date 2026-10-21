@@ -68,8 +68,12 @@ public class TicketMessageServiceImpl implements TicketMessageService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
 
+        if (ticket.getStatus() == TicketStatus.OPEN || ticket.getStatus() == TicketStatus.REOPENED) {
+            throw new InvalidStateException("Ticket is not started yet. Messages and attachments can only be sent once the ticket is in progress.");
+        }
+
         if (ticket.getStatus() == TicketStatus.RESOLVED || ticket.getStatus() == TicketStatus.WITHDRAWN) {
-            throw new InvalidStateException("Messages are not allowed on resolved or withdrawn tickets");
+            throw new InvalidStateException("Messages and attachments are not allowed on resolved or withdrawn tickets");
         }
 
         boolean isRequester = ticket.getRequester() != null

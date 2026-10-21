@@ -632,16 +632,22 @@
                   <div class="agent-actions-cell" (click)="$event.stopPropagation()">
                     <!-- 1. Start Working: when ticket is OPEN or REOPENED and not raised by current agent -->
                     @if ((ticket.status === 'OPEN' || ticket.status === 'REOPENED') && !state.isTicketRaisedByCurrentUser(ticket)) {
-                    <button type="button" class="btn-action-start" [disabled]="state.isSubmittingAction()"
-                      (click)="startWorkingTicket(ticket)" title="Start SLA and begin working">
+                    <button type="button" class="btn-action-start"
+                      [class.outside-hours]="!state.isWithinBusinessHours()"
+                      [disabled]="state.isSubmittingAction()"
+                      [title]="!state.isWithinBusinessHours() ? 'Outside business hours (8:30 AM - 5:30 PM)' : 'Start SLA and begin working'"
+                      (click)="startWorkingTicket(ticket)">
                       ▶ Start Working
                     </button>
                     }
 
                     <!-- 2. Request Employee / Resume toggle -->
                     @if (ticket.status === 'IN_PROGRESS' && !state.isTicketRaisedByCurrentUser(ticket)) {
-                    <button type="button" class="btn-action-hold" [disabled]="state.isSubmittingAction()"
-                      (click)="openHoldModal(ticket)" title="Request additional information from employee (puts ON HOLD)">
+                    <button type="button" class="btn-action-hold"
+                      [class.outside-hours]="!state.isWithinBusinessHours()"
+                      [disabled]="state.isSubmittingAction()"
+                      [title]="!state.isWithinBusinessHours() ? 'Outside business hours (8:30 AM - 5:30 PM)' : 'Request additional information from employee (puts ON HOLD)'"
+                      (click)="openHoldModal(ticket)">
                       Request Employee
                     </button>
                     } @else if (ticket.status === 'ON_HOLD' && !state.isTicketRaisedByCurrentUser(ticket)) {
@@ -653,8 +659,11 @@
 
                     <!-- 3. Resolve Ticket -->
                     @if ((ticket.status === 'IN_PROGRESS' || ticket.status === 'ON_HOLD') && !state.isTicketRaisedByCurrentUser(ticket)) {
-                    <button type="button" class="btn-action-resolve" [disabled]="state.isSubmittingAction()"
-                      (click)="openResolveModal(ticket)" title="Resolve ticket">
+                    <button type="button" class="btn-action-resolve"
+                      [class.outside-hours]="!state.isWithinBusinessHours()"
+                      [disabled]="state.isSubmittingAction()"
+                      [title]="!state.isWithinBusinessHours() ? 'Outside business hours (8:30 AM - 5:30 PM)' : 'Resolve ticket'"
+                      (click)="openResolveModal(ticket)">
                       ✓ Resolve
                     </button>
                     }

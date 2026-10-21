@@ -82,10 +82,8 @@ public class SlaServiceImpl implements SlaService {
                                 )
                         );
 
-        // 3. Determine start time
-        Instant baseInstant = ticket.getCreatedAt() != null
-                ? ticket.getCreatedAt()
-                : Instant.now();
+        // 3. Determine start time: SLA starts when agent clicks "Start working"
+        Instant baseInstant = Instant.now();
 
         Instant startAt = workingCalendarService.moveToWorkingTime(baseInstant, departmentId, departmentZone);
 
@@ -121,22 +119,38 @@ public class SlaServiceImpl implements SlaService {
             nextEventAt = deadline;
         }
 
-        // 8. Create SLA instance
-        SlaInstance slaInstance = SlaInstance.builder()
-                .ticket(ticket)
-                .slaPolicy(policy)
-                .cycleNumber(cycleNumber)
-                .allocatedMinutes(allocatedMinutes)
-                .slaStartAt(startAt)
-                .originalDeadlineAt(deadline)
-                .currentDeadlineAt(deadline)
-                .warningAt(warningAt)
-                .status(SlaStatus.ACTIVE)
-                .nextEventType(nextEventType)
-                .nextEventAt(nextEventAt)
-                .pausedAt(null)
-                .breachedAt(null)
-                .build();
+        // 8. Create or update SLA instance
+        SlaInstance slaInstance = slaInstanceRepository.findLatestByTicketId(ticket.getId());
+        if (slaInstance == null) {
+            slaInstance = SlaInstance.builder()
+                    .ticket(ticket)
+                    .slaPolicy(policy)
+                    .cycleNumber(cycleNumber)
+                    .allocatedMinutes(allocatedMinutes)
+                    .slaStartAt(startAt)
+                    .originalDeadlineAt(deadline)
+                    .currentDeadlineAt(deadline)
+                    .warningAt(warningAt)
+                    .status(SlaStatus.ACTIVE)
+                    .nextEventType(nextEventType)
+                    .nextEventAt(nextEventAt)
+                    .pausedAt(null)
+                    .breachedAt(null)
+                    .build();
+        } else {
+            slaInstance.setSlaPolicy(policy);
+            slaInstance.setCycleNumber(cycleNumber);
+            slaInstance.setAllocatedMinutes(allocatedMinutes);
+            slaInstance.setSlaStartAt(startAt);
+            slaInstance.setOriginalDeadlineAt(deadline);
+            slaInstance.setCurrentDeadlineAt(deadline);
+            slaInstance.setWarningAt(warningAt);
+            slaInstance.setStatus(SlaStatus.ACTIVE);
+            slaInstance.setNextEventType(nextEventType);
+            slaInstance.setNextEventAt(nextEventAt);
+            slaInstance.setPausedAt(null);
+            slaInstance.setBreachedAt(null);
+        }
 
         SlaInstance savedSla = slaInstanceRepository.save(slaInstance);
         slaDynamicScheduler.scheduleSlaEvent(savedSla.getId(), savedSla.getNextEventAt());
@@ -155,9 +169,7 @@ public class SlaServiceImpl implements SlaService {
     @Override
     @Transactional
     public SlaInstance startReopenSla(Ticket ticket) {
-        Instant baseInstant = ticket.getReopenedAt() != null
-                ? ticket.getReopenedAt()
-                : Instant.now();
+        Instant baseInstant = Instant.now();
         return createReducedSlaCycle(ticket, baseInstant, "Reopened");
     }
 

@@ -32,6 +32,8 @@ import xyz.mobi.employeehelpdesk.validator.TicketAttachmentValidator;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -151,13 +153,11 @@ public class TicketServiceImpl implements TicketService {
 
         ticketRoutingService.routeTicket(ticket);
 
-        SlaInstance slaInstance = slaService.startSla(ticket);
-
         log.info("Ticket created successfully: ticketId={}, ticketNumber={}, requesterId={}, departmentId={}, categoryId={}, subCategoryId={}",
                 ticket.getId(), ticket.getTicketNumber(), requesterId, department.getId(), category.getId(), subCategory.getId());
 
-        // Convert Entity → Response DTO
-        return ticketMapper.toCreateResponse(ticket, slaInstance);
+        // Convert Entity → Response DTO (SLA starts when agent clicks "Start working")
+        return ticketMapper.toCreateResponse(ticket, null);
     }
 
     private Ticket getAuthorizedTicket(Long ticketId) {
@@ -792,6 +792,8 @@ public class TicketServiceImpl implements TicketService {
             );
         }
 
+        validateWithinBusinessHours("withdraw", ticket.getDepartment());
+
         // Validate current ticket status
         if (ticket.getStatus() == TicketStatus.RESOLVED) {
             log.warn("Withdraw ticket rejected: ticketId={} is already RESOLVED", ticketId);
@@ -880,6 +882,8 @@ public class TicketServiceImpl implements TicketService {
             throw new AccessDeniedException("You are not allowed to start this ticket");
         }
 
+        validateWithinBusinessHours("start working", ticket.getDepartment());
+
         if (ticket.getStatus() != TicketStatus.OPEN && ticket.getStatus() != TicketStatus.REOPENED) {
             log.warn("Start ticket rejected: ticketId={} is in status {}", ticketId, ticket.getStatus());
             throw new InvalidStateException("Ticket is not in OPEN or REOPENED status");
@@ -897,7 +901,12 @@ public class TicketServiceImpl implements TicketService {
                 IN_PROGRESS
         );
 
-        SlaInstance slaInstance = slaInstanceRepository.findLatestByTicketId(ticketId);
+        SlaInstance slaInstance;
+        if (oldStatus == TicketStatus.REOPENED) {
+            slaInstance = slaService.startReopenSla(ticket);
+        } else {
+            slaInstance = slaService.startSla(ticket);
+        }
 
         String ticketNumber = ticket.getTicketNumber() != null ? ticket.getTicketNumber() : ("#" + ticket.getId());
         String agentName = ticket.getAssignedAgent().getEmployee() != null
@@ -942,6 +951,8 @@ public class TicketServiceImpl implements TicketService {
         if (!isCurrentAgent) {
             throw new AccessDeniedException("You are not allowed to hold this ticket");
         }
+
+        validateWithinBusinessHours("request employee", ticket.getDepartment());
 
         if (ticket.getStatus() != IN_PROGRESS) {
             log.warn("Hold ticket rejected: ticketId={} is in status {}", ticketId, ticket.getStatus());
@@ -1058,6 +1069,8 @@ public class TicketServiceImpl implements TicketService {
             throw new AccessDeniedException("You are not allowed to resolve this ticket");
         }
 
+        validateWithinBusinessHours("resolve", ticket.getDepartment());
+
         if (ticket.getStatus() != IN_PROGRESS) {
             log.warn("Resolve ticket rejected: ticketId={} is in status {}", ticketId, ticket.getStatus());
             throw new InvalidStateException("Ticket is not in IN_PROGRESS status");
@@ -1154,7 +1167,8 @@ public class TicketServiceImpl implements TicketService {
         // Agent assignment should be same as during the normal ticket creation
         ticketRoutingService.routeTicket(ticket);
 
-        SlaInstance slaInstance = slaService.startReopenSla(ticket);
+        // SLA cycle starts when agent clicks "Start working"
+        SlaInstance slaInstance = null;
 
         String ticketNumber = ticket.getTicketNumber() != null
                 ? ticket.getTicketNumber()
@@ -1710,5 +1724,24 @@ public class TicketServiceImpl implements TicketService {
                 slaInstanceRepository.findLatestByTicketId(ticket.getId());
 
         return ticketMapper.toResponse(ticket, slaInstance);
+    }
+
+    private void validateWithinBusinessHours(String actionName, Department department) {
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+        if (department != null && department.getTimezone() != null && !department.getTimezone().isBlank()) {
+            try {
+                zone = ZoneId.of(department.getTimezone().trim());
+            } catch (Exception ignored) {
+            }
+        }
+        LocalTime now = LocalTime.now(zone);
+        LocalTime workStart = LocalTime.of(8, 30);
+        LocalTime workEnd = LocalTime.of(17, 30);
+
+        if (now.isBefore(workStart) || now.isAfter(workEnd)) {
+            log.warn("Action '{}' rejected: current time {} in zone {} is outside business hours (08:30 - 17:30)",
+                    actionName, now, zone);
+            throw new InvalidStateException("Cannot " + actionName + " now: Outside business hours (8:30 AM - 5:30 PM)");
+        }
     }
 }
