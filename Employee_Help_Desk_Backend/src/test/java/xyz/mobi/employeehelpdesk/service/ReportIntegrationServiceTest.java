@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import xyz.mobi.employeehelpdesk.client.ReportServiceClient;
 import xyz.mobi.employeehelpdesk.dto.analytics.DashboardAnalyticsResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.analytics.ExportTicketDetailDTO;
 import xyz.mobi.employeehelpdesk.dto.report.*;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
@@ -21,6 +22,7 @@ import xyz.mobi.employeehelpdesk.service.impl.ReportIntegrationServiceImpl;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -135,6 +137,103 @@ class ReportIntegrationServiceTest {
                 anyString(),
                 eq("Admin_Ticket_Summary.xlsx"),
                 eq(fakeExcelBytes)
+        );
+    }
+
+    @Test
+    @DisplayName("Should permit AGENT to export AGENT_SUMMARY containing assigned tickets")
+    void shouldPermitAgentToExportAgentSummary() {
+        Employee agentEmployee = new Employee();
+        agentEmployee.setId(2L);
+        agentEmployee.setEmail("agent@company.com");
+        agentEmployee.setFirstName("Bob");
+        agentEmployee.setLastName("Agent");
+        agentEmployee.setRole(UserRole.AGENT);
+        agentEmployee.setTimezone("Asia/Kolkata");
+
+        ReportSummaryRequestDTO request = new ReportSummaryRequestDTO();
+        request.setReportType(ReportType.AGENT_SUMMARY);
+        request.setFormat(ReportFormat.EXCEL);
+
+        when(authService.getCurrentEmployeeId()).thenReturn(2L);
+        when(employeeRepository.findById(2L)).thenReturn(Optional.of(agentEmployee));
+
+        DashboardAnalyticsResponseDTO mockAnalytics = DashboardAnalyticsResponseDTO.builder()
+                .role(UserRole.AGENT)
+                .employeeId(2L)
+                .build();
+        when(analyticsService.getDashboardAnalytics(any(), any(), any())).thenReturn(mockAnalytics);
+
+        ExportTicketDetailDTO ticket = ExportTicketDetailDTO.builder()
+                .id(100L)
+                .ticketNumber("HD-2026-000100")
+                .subject("Agent ticket")
+                .assignedAgentName("Bob Agent")
+                .build();
+        when(analyticsService.getExportTicketDetails(any(), any(), any())).thenReturn(List.of(ticket));
+
+        byte[] fakeExcelBytes = "AGENT-EXCEL-DATA".getBytes();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentDispositionFormData("attachment", "agent-assigned-tickets-summary-" + LocalDate.now() + ".xlsx");
+
+        ResponseEntity<byte[]> mockResponse = ResponseEntity.ok().headers(headers).body(fakeExcelBytes);
+        when(reportServiceClient.generateExcelReport(any(ReportGenerationPayloadDTO.class), anyString()))
+                .thenReturn(mockResponse);
+
+        ResponseEntity<byte[]> result = reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token");
+
+        assertNotNull(result);
+        assertEquals(200, result.getStatusCode().value());
+        assertArrayEquals(fakeExcelBytes, result.getBody());
+
+        verify(reportServiceClient).generateExcelReport(argThat(payload -> {
+            assertEquals(ReportType.AGENT_SUMMARY, payload.reportType());
+            assertEquals("AGENT", payload.requestedByRole());
+            assertEquals(2L, payload.requesterEmployeeId());
+            assertEquals(1, payload.tickets().size());
+            return true;
+        }), eq("Bearer agent-token"));
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when AGENT has no tickets matching criteria")
+    void shouldThrowWhenAgentHasNoMatchingTickets() {
+        Employee agentEmployee = new Employee();
+        agentEmployee.setId(2L);
+        agentEmployee.setEmail("agent@company.com");
+        agentEmployee.setFirstName("Bob");
+        agentEmployee.setRole(UserRole.AGENT);
+
+        ReportSummaryRequestDTO request = new ReportSummaryRequestDTO();
+        request.setReportType(ReportType.AGENT_SUMMARY);
+        request.setFormat(ReportFormat.EXCEL);
+
+        when(authService.getCurrentEmployeeId()).thenReturn(2L);
+        when(employeeRepository.findById(2L)).thenReturn(Optional.of(agentEmployee));
+        when(analyticsService.getExportTicketDetails(any(), any(), any())).thenReturn(Collections.emptyList());
+
+        assertThrows(xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException.class, () ->
+                reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token")
+        );
+    }
+
+    @Test
+    @DisplayName("Should prevent AGENT from accessing unauthorized report types like ADMIN_SUMMARY")
+    void shouldPreventAgentFromAccessingAdminSummary() {
+        Employee agentEmployee = new Employee();
+        agentEmployee.setId(2L);
+        agentEmployee.setRole(UserRole.AGENT);
+
+        ReportSummaryRequestDTO request = new ReportSummaryRequestDTO();
+        request.setReportType(ReportType.ADMIN_SUMMARY);
+        request.setFormat(ReportFormat.EXCEL);
+
+        when(authService.getCurrentEmployeeId()).thenReturn(2L);
+        when(employeeRepository.findById(2L)).thenReturn(Optional.of(agentEmployee));
+
+        assertThrows(xyz.mobi.employeehelpdesk.exception.UnauthorizedException.class, () ->
+                reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token")
         );
     }
 }

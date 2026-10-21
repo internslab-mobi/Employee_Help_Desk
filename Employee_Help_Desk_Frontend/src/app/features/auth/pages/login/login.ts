@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef, inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -20,7 +20,8 @@ export class Login {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -63,6 +64,7 @@ export class Login {
       .pipe(
         finalize(() => {
           this.isLoading = false;
+          this.cdr.detectChanges();
         })
       )
       .subscribe({
@@ -70,18 +72,27 @@ export class Login {
           this.router.navigate(['/dashboard']);
         },
         error: (err) => {
-          if (err?.status === 0) {
-            this.errorMessage =
-              'Unable to connect to the authentication server. Please ensure the backend is running.';
-          } else if (err?.status === 401) {
-            this.errorMessage =
-              err?.error?.message ||
-              'Invalid work email or password. Please try again.';
-          } else {
-            this.errorMessage =
-              err?.error?.message ||
-              'Authentication failed. Please try again.';
+          let backendMessage = '';
+
+          if (typeof err?.error === 'string' && err.error.trim().length > 0) {
+            backendMessage = err.error.trim();
+          } else if (err?.error && typeof err.error === 'object') {
+            backendMessage =
+              err.error.message ||
+              err.error.error ||
+              err.error.detail ||
+              '';
           }
+
+          if (backendMessage) {
+            this.errorMessage = backendMessage;
+          } else if (err?.status === 0) {
+            this.errorMessage = 'Unable to connect to the authentication server. Please ensure the backend is running.';
+          } else {
+            this.errorMessage = 'Authentication failed. Please try again.';
+          }
+
+          this.cdr.detectChanges();
         }
       });
   }

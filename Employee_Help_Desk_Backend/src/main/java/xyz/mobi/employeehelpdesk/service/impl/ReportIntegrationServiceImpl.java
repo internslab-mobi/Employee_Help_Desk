@@ -99,6 +99,9 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
         } catch (Exception ignored) {
         }
         String todayStr = LocalDate.now().toString();
+        if (payload.reportType() == ReportType.AGENT_SUMMARY) {
+            return "agent-assigned-tickets-summary-" + todayStr + ".xlsx";
+        }
         String rolePrefix = payload.requestedByRole() != null ? payload.requestedByRole() : "Report";
         String typePrefix = payload.reportType() != null ? payload.reportType().name() : "Summary";
         return rolePrefix + "_" + typePrefix + "_" + todayStr + ".xlsx";
@@ -135,7 +138,7 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
                 request.getFromDate(), request.getToDate(), effectiveDepartmentId
         );
 
-        // 4. Apply permitted filters (status, priority) if specified in request
+        // 4. Apply permitted filters (status, priority, search) if specified in request
         if (request.getStatus() != null && tickets != null) {
             tickets = tickets.stream()
                     .filter(t -> t.status() == request.getStatus())
@@ -145,6 +148,21 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
             tickets = tickets.stream()
                     .filter(t -> t.priority() == request.getPriority())
                     .toList();
+        }
+        if (request.getSearch() != null && !request.getSearch().isBlank() && tickets != null) {
+            String term = request.getSearch().trim().toLowerCase();
+            tickets = tickets.stream()
+                    .filter(t -> (t.ticketNumber() != null && t.ticketNumber().toLowerCase().contains(term))
+                            || (t.subject() != null && t.subject().toLowerCase().contains(term))
+                            || (t.requesterName() != null && t.requesterName().toLowerCase().contains(term))
+                            || (t.departmentName() != null && t.departmentName().toLowerCase().contains(term))
+                            || (t.categoryName() != null && t.categoryName().toLowerCase().contains(term))
+                            || (t.subCategoryName() != null && t.subCategoryName().toLowerCase().contains(term)))
+                    .toList();
+        }
+
+        if (format == ReportFormat.EXCEL && reportType == ReportType.AGENT_SUMMARY && (tickets == null || tickets.isEmpty())) {
+            throw new ResourceNotFoundException("No assigned tickets match the selected criteria to export.");
         }
 
         String requesterFullName = (employee.getFirstName() + " " +

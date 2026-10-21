@@ -57,9 +57,14 @@ public class ReportController {
                 );
 
                 String todayStr = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
-                String rolePrefix = (payload.requestedByRole() != null ? payload.requestedByRole() : "Report");
-                String typePrefix = (payload.reportType() != null ? payload.reportType().name() : "Summary");
-                String filename = rolePrefix + "_" + typePrefix + "_" + todayStr + ".xlsx";
+                String filename;
+                if (payload.reportType() == ReportType.AGENT_SUMMARY) {
+                    filename = "agent-assigned-tickets-summary-" + todayStr + ".xlsx";
+                } else {
+                    String rolePrefix = (payload.requestedByRole() != null ? payload.requestedByRole() : "Report");
+                    String typePrefix = (payload.reportType() != null ? payload.reportType().name() : "Summary");
+                    filename = rolePrefix + "_" + typePrefix + "_" + todayStr + ".xlsx";
+                }
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));

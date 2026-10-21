@@ -49,6 +49,9 @@ public class ReportSummaryRequestDTO {
     @Schema(description = "Optional employee filter (subject to role authorization)", example = "1")
     private Long employeeId;
 
+    @Schema(description = "Optional search query filter for ticket number, subject, requester, category", example = "laptop")
+    private String search;
+
     @AssertTrue(message = "fromDate cannot be after toDate")
     public boolean isDateRangeValid() {
         if (fromDate != null && toDate != null) {

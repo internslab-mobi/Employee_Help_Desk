@@ -65,6 +65,11 @@ public class ExcelReportGeneratorService {
                     createSlaSummarySheet(workbook, analytics, styles, dtFormatter);
                     createSlaTicketRecordsSheet(workbook, tickets, styles, dtFormatter);
                 }
+                case AGENT_SUMMARY -> {
+                    createAgentOverviewSheet(workbook, analytics, styles, dtFormatter);
+                    createStatusPrioritySheet(workbook, analytics, styles);
+                    createTicketRecordsSheet(workbook, tickets, styles, dtFormatter);
+                }
                 default -> {
                     // GENERAL_SUMMARY and others
                     createExecutiveSummarySheet(workbook, analytics, styles, dtFormatter);
@@ -96,6 +101,93 @@ public class ExcelReportGeneratorService {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             workbook.write(out);
             return out.toByteArray();
+        }
+    }
+
+    private void createAgentOverviewSheet(
+            XSSFWorkbook wb, DashboardAnalyticsResponseDTO data, StylePalette s, DateTimeFormatter dtf
+    ) {
+        Sheet sheet = wb.createSheet("Agent Summary");
+        sheet.setDisplayGridlines(true);
+
+        int rowNum = 0;
+
+        // Title Banner
+        Row titleRow = sheet.createRow(rowNum++);
+        titleRow.setHeightInPoints(34);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("EMPLOYEE HELP DESK - AGENT ASSIGNED TICKETS SUMMARY");
+        titleCell.setCellStyle(s.titleStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 5));
+
+        // Subtitle / Report Info
+        rowNum++;
+        Row infoRow1 = sheet.createRow(rowNum++);
+        infoRow1.createCell(0).setCellValue("Generated At:");
+        infoRow1.getCell(0).setCellStyle(s.boldLabelStyle);
+        infoRow1.createCell(1).setCellValue(dtf.format(Instant.now()));
+        infoRow1.getCell(1).setCellStyle(s.regularStyle);
+
+        infoRow1.createCell(3).setCellValue("Report Scope / Role:");
+        infoRow1.getCell(3).setCellStyle(s.boldLabelStyle);
+        infoRow1.createCell(4).setCellValue(data != null && data.role() != null ? data.role() : "AGENT");
+        infoRow1.getCell(4).setCellStyle(s.regularStyle);
+
+        Row infoRow2 = sheet.createRow(rowNum++);
+        infoRow2.createCell(0).setCellValue("Support Agent:");
+        infoRow2.getCell(0).setCellStyle(s.boldLabelStyle);
+        String agentInfo = (data != null && data.employeeName() != null ? data.employeeName() : "Support Agent") +
+                (data != null && data.employeeEmail() != null ? " (" + data.employeeEmail() + ")" : "");
+        infoRow2.createCell(1).setCellValue(agentInfo);
+        infoRow2.getCell(1).setCellStyle(s.regularStyle);
+
+        infoRow2.createCell(3).setCellValue("Department:");
+        infoRow2.getCell(3).setCellStyle(s.boldLabelStyle);
+        infoRow2.createCell(4).setCellValue(data != null && data.departmentName() != null && !data.departmentName().isBlank() ? data.departmentName() : "Support");
+        infoRow2.getCell(4).setCellStyle(s.regularStyle);
+
+        Row infoRow3 = sheet.createRow(rowNum++);
+        infoRow3.createCell(0).setCellValue("Date Filter Range:");
+        infoRow3.getCell(0).setCellStyle(s.boldLabelStyle);
+        String dateRangeText = (data != null && data.fromDate() != null ? data.fromDate() : "Start") + " to " + (data != null && data.toDate() != null ? data.toDate() : "Current");
+        infoRow3.createCell(1).setCellValue(dateRangeText);
+        infoRow3.getCell(1).setCellStyle(s.regularStyle);
+
+        rowNum += 2;
+
+        // Section: Key Performance Indicators
+        Row kpiHeaderRow = sheet.createRow(rowNum++);
+        kpiHeaderRow.setHeightInPoints(24);
+        Cell kpiHeaderCell = kpiHeaderRow.createCell(0);
+        kpiHeaderCell.setCellValue("ASSIGNED TICKETS METRICS OVERVIEW");
+        kpiHeaderCell.setCellStyle(s.sectionHeaderStyle);
+        sheet.addMergedRegion(new CellRangeAddress(rowNum - 1, rowNum - 1, 0, 3));
+
+        DashboardSummaryDTO sum = data != null ? data.summary() : null;
+        if (sum != null) {
+            String[][] metrics = {
+                    {"Total Assigned Tickets", String.valueOf(sum.totalTickets())},
+                    {"Open Tickets", String.valueOf(sum.openTickets())},
+                    {"In Progress Tickets", String.valueOf(sum.inProgressTickets())},
+                    {"On Hold Tickets", String.valueOf(sum.onHoldTickets())},
+                    {"Resolved Tickets", String.valueOf(sum.resolvedTickets())},
+                    {"Withdrawn Tickets", String.valueOf(sum.withdrawnTickets())},
+                    {"Reopened Tickets", String.valueOf(sum.reopenedTickets())},
+                    {"Overdue / SLA Breached", String.valueOf(sum.overdueTickets())},
+                    {"SLA Compliance Rate", sum.slaComplianceRate() + "%"},
+                    {"Average Resolution Time", sum.avgResolutionHours() + " hours"}
+            };
+
+            for (int i = 0; i < metrics.length; i++) {
+                Row r = sheet.createRow(rowNum++);
+                Cell cLabel = r.createCell(0);
+                cLabel.setCellValue(metrics[i][0]);
+                cLabel.setCellStyle(i % 2 == 0 ? s.zebraStyle : s.regularStyle);
+
+                Cell cVal = r.createCell(1);
+                cVal.setCellValue(metrics[i][1]);
+                cVal.setCellStyle(i % 2 == 0 ? s.zebraStyle : s.regularStyle);
+            }
         }
     }
 

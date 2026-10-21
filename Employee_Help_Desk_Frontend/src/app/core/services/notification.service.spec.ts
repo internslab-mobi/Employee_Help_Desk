@@ -10,6 +10,7 @@ describe('NotificationService', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         NotificationService,
@@ -24,6 +25,7 @@ describe('NotificationService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    TestBed.resetTestingModule();
   });
 
   it('should be created', () => {

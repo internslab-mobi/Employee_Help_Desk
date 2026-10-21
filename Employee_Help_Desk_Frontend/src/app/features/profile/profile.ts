@@ -40,7 +40,7 @@ export class ProfileComponent implements OnInit {
   });
 
   // Role and auth signals
-  readonly userRole = computed<UserRole>(() => this.authService.getRole() || 'EMPLOYEE');
+  readonly userRole = computed<UserRole>(() => (typeof this.authService?.getRole === 'function' ? (this.authService.getRole() ?? 'EMPLOYEE') : 'EMPLOYEE'));
 
   constructor(
     private fb: FormBuilder,

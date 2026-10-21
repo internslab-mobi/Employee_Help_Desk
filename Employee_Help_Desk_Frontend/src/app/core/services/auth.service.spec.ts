@@ -53,10 +53,13 @@ describe('AuthService', () => {
   });
 
   afterEach(() => {
+    httpMock.match(`${API_ENDPOINTS.user.base}/me/photo`).forEach((req) => req.flush(new Blob()));
+    httpMock.match(API_ENDPOINTS.auth.logout).forEach((req) => req.flush({}));
     service.logout(false);
     httpMock.verify();
     localStorage.clear();
     vi.useRealTimers();
+    TestBed.resetTestingModule();
   });
 
   it('should have correct timing constants for 15-min token, 14-min refresh, and 45-min session', () => {

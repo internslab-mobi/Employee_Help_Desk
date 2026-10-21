@@ -19,6 +19,7 @@ export interface ReportSummaryRequest {
   status?: string;
   priority?: string;
   employeeId?: number;
+  search?: string;
 }
 
 export interface ReportSummaryResponse {
