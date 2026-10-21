@@ -1,8 +1,8 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import {  FormBuilder,  FormGroup,  ReactiveFormsModule, Validators } from '@angular/forms';
+import {RouterLink, Router} from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
+import {finalize} from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -11,22 +11,28 @@ import { AuthService } from '../../../../core/services/auth.service';
   templateUrl: './login.html',
   styleUrl: './login.css'
 })
+
 export class Login {
+
+  private cdr = inject(ChangeDetectorRef);
+  private fb = inject(FormBuilder);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
   loginForm: FormGroup;
   showPassword = false;
   isLoading = false;
-  errorMessage = '';
+  loginError = '';
 
-  constructor(
-    private fb: FormBuilder,
-    private authService: AuthService,
-    private router: Router,
-    private cdr: ChangeDetectorRef
-  ) {
+  constructor() {
+
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required]
+
+      email: ['', [ Validators.required,  Validators.email]],
+      password: [  '',  Validators.required ]
+
     });
+
   }
 
   get email() {
@@ -42,58 +48,56 @@ export class Login {
   }
 
   onLogin(): void {
+
     if (this.isLoading) {
       return;
     }
+
+    this.loginError = '';
 
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
     }
-
+  
     this.isLoading = true;
-    this.errorMessage = '';
 
-    const credentials = {
-      email: this.loginForm.value.email?.trim() || '',
-      password: this.loginForm.value.password || ''
-    };
+    this.authService.login(this.loginForm.value)
+    .pipe(
+      finalize( () => {
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
+      next: (response) => {
+        console.log('Login successful');
+        console.log('Employee Id: ', response.employeeId);
+        console.log('Role: ', response.role);
 
-    this.authService
-      .login(credentials)
-      .pipe(
-        finalize(() => {
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        })
-      )
-      .subscribe({
-        next: () => {
-          this.router.navigate(['/dashboard']);
-        },
-        error: (err) => {
-          let backendMessage = '';
-
-          if (typeof err?.error === 'string' && err.error.trim().length > 0) {
-            backendMessage = err.error.trim();
-          } else if (err?.error && typeof err.error === 'object') {
-            backendMessage =
-              err.error.message ||
-              err.error.error ||
-              err.error.detail ||
-              '';
-          }
-
-          if (backendMessage) {
-            this.errorMessage = backendMessage;
-          } else if (err?.status === 0) {
-            this.errorMessage = 'Unable to connect to the authentication server. Please ensure the backend is running.';
-          } else {
-            this.errorMessage = 'Authentication failed. Please try again.';
-          }
-
-          this.cdr.detectChanges();
+        if (response.role === 'EMPLOYEE') {
+          this.router.navigate(['/dashboard/employee']);
+        } else {
+          this.loginError = 'This dashboard is for support agents only.';
         }
-      });
+      },
+
+      error: (error) => {
+        console.log('Login error:', error.status);
+
+        if(error.status === 401 || error.status === 403){
+          this.loginError = 'Invalid email or pasword.';
+        }
+        else if(error.status === 0){
+          this.loginError = 'Unable to connect to the server. Please try again.';
+        }
+        else{
+          this.loginError = 'Login failed. Please try again later.';
+        }
+        this.cdr.detectChanges();
+        console.error('Login request failed: ', error);
+      }
+    });
   }
+
 }
