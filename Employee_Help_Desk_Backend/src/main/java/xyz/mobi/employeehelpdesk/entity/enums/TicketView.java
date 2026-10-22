@@ -2,6 +2,7 @@ package xyz.mobi.employeehelpdesk.entity.enums;
 
 public enum TicketView {
     CREATED,
+    DEPARTMENT,
     ASSIGNED,
-    DEPARTMENT
+    ALL
 }

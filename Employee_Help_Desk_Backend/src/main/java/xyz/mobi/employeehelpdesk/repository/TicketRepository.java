@@ -379,6 +379,111 @@ public interface TicketRepository
             Pageable pageable
     );
 
+    @EntityGraph(attributePaths = {"requester", "department", "category", "subCategory",
+            "assignedAgent", "assignedAgent.employee", "assignedManager"})
+    @Query(value = """
+    SELECT t
+    FROM Ticket t
+    LEFT JOIN t.category c
+    LEFT JOIN t.requester req
+    LEFT JOIN t.assignedAgent ag
+    LEFT JOIN ag.employee age
+    WHERE (:status IS NULL OR t.status = :status)
+      AND (:priority IS NULL OR t.priority = :priority)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+      AND (
+          :search IS NULL OR :search = ''
+          OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (c IS NOT NULL AND LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (req IS NOT NULL AND (
+              LOWER(req.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(req.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
+          OR (age IS NOT NULL AND (
+              LOWER(age.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(age.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
+      )
+      AND (
+          :unassigned IS NULL
+          OR (:unassigned = true AND t.assignedAgent IS NULL)
+          OR (:unassigned = false AND t.assignedAgent IS NOT NULL)
+      )
+      AND (
+          :slaStatus IS NULL
+          OR EXISTS (
+              SELECT s
+              FROM SlaInstance s
+              WHERE s.ticket.id = t.id
+                AND s.status = :slaStatus
+                AND s.cycleNumber = (
+                    SELECT MAX(s2.cycleNumber)
+                    FROM SlaInstance s2
+                    WHERE s2.ticket.id = t.id
+                )
+          )
+      )
+    """, countQuery = """
+    SELECT COUNT(t)
+    FROM Ticket t
+    LEFT JOIN t.category c
+    LEFT JOIN t.requester req
+    LEFT JOIN t.assignedAgent ag
+    LEFT JOIN ag.employee age
+    WHERE (:status IS NULL OR t.status = :status)
+      AND (:priority IS NULL OR t.priority = :priority)
+      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
+      AND (
+          :search IS NULL OR :search = ''
+          OR LOWER(t.ticketNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.subject) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR (c IS NOT NULL AND LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          OR (req IS NOT NULL AND (
+              LOWER(req.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(req.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
+          OR (age IS NOT NULL AND (
+              LOWER(age.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(age.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
+          ))
+      )
+      AND (
+          :unassigned IS NULL
+          OR (:unassigned = true AND t.assignedAgent IS NULL)
+          OR (:unassigned = false AND t.assignedAgent IS NOT NULL)
+      )
+      AND (
+          :slaStatus IS NULL
+          OR EXISTS (
+              SELECT s
+              FROM SlaInstance s
+              WHERE s.ticket.id = t.id
+                AND s.status = :slaStatus
+                AND s.cycleNumber = (
+                    SELECT MAX(s2.cycleNumber)
+                    FROM SlaInstance s2
+                    WHERE s2.ticket.id = t.id
+                )
+          )
+      )
+    """)
+    Page<Ticket> findAllTicketsWithFilters(
+            @Param("status") TicketStatus status,
+            @Param("priority") Priority priority,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("search") String search,
+            @Param("unassigned") Boolean unassigned,
+            @Param("slaStatus") SlaStatus slaStatus,
+            Pageable pageable
+    );
+
+
     @Query("""
     SELECT t.status, COUNT(t)
     FROM Ticket t

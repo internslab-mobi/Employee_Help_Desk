@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
+import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketView;
 import xyz.mobi.employeehelpdesk.entity.enums.Priority;
@@ -28,6 +29,7 @@ public interface TicketService {
     Page<TicketResponseDTO> getAllTickets(
             TicketView view,
             Long employeeId,
+            Long departmentId,
             Pageable pageable
     );
 

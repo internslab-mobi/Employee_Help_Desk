@@ -2,6 +2,7 @@ package xyz.mobi.employeehelpdesk.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -13,6 +14,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
 import xyz.mobi.employeehelpdesk.entity.*;
 import xyz.mobi.employeehelpdesk.entity.enums.*;
@@ -68,6 +70,11 @@ public class TicketServiceImpl implements TicketService {
     private final SubCategorySkillRepository subCategorySkillRepository;
     private final AgentSkillRepository agentSkillRepository;
     private final DepartmentManagerRepository departmentManagerRepository;
+
+    @Value("${helpdesk.sla.work-start}")
+    LocalTime workStart;
+    @Value("${helpdesk.sla.work-end}")
+    LocalTime workEnd;
 
 
     @Override
@@ -199,19 +206,6 @@ public class TicketServiceImpl implements TicketService {
         if (currentEmployee.getRole() == UserRole.MANAGER && currentEmployee.getDepartment() != null) {
             Long managerDeptId = currentEmployee.getDepartment().getId();
 
-            if (ticket.getRequester() != null
-                    && ticket.getRequester().getDepartment() != null
-                    && managerDeptId.equals(ticket.getRequester().getDepartment().getId())) {
-                return ticket;
-            }
-
-            if (ticket.getAssignedAgent() != null
-                    && ticket.getAssignedAgent().getEmployee() != null
-                    && ticket.getAssignedAgent().getEmployee().getDepartment() != null
-                    && managerDeptId.equals(ticket.getAssignedAgent().getEmployee().getDepartment().getId())) {
-                return ticket;
-            }
-
             if (ticket.getDepartment() != null
                     && managerDeptId.equals(ticket.getDepartment().getId())) {
                 return ticket;
@@ -277,7 +271,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO> getTicketAttachments(Long ticketId) {
+    public List<TicketAttachmentResponseDTO> getTicketAttachments(Long ticketId) {
         Ticket ticket = getAuthorizedTicket(ticketId);
         List<TicketAttachment> attachments = ticketAttachmentRepository.findByTicketId(ticket.getId());
         return attachments.stream().map(a -> new xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO(
@@ -294,6 +288,7 @@ public class TicketServiceImpl implements TicketService {
     public Page<TicketResponseDTO> getAllTickets(
             TicketView view,
             Long employeeId,
+            Long departmentId,
             Pageable pageable
     ) {
         if (view == null) {
@@ -311,18 +306,32 @@ public class TicketServiceImpl implements TicketService {
 
         Page<Ticket> tickets = switch (view) {
             case CREATED -> {
-                Employee targetEmployee = resolveCreatedTargetEmployee(employeeId, currentEmployee);
+                Employee targetEmployee =
+                        resolveCreatedTargetEmployee(employeeId, currentEmployee);
+
                 yield ticketRepository.findByRequesterId(targetEmployee.getId(), pageable);
             }
             case ASSIGNED -> {
-                DepartmentAgent agent = resolveAssignedTargetAgent(employeeId, currentEmployee);
+                DepartmentAgent agent =
+                        resolveAssignedTargetAgent(employeeId, currentEmployee);
+
                 yield ticketRepository.findByAssignedAgentId(agent.getId(), pageable);
             }
             case DEPARTMENT -> {
-                Long departmentId = resolveDepartmentForManager(employeeId, currentEmployee);
-                yield departmentId != null
-                        ? ticketRepository.findByDepartmentId(departmentId, pageable)
-                        : ticketRepository.findAllTickets(pageable);
+                Long targetDepartmentId =
+                        resolveDepartmentForManagerAndAdmin(departmentId, currentEmployee);
+
+                yield ticketRepository.findByDepartmentId(
+                        targetDepartmentId, pageable
+                );
+            }
+
+            case ALL -> {
+                if(currentEmployee.getRole() == UserRole.ADMIN) {
+                    yield ticketRepository.findAll(pageable);
+                }
+                else
+                    throw new AccessDeniedException("Only Admin is allowed for this action");
             }
         };
 
@@ -395,7 +404,7 @@ public class TicketServiceImpl implements TicketService {
                 );
             }
             case DEPARTMENT -> {
-                Long targetDeptId = resolveDepartmentForSearch(departmentId, employeeId, currentEmployee);
+                Long targetDeptId = resolveDepartmentForManagerAndAdmin(departmentId,currentEmployee);
                 yield ticketRepository.findDepartmentTicketsWithFilters(
                         targetDeptId,
                         agentId,
@@ -409,35 +418,26 @@ public class TicketServiceImpl implements TicketService {
                         pageable
                 );
             }
+
+            case ALL -> {
+                if (currentEmployee.getRole() == UserRole.ADMIN) {
+                    yield ticketRepository.findAllTicketsWithFilters(
+                            status,
+                            priority,
+                            dateRange.from(),
+                            dateRange.toExclusive(),
+                            trimmedSearch,
+                            unassigned,
+                            slaStatus,
+                            pageable
+                    );
+                } else {
+                    throw new AccessDeniedException("Only Admin is allowed for this action");
+                }
+            }
         };
 
         return buildTicketResponse(tickets);
-    }
-
-    private Long resolveDepartmentForSearch(Long requestedDeptId, Long employeeId, Employee currentEmployee) {
-        if (currentEmployee.getRole() != UserRole.MANAGER && currentEmployee.getRole() != UserRole.ADMIN) {
-            throw new AccessDeniedException("Only managers and admins can view department tickets");
-        }
-
-        if (currentEmployee.getRole() == UserRole.MANAGER) {
-            if (currentEmployee.getDepartment() == null) {
-                throw new BadRequestException("Manager is not assigned to a department");
-            }
-            return currentEmployee.getDepartment().getId();
-        }
-
-        // ADMIN role
-        if (requestedDeptId != null) {
-            return requestedDeptId;
-        }
-
-        if (employeeId != null) {
-            Employee targetEmployee = employeeRepository.findById(employeeId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + employeeId));
-            return targetEmployee.getDepartment() != null ? targetEmployee.getDepartment().getId() : null;
-        }
-
-        return null;
     }
 
     @Override
@@ -617,6 +617,7 @@ public class TicketServiceImpl implements TicketService {
                 yield agent.getTicketStatusCounts();
             }
             case DEPARTMENT -> null;
+            case ALL -> null;
         };
 
         if (jsonCounts != null && !jsonCounts.isBlank()) {
@@ -666,37 +667,34 @@ public class TicketServiceImpl implements TicketService {
         return departmentId;
     }
 
-    private Long resolveDepartmentForManager(Long employeeId, Employee currentEmployee) {
-        if (currentEmployee.getRole() != UserRole.MANAGER && currentEmployee.getRole() != UserRole.ADMIN) {
-            throw new AccessDeniedException("Only managers and admins can view department tickets");
+    private Long resolveDepartmentForManagerAndAdmin(Long departmentId,Employee currentEmployee) {
+        UserRole role = currentEmployee.getRole();
+
+        if (role != UserRole.MANAGER && role != UserRole.ADMIN) {
+            throw new AccessDeniedException(
+                    "Only managers and admins can view department tickets"
+            );
         }
 
-        if (currentEmployee.getRole() == UserRole.MANAGER) {
+        // MANAGER: Use the department assigned to the logged-in manager.
+        if (role == UserRole.MANAGER) {
             if (currentEmployee.getDepartment() == null) {
-                throw new BadRequestException("Manager is not assigned to a department");
+                throw new BadRequestException(
+                        "Manager is not assigned to a department"
+                );
             }
-            Long managerDepartmentId = currentEmployee.getDepartment().getId();
 
-            if (employeeId != null && !employeeId.equals(currentEmployee.getId())) {
-                Employee targetEmployee = employeeRepository.findById(employeeId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + employeeId));
-
-                if (targetEmployee.getDepartment() == null
-                        || !managerDepartmentId.equals(targetEmployee.getDepartment().getId())) {
-                    throw new AccessDeniedException("You are not authorized to view tickets from this department");
-                }
-            }
-            return managerDepartmentId;
+            return currentEmployee.getDepartment().getId();
         }
 
-        // ADMIN role
-        if (employeeId != null) {
-            Employee targetEmployee = employeeRepository.findById(employeeId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + employeeId));
-            return targetEmployee.getDepartment() != null ? targetEmployee.getDepartment().getId() : null;
+        // ADMIN: Use the department ID explicitly provided in the request.
+        if (departmentId == null) {
+            throw new BadRequestException(
+                    "Department ID is required for admin"
+            );
         }
 
-        return currentEmployee.getDepartment() != null ? currentEmployee.getDepartment().getId() : null;
+        return departmentId;
     }
 
     private Employee resolveCreatedTargetEmployee(Long employeeId, Employee currentEmployee) {
@@ -1735,8 +1733,6 @@ public class TicketServiceImpl implements TicketService {
             }
         }
         LocalTime now = LocalTime.now(zone);
-        LocalTime workStart = LocalTime.of(8, 30);
-        LocalTime workEnd = LocalTime.of(17, 30);
 
         if (now.isBefore(workStart) || now.isAfter(workEnd)) {
             log.warn("Action '{}' rejected: current time {} in zone {} is outside business hours (08:30 - 17:30)",

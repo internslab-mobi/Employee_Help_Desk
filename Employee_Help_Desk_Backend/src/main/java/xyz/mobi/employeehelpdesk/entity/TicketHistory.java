@@ -32,10 +32,6 @@ public class TicketHistory extends BaseEntity {
     @JoinColumn(name = "ticket_id", nullable = false)
     private Ticket ticket;
 
-    /*@ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actor_id")
-    private Employee actor;*/
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private HistoryEventType eventType;
@@ -48,7 +44,4 @@ public class TicketHistory extends BaseEntity {
     @Column(nullable = false, length = 30)
     private TicketStatus newValue;
 
-//    @JdbcTypeCode(SqlTypes.JSON)
-//    @Column(columnDefinition = "JSON")
-//    private String metadata;
 }

@@ -97,6 +97,7 @@ public class TicketController {
     public ResponseEntity<Page<TicketResponseDTO>> getAllTickets(
             @RequestParam TicketView view,
             @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) Long departmentId,
             @PageableDefault(
                     size = 10,
                     sort = "createdAt",
@@ -108,6 +109,7 @@ public class TicketController {
                 ticketService.getAllTickets(
                         view,
                         employeeId,
+                        departmentId,
                         pageable
                 )
         );

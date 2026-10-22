@@ -22,11 +22,16 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     @Async
-    public void sendNotificationEmail(
-            String recipientEmail,
-            String subject,
-            String message
-    ) {
+    public void sendEmail(EmailRequestDTO request) {
+        if (request == null) {
+            log.warn("Cannot send email: request is null");
+            return;
+        }
+
+        String recipientEmail = request.to();
+        String  subject = request.subject();
+        String message = request.body();
+
         if (recipientEmail == null || recipientEmail.isBlank()) {
             log.warn("Cannot send notification email: recipient email is null/empty");
             return;
@@ -48,14 +53,5 @@ public class EmailServiceImpl implements EmailService {
             log.error("Failed to send notification email to {}: {}",
                     recipientEmail, ex.getMessage(), ex);
         }
-    }
-
-    @Override
-    public void sendEmail(EmailRequestDTO request) {
-        if (request == null) {
-            log.warn("Cannot send email: request is null");
-            return;
-        }
-        sendNotificationEmail(request.to(), request.subject(), request.body());
     }
 }
