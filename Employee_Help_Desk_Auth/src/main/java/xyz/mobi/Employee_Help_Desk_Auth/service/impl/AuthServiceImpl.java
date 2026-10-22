@@ -8,6 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.mobi.Employee_Help_Desk_Auth.client.NotificationClient;
 import xyz.mobi.Employee_Help_Desk_Auth.dto.auth.*;
 import xyz.mobi.Employee_Help_Desk_Auth.entity.Employee;
 import xyz.mobi.Employee_Help_Desk_Auth.entity.PasswordResetOtp;
@@ -23,7 +24,6 @@ import xyz.mobi.Employee_Help_Desk_Auth.repository.RefreshTokenRepository;
 import xyz.mobi.Employee_Help_Desk_Auth.security.JwtTokenProvider;
 import xyz.mobi.Employee_Help_Desk_Auth.security.UserPrincipal;
 import xyz.mobi.Employee_Help_Desk_Auth.service.AuthService;
-import xyz.mobi.Employee_Help_Desk_Auth.service.EmailService;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -41,7 +41,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetOtpRepository passwordResetOtpRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-    private final EmailService emailService;
+    private final NotificationClient notificationClient;
 
     private static final String PASSWORD_PATTERN = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{8,}$";
 
@@ -244,8 +244,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         passwordResetOtpRepository.save(resetOtp);
-
-        emailService.sendNotificationEmail(
+        notificationClient.sendNotificationEmail(
                 email,
                 "Password Reset OTP",
                 "Your OTP for password reset is: " + otp + ". This OTP is valid for 10 minutes."

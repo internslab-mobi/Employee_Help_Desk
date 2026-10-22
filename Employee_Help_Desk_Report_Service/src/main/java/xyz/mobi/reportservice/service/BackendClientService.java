@@ -17,6 +17,8 @@ import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
+import static org.springframework.web.util.UriComponentsBuilder.fromHttpUrl;
+
 @Slf4j
 @Service
 public class BackendClientService {
@@ -39,12 +41,8 @@ public class BackendClientService {
             String rawToken, LocalDate fromDate, LocalDate toDate, Long departmentId
     ) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder
-<<<<<<< HEAD
-                .fromHttpUrl(backendBaseUrl + "/helpdesk/analytics/dashboard");
-=======
+                .fromHttpUrl(backendBaseUrl + "/helpdesk/analytics/dashboard")
                 .fromHttpUrl(backendBaseUrl + "/analytics/dashboard");
->>>>>>> 22515536 (microservices summary report)
-
         if (fromDate != null) uriBuilder.queryParam("fromDate", fromDate.toString());
         if (toDate != null) uriBuilder.queryParam("toDate", toDate.toString());
         if (departmentId != null) uriBuilder.queryParam("departmentId", departmentId);
@@ -76,11 +74,8 @@ public class BackendClientService {
             String rawToken, LocalDate fromDate, LocalDate toDate, Long departmentId
     ) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder
-<<<<<<< HEAD
-                .fromHttpUrl(backendBaseUrl + "/helpdesk/analytics/export-data");
-=======
+                .fromHttpUrl(backendBaseUrl + "/helpdesk/analytics/export-data")
                 .fromHttpUrl(backendBaseUrl + "/analytics/export-data");
->>>>>>> 22515536 (microservices summary report)
 
         if (fromDate != null) uriBuilder.queryParam("fromDate", fromDate.toString());
         if (toDate != null) uriBuilder.queryParam("toDate", toDate.toString());

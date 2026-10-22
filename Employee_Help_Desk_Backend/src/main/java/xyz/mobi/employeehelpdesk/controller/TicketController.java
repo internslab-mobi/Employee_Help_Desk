@@ -44,12 +44,7 @@ public class TicketController {
             @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments
     ) throws IOException {
 
-
-<<<<<<< HEAD
         TicketResponseDTO response = ticketService.createTicket(
-=======
-        TicketCreateResponseDTO response = ticketService.createTicket(
->>>>>>> 22515536 (microservices summary report)
                 request,
                 attachments
         );

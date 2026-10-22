@@ -10,11 +10,9 @@ import xyz.mobi.employeehelpdesk.entity.DepartmentAgent;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
-<<<<<<< HEAD
 import xyz.mobi.employeehelpdesk.entity.enums.*;
 import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
 import xyz.mobi.employeehelpdesk.repository.*;
-=======
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
@@ -27,7 +25,6 @@ import xyz.mobi.employeehelpdesk.repository.DepartmentRepository;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaInstanceRepository;
 import xyz.mobi.employeehelpdesk.repository.TicketRepository;
->>>>>>> 22515536 (microservices summary report)
 import xyz.mobi.employeehelpdesk.service.AnalyticsService;
 import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.util.InstantDateRange;

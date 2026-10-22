@@ -25,12 +25,3 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD:Employee_Help_Desk_Backend/src/main/java/xyz/mobi/employeehelpdesk/security/CustomUserDetailsService.java
-=======
-
-
-
->>>>>>> c5b2367e (updated reworks):src/main/java/com/example/helpdesk/security/CustomUserDetailsService.java
-=======
->>>>>>> 22515536 (microservices summary report)
