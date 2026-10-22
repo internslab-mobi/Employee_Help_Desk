@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, catchError, tap, throwError } from 'rxjs';
 import { API_ENDPOINTS } from '../config/api.config';
-import { EmployeeProfile, LoginRequest, LoginResponse, TokenRefreshResponse, UpdateProfileRequest, UserRole } from '../models/auth.models';
+import { AuthApiResponse, ChangePasswordRequest, EmployeeProfile, LoginRequest, LoginResponse, TokenRefreshResponse, UpdateProfileRequest, UserRole } from '../models/auth.models';
 
 const TOKEN_KEY = 'ehd_access_token';
 const REFRESH_TOKEN_KEY = 'ehd_refresh_token';
@@ -117,6 +117,10 @@ export class AuthService {
         localStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
       })
     );
+  }
+
+  changePassword(request: ChangePasswordRequest): Observable<AuthApiResponse> {
+    return this.http.post<AuthApiResponse>(API_ENDPOINTS.auth.changePassword, request);
   }
 
   loadProfilePhoto(force = false): void {

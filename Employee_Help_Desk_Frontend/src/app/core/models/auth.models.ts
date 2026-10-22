@@ -68,6 +68,12 @@ export interface ResetPasswordRequest {
   confirmNewPassword: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
 export interface AuthApiResponse {
   message: string;
 }

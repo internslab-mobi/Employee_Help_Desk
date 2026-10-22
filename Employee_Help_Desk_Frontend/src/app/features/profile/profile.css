@@ -844,3 +844,280 @@
   margin-top: 2px;
   color: #3b82f6;
 }
+
+/* ===================================================
+   CHANGE PASSWORD MODAL OVERLAY
+   =================================================== */
+
+/* Suppress default browser password reveal icon in Edge/Chromium */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card.modal-change-password {
+  background: #ffffff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 48px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  margin: auto;
+  padding: 0 !important;
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  background-color: #ffffff;
+}
+
+.modal-header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.modal-subtitle {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 3px 0 0 0;
+  font-weight: 400;
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close-modal:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.btn-close-modal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.change-password-modal-form {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
+  background-color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Password Inputs with Toggle Button */
+.password-input-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrap .form-control {
+  padding-right: 44px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.password-toggle-btn:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.password-toggle-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+/* Password Strength & Checklist */
+.password-feedback {
+  margin-top: 10px;
+}
+
+.strength-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.strength-text {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.strength-text.low { color: #dc2626; }
+.strength-text.medium { color: #d97706; }
+.strength-text.strong { color: #16a34a; }
+
+.strength-bar {
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  background: #e2e8f0;
+  border-radius: 6px;
+}
+
+.strength-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.25s, background 0.25s;
+}
+
+.strength-fill.low { background: #dc2626; width: 33%; }
+.strength-fill.medium { background: #d97706; width: 66%; }
+.strength-fill.strong { background: #16a34a; width: 100%; }
+
+.password-requirements {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 11.5px;
+}
+
+.password-requirements p {
+  margin: 0 0 6px;
+  color: #374151;
+  font-weight: 600;
+  font-size: 11.5px;
+}
+
+.requirement {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.requirement:last-child {
+  margin-bottom: 0;
+}
+
+.requirement.valid {
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.requirement-icon {
+  width: 14px;
+  font-weight: 700;
+  text-align: center;
+  display: inline-block;
+  font-size: 11px;
+}

@@ -363,7 +363,7 @@ export class DashboardStateService {
     if (historicalStatuses[historicalStatuses.length - 1] !== currentStatus) {
       historicalStatuses.push(currentStatus);
     }
-
+ 
     // Build timeline steps:
     // Earlier reached steps are completed; the latest reached step is current.
     const steps: StatusTimelineStep[] = [];

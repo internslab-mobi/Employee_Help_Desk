@@ -115,12 +115,30 @@ describe('Login Component', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('should toggle password visibility flag', () => {
-    expect(component.showPassword).toBe(false);
-    component.togglePassword();
+  it('should toggle password visibility flag and update input type without submitting form', () => {
+    const toggleBtn: HTMLButtonElement = fixture.nativeElement.querySelector('#login-password-toggle');
+    const pwdInput: HTMLInputElement = fixture.nativeElement.querySelector('#password');
+
+    expect(toggleBtn).toBeTruthy();
+    expect(toggleBtn.type).toBe('button');
+    expect(toggleBtn.getAttribute('aria-label')).toBe('Show password');
+    expect(pwdInput.type).toBe('password');
+
+    toggleBtn.click();
+    fixture.detectChanges();
+
     expect(component.showPassword).toBe(true);
-    component.togglePassword();
+    expect(pwdInput.type).toBe('text');
+    expect(toggleBtn.getAttribute('aria-label')).toBe('Hide password');
+    expect(authServiceSpy.login).not.toHaveBeenCalled();
+
+    toggleBtn.click();
+    fixture.detectChanges();
+
     expect(component.showPassword).toBe(false);
+    expect(pwdInput.type).toBe('password');
+    expect(toggleBtn.getAttribute('aria-label')).toBe('Show password');
+    expect(authServiceSpy.login).not.toHaveBeenCalled();
   });
 
   it('should display raw string error message returned directly from backend', () => {

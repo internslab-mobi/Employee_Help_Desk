@@ -38,3 +38,4 @@ public class ReportController {
         return reportIntegrationService.getSummaryReport(request, authHeader);
     }
 }
+

@@ -19,7 +19,7 @@ import java.util.Map;
 @Slf4j
 @Tag(name = "Authentication", description = "Authentication and Password Management APIs")
 @RestController
-@RequestMapping({"/user", "/helpdesk/auth/user", "/auth/user", "/api/user", "/api/auth"})
+@RequestMapping({"/user", "/helpdesk/auth/user", "/auth/user", "/api/user", "/api/auth", "/helpdesk/user"})
 @RequiredArgsConstructor
 public class AuthController {
 

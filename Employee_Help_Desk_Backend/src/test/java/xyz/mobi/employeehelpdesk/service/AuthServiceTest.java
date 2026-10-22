@@ -1,11 +1,17 @@
 package xyz.mobi.employeehelpdesk.service;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import xyz.mobi.employeehelpdesk.dto.auth.*;
 import xyz.mobi.employeehelpdesk.entity.Employee;
@@ -19,11 +25,13 @@ import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
 import xyz.mobi.employeehelpdesk.repository.PasswordResetOtpRepository;
 import xyz.mobi.employeehelpdesk.repository.RefreshTokenRepository;
 import xyz.mobi.employeehelpdesk.security.JwtTokenProvider;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
 import xyz.mobi.employeehelpdesk.service.impl.AuthServiceImpl;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -198,4 +206,130 @@ class AuthServiceTest {
         verify(employeeRepository).save(testEmployee);
         verify(refreshTokenRepository).deleteByEmployeeId(10L);
     }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void setupSecurityContext(Long employeeId, UserRole role) {
+        UserPrincipal principal = new UserPrincipal(
+                employeeId,
+                null,
+                null,
+                role,
+                "Asia/Kolkata",
+                true,
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()))
+        );
+        Authentication auth = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(auth);
+        SecurityContextHolder.setContext(context);
+    }
+
+    @Test
+    @DisplayName("Change password succeeds for authenticated employee with valid credentials")
+    void shouldChangePasswordSuccessfully() {
+        setupSecurityContext(10L, UserRole.EMPLOYEE);
+
+        ChangePasswordRequestDTO request = new ChangePasswordRequestDTO(
+                "OldPassword@123",
+                "NewPassword@456",
+                "NewPassword@456"
+        );
+
+        when(employeeRepository.findById(10L)).thenReturn(Optional.of(testEmployee));
+        when(passwordEncoder.matches("OldPassword@123", "$2a$12$hashedPassword")).thenReturn(true);
+        when(passwordEncoder.matches("NewPassword@456", "$2a$12$hashedPassword")).thenReturn(false);
+        when(passwordEncoder.encode("NewPassword@456")).thenReturn("$2a$12$newHashedPassword");
+
+        authService.changePassword(request);
+
+        assertEquals("$2a$12$newHashedPassword", testEmployee.getPasswordHash());
+        verify(employeeRepository).save(testEmployee);
+        verify(refreshTokenRepository).deleteByEmployeeId(10L);
+    }
+
+    @Test
+    @DisplayName("Change password fails when current password is incorrect")
+    void shouldRejectChangePasswordWithIncorrectCurrentPassword() {
+        setupSecurityContext(10L, UserRole.EMPLOYEE);
+
+        ChangePasswordRequestDTO request = new ChangePasswordRequestDTO(
+                "WrongCurrentPassword@123",
+                "NewPassword@456",
+                "NewPassword@456"
+        );
+
+        when(employeeRepository.findById(10L)).thenReturn(Optional.of(testEmployee));
+        when(passwordEncoder.matches("WrongCurrentPassword@123", "$2a$12$hashedPassword")).thenReturn(false);
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> authService.changePassword(request));
+        assertEquals("Current password is incorrect", ex.getMessage());
+        verify(employeeRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Change password fails when new password matches current password")
+    void shouldRejectChangePasswordWhenNewPasswordMatchesCurrent() {
+        setupSecurityContext(10L, UserRole.EMPLOYEE);
+
+        ChangePasswordRequestDTO request = new ChangePasswordRequestDTO(
+                "OldPassword@123",
+                "OldPassword@123",
+                "OldPassword@123"
+        );
+
+        when(employeeRepository.findById(10L)).thenReturn(Optional.of(testEmployee));
+        when(passwordEncoder.matches("OldPassword@123", "$2a$12$hashedPassword")).thenReturn(true);
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> authService.changePassword(request));
+        assertEquals("New password cannot be the same as current password", ex.getMessage());
+        verify(employeeRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Change password fails when confirmation password does not match")
+    void shouldRejectChangePasswordWhenConfirmationMismatches() {
+        ChangePasswordRequestDTO request = new ChangePasswordRequestDTO(
+                "OldPassword@123",
+                "NewPassword@456",
+                "DifferentPassword@456"
+        );
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> authService.changePassword(request));
+        assertEquals("New password and confirm password do not match", ex.getMessage());
+        verify(employeeRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Change password fails when new password violates policy")
+    void shouldRejectChangePasswordWhenPolicyViolated() {
+        ChangePasswordRequestDTO request = new ChangePasswordRequestDTO(
+                "OldPassword@123",
+                "weak",
+                "weak"
+        );
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> authService.changePassword(request));
+        assertTrue(ex.getMessage().contains("Password must be at least 8 characters long"));
+        verify(employeeRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Change password fails when user is unauthenticated")
+    void shouldRejectChangePasswordWhenUnauthenticated() {
+        SecurityContextHolder.clearContext();
+
+        ChangePasswordRequestDTO request = new ChangePasswordRequestDTO(
+                "OldPassword@123",
+                "NewPassword@456",
+                "NewPassword@456"
+        );
+
+        assertThrows(UnauthorizedException.class, () -> authService.changePassword(request));
+        verify(employeeRepository, never()).findById(any());
+    }
 }
+

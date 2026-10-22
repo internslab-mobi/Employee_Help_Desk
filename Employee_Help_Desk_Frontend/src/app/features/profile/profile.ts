@@ -1,9 +1,9 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { EmployeeProfile, UpdateProfileRequest, UserRole } from '../../core/models/auth.models';
+import { ChangePasswordRequest, EmployeeProfile, UpdateProfileRequest, UserRole } from '../../core/models/auth.models';
 
 @Component({
   selector: 'app-profile',
@@ -22,7 +22,21 @@ export class ProfileComponent implements OnInit {
   readonly selectedImage = signal<File | null>(null);
   readonly imagePreviewUrl = signal<string | null>(null);
 
+  // Change Password state
+  readonly isChangePasswordOpen = signal<boolean>(false);
+  readonly isChangingPassword = signal<boolean>(false);
+  readonly passwordSuccessMessage = signal<string | null>(null);
+  readonly passwordErrorMessage = signal<string | null>(null);
+  readonly showCurrentPassword = signal<boolean>(false);
+  readonly showNewPassword = signal<boolean>(false);
+  readonly showConfirmPassword = signal<boolean>(false);
+  passwordStrength: 'low' | 'medium' | 'strong' | '' = '';
+
+  private readonly passwordPattern =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+
   profileForm!: FormGroup;
+  changePasswordForm!: FormGroup;
 
   readonly displayUserName = computed(() => {
     const p = this.profile();
@@ -50,6 +64,7 @@ export class ProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
+    this.initChangePasswordForm();
     this.loadProfile();
   }
 
@@ -192,5 +207,195 @@ export class ProfileComponent implements OnInit {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
     return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  // ==========================================
+  // CHANGE PASSWORD LOGIC
+  // ==========================================
+
+  private initChangePasswordForm(): void {
+    this.changePasswordForm = this.fb.group(
+      {
+        currentPassword: ['', [Validators.required]],
+        newPassword: ['', [Validators.required, Validators.pattern(this.passwordPattern)]],
+        confirmNewPassword: ['', [Validators.required]]
+      },
+      {
+        validators: this.passwordMatchValidator
+      }
+    );
+
+    this.changePasswordForm.get('newPassword')?.valueChanges.subscribe((password) => {
+      this.checkPasswordStrength(password ?? '');
+    });
+  }
+
+  passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
+    const newPassword = control.get('newPassword')?.value;
+    const confirmNewPassword = control.get('confirmNewPassword')?.value;
+
+    if (!newPassword || !confirmNewPassword) {
+      return null;
+    }
+
+    return newPassword === confirmNewPassword ? null : { passwordMismatch: true };
+  }
+
+  checkPasswordStrength(password: string): void {
+    if (!password) {
+      this.passwordStrength = '';
+      return;
+    }
+
+    const meetsMinimumRequirements = this.passwordPattern.test(password);
+
+    if (!meetsMinimumRequirements) {
+      this.passwordStrength = 'low';
+      return;
+    }
+
+    let additionalStrength = 0;
+
+    if (password.length >= 12) {
+      additionalStrength++;
+    }
+
+    if ((password.match(/\d/g) ?? []).length >= 2) {
+      additionalStrength++;
+    }
+
+    if ((password.match(/[@$!%*?&]/g) ?? []).length >= 2) {
+      additionalStrength++;
+    }
+
+    if (additionalStrength >= 2) {
+      this.passwordStrength = 'strong';
+    } else {
+      this.passwordStrength = 'medium';
+    }
+  }
+
+  hasMinimumLength(): boolean {
+    return (this.changePasswordForm?.get('newPassword')?.value ?? '').length >= 8;
+  }
+
+  hasUppercase(): boolean {
+    return /[A-Z]/.test(this.changePasswordForm?.get('newPassword')?.value ?? '');
+  }
+
+  hasLowercase(): boolean {
+    return /[a-z]/.test(this.changePasswordForm?.get('newPassword')?.value ?? '');
+  }
+
+  hasNumber(): boolean {
+    return /\d/.test(this.changePasswordForm?.get('newPassword')?.value ?? '');
+  }
+
+  hasSpecialCharacter(): boolean {
+    return /[@$!%*?&]/.test(this.changePasswordForm?.get('newPassword')?.value ?? '');
+  }
+
+  get currentPasswordControl() {
+    return this.changePasswordForm?.get('currentPassword');
+  }
+
+  get newPasswordControl() {
+    return this.changePasswordForm?.get('newPassword');
+  }
+
+  get confirmNewPasswordControl() {
+    return this.changePasswordForm?.get('confirmNewPassword');
+  }
+
+  toggleChangePassword(): void {
+    if (this.isChangePasswordOpen()) {
+      this.cancelChangePassword();
+    } else {
+      this.openChangePassword();
+    }
+  }
+
+  openChangePassword(): void {
+    this.isChangePasswordOpen.set(true);
+    this.passwordSuccessMessage.set(null);
+    this.passwordErrorMessage.set(null);
+  }
+
+  cancelChangePassword(): void {
+    if (this.isChangingPassword()) {
+      return;
+    }
+    this.isChangePasswordOpen.set(false);
+    this.resetChangePasswordForm();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget && !this.isChangingPassword()) {
+      this.cancelChangePassword();
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    if (this.isChangePasswordOpen() && !this.isChangingPassword()) {
+      this.cancelChangePassword();
+    }
+  }
+
+  resetChangePasswordForm(): void {
+    this.changePasswordForm.reset({
+      currentPassword: '',
+      newPassword: '',
+      confirmNewPassword: ''
+    });
+    this.passwordStrength = '';
+    this.showCurrentPassword.set(false);
+    this.showNewPassword.set(false);
+    this.showConfirmPassword.set(false);
+  }
+
+  toggleShowCurrentPassword(): void {
+    this.showCurrentPassword.update((v) => !v);
+  }
+
+  toggleShowNewPassword(): void {
+    this.showNewPassword.update((v) => !v);
+  }
+
+  toggleShowConfirmPassword(): void {
+    this.showConfirmPassword.update((v) => !v);
+  }
+
+  submitChangePassword(): void {
+    if (this.changePasswordForm.invalid || this.isChangingPassword()) {
+      this.changePasswordForm.markAllAsTouched();
+      return;
+    }
+
+    this.isChangingPassword.set(true);
+    this.passwordErrorMessage.set(null);
+    this.passwordSuccessMessage.set(null);
+
+    const payload: ChangePasswordRequest = {
+      currentPassword: this.changePasswordForm.value.currentPassword,
+      newPassword: this.changePasswordForm.value.newPassword,
+      confirmNewPassword: this.changePasswordForm.value.confirmNewPassword
+    };
+
+    this.authService.changePassword(payload).subscribe({
+      next: (res) => {
+        this.isChangingPassword.set(false);
+        const msg = res?.message || 'Password changed successfully!';
+        this.resetChangePasswordForm();
+        this.isChangePasswordOpen.set(false);
+        this.successMessage.set(msg);
+      },
+      error: (err) => {
+        this.isChangingPassword.set(false);
+        this.passwordErrorMessage.set(
+          err?.error?.message || 'Failed to change password. Please verify your current password and try again.'
+        );
+      }
+    });
   }
 }

@@ -180,4 +180,24 @@ describe('AuthService', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
     expect(service.isAuthenticated()).toBe(false);
   });
+
+  it('should post change password request to backend API endpoint', () => {
+    const payload = {
+      currentPassword: 'OldPassword123!',
+      newPassword: 'NewPassword123!',
+      confirmNewPassword: 'NewPassword123!'
+    };
+
+    let resultMessage = '';
+    service.changePassword(payload).subscribe((res) => {
+      resultMessage = res.message;
+    });
+
+    const req = httpMock.expectOne(API_ENDPOINTS.auth.changePassword);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+
+    req.flush({ message: 'Password changed successfully' });
+    expect(resultMessage).toBe('Password changed successfully');
+  });
 });

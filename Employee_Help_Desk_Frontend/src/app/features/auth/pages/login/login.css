@@ -171,29 +171,50 @@
    PASSWORD
    ========================================= */
 
+/* Suppress default browser password reveal icon in Edge/Chromium */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 .password-wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .password-wrapper input {
-  padding-right: 64px;
+  padding-right: 44px;
 }
 
 .password-toggle {
   position: absolute;
   top: 50%;
-  right: 12px;
+  right: 10px;
   transform: translateY(-50%);
   border: none;
   background: transparent;
-  color: #2864e8;
-  font-size: 13px;
-  font-weight: 600;
+  color: #64748b;
   cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .password-toggle:hover {
-  color: #1f56d0;
+  color: #2864e8;
+  background: #f1f5f9;
+}
+
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 /* =========================================

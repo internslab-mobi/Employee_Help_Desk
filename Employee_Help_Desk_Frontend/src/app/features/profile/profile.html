@@ -266,13 +266,22 @@
 
         <div class="hero-actions">
           @if (!isEditMode()) {
-          <button id="btn-edit-profile" class="btn-primary" (click)="enterEditMode()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            <span>Edit Profile</span>
-          </button>
+          <div class="edit-actions-group">
+            <button id="btn-edit-profile" class="btn-primary" (click)="enterEditMode()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              <span>Edit Profile</span>
+            </button>
+            <button id="btn-hero-change-password" type="button" class="btn-secondary" (click)="openChangePassword()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <span>Change Password</span>
+            </button>
+          </div>
           } @else {
           <div class="edit-actions-group">
             <button id="btn-cancel-edit" type="button" class="btn-secondary" (click)="cancelEdit()" [disabled]="isSaving()">
@@ -575,4 +584,270 @@
     </div>
     }
   </main>
+
+  <!-- ==============================================
+       CHANGE PASSWORD MODAL OVERLAY
+       ============================================== -->
+  @if (isChangePasswordOpen()) {
+    <div
+      class="modal-backdrop"
+      (click)="onBackdropClick($event)"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-change-password-title"
+    >
+      <div class="modal-card modal-change-password" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <div class="modal-header-text">
+            <h3 id="modal-change-password-title">Change Password</h3>
+            <p class="modal-subtitle">Update your account authentication credentials</p>
+          </div>
+          <button
+            type="button"
+            class="btn-close-modal"
+            (click)="cancelChangePassword()"
+            [disabled]="isChangingPassword()"
+            aria-label="Close"
+            title="Close"
+          >
+            &times;
+          </button>
+        </div>
+
+        <!-- Change Password Form -->
+        <form [formGroup]="changePasswordForm" (ngSubmit)="submitChangePassword()" class="change-password-modal-form" novalidate>
+          <div class="modal-body">
+            <!-- In-Modal Error Banner -->
+            @if (passwordErrorMessage(); as perr) {
+              <div id="password-change-error-banner" class="toast-banner notif-ERROR">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span class="error-text">{{ perr }}</span>
+              </div>
+            }
+
+            <!-- Current Password -->
+            <div class="form-group full-width">
+              <label for="profile-current-password" class="field-label">
+                Current Password <span class="required-indicator">*</span>
+              </label>
+              <div class="password-input-wrap">
+                <input
+                  id="profile-current-password"
+                  [type]="showCurrentPassword() ? 'text' : 'password'"
+                  class="form-control"
+                  [class.is-invalid]="currentPasswordControl?.invalid && currentPasswordControl?.touched"
+                  formControlName="currentPassword"
+                  placeholder="Enter your current password"
+                  (copy)="$event.preventDefault()"
+                  (cut)="$event.preventDefault()"
+                  (paste)="$event.preventDefault()"
+                />
+                <button
+                  type="button"
+                  class="password-toggle-btn"
+                  (click)="toggleShowCurrentPassword()"
+                  [attr.aria-label]="showCurrentPassword() ? 'Hide current password' : 'Show current password'"
+                  [title]="showCurrentPassword() ? 'Hide current password' : 'Show current password'"
+                >
+                  @if (showCurrentPassword()) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  }
+                </button>
+              </div>
+              @if (currentPasswordControl?.touched && currentPasswordControl?.hasError('required')) {
+                <span class="field-error" id="err-current-pwd-required">Current password is required.</span>
+              }
+            </div>
+
+            <!-- New Password -->
+            <div class="form-group full-width">
+              <label for="profile-new-password" class="field-label">
+                New Password <span class="required-indicator">*</span>
+              </label>
+              <div class="password-input-wrap">
+                <input
+                  id="profile-new-password"
+                  [type]="showNewPassword() ? 'text' : 'password'"
+                  class="form-control"
+                  [class.is-invalid]="newPasswordControl?.invalid && newPasswordControl?.touched"
+                  formControlName="newPassword"
+                  placeholder="Enter new secure password"
+                  (copy)="$event.preventDefault()"
+                  (cut)="$event.preventDefault()"
+                  (paste)="$event.preventDefault()"
+                />
+                <button
+                  type="button"
+                  class="password-toggle-btn"
+                  (click)="toggleShowNewPassword()"
+                  [attr.aria-label]="showNewPassword() ? 'Hide new password' : 'Show new password'"
+                  [title]="showNewPassword() ? 'Hide new password' : 'Show new password'"
+                >
+                  @if (showNewPassword()) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  }
+                </button>
+              </div>
+              @if (newPasswordControl?.touched && newPasswordControl?.hasError('required')) {
+                <span class="field-error" id="err-new-pwd-required">New password is required.</span>
+              }
+              @if (newPasswordControl?.touched && !newPasswordControl?.hasError('required') && newPasswordControl?.hasError('pattern')) {
+                <span class="field-error" id="err-new-pwd-pattern">Password does not meet the complexity requirements below.</span>
+              }
+
+              <!-- Password Strength and Checklist -->
+              @if (newPasswordControl?.value) {
+                <div class="password-feedback">
+                  <div class="strength-header">
+                    <span>Password strength:</span>
+                    <span
+                      class="strength-text"
+                      [class.low]="passwordStrength === 'low'"
+                      [class.medium]="passwordStrength === 'medium'"
+                      [class.strong]="passwordStrength === 'strong'"
+                    >
+                      @if (passwordStrength === 'low') { Low }
+                      @if (passwordStrength === 'medium') { Medium }
+                      @if (passwordStrength === 'strong') { Strong }
+                    </span>
+                  </div>
+
+                  <div class="strength-bar">
+                    <div
+                      class="strength-fill"
+                      [class.low]="passwordStrength === 'low'"
+                      [class.medium]="passwordStrength === 'medium'"
+                      [class.strong]="passwordStrength === 'strong'"
+                    ></div>
+                  </div>
+
+                  <div class="password-requirements">
+                    <p>Password requirements:</p>
+                    <div class="requirement" [class.valid]="hasMinimumLength()">
+                      <span class="requirement-icon">@if (hasMinimumLength()) { ✓ } @else { • }</span>
+                      <span>At least 8 characters</span>
+                    </div>
+                    <div class="requirement" [class.valid]="hasUppercase()">
+                      <span class="requirement-icon">@if (hasUppercase()) { ✓ } @else { • }</span>
+                      <span>One uppercase letter (A-Z)</span>
+                    </div>
+                    <div class="requirement" [class.valid]="hasLowercase()">
+                      <span class="requirement-icon">@if (hasLowercase()) { ✓ } @else { • }</span>
+                      <span>One lowercase letter (a-z)</span>
+                    </div>
+                    <div class="requirement" [class.valid]="hasNumber()">
+                      <span class="requirement-icon">@if (hasNumber()) { ✓ } @else { • }</span>
+                      <span>One number (0-9)</span>
+                    </div>
+                    <div class="requirement" [class.valid]="hasSpecialCharacter()">
+                      <span class="requirement-icon">@if (hasSpecialCharacter()) { ✓ } @else { • }</span>
+                      <span>One special character (@$!%*?&)</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Confirm New Password -->
+            <div class="form-group full-width">
+              <label for="profile-confirm-password" class="field-label">
+                Confirm New Password <span class="required-indicator">*</span>
+              </label>
+              <div class="password-input-wrap">
+                <input
+                  id="profile-confirm-password"
+                  [type]="showConfirmPassword() ? 'text' : 'password'"
+                  class="form-control"
+                  [class.is-invalid]="confirmNewPasswordControl?.invalid && confirmNewPasswordControl?.touched"
+                  formControlName="confirmNewPassword"
+                  placeholder="Re-enter your new password"
+                  (copy)="$event.preventDefault()"
+                  (cut)="$event.preventDefault()"
+                  (paste)="$event.preventDefault()"
+                />
+                <button
+                  type="button"
+                  class="password-toggle-btn"
+                  (click)="toggleShowConfirmPassword()"
+                  [attr.aria-label]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                  [title]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                >
+                  @if (showConfirmPassword()) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  }
+                </button>
+              </div>
+              @if (confirmNewPasswordControl?.touched && confirmNewPasswordControl?.hasError('required')) {
+                <span class="field-error" id="err-confirm-pwd-required">Please confirm your new password.</span>
+              }
+              @if (confirmNewPasswordControl?.touched && changePasswordForm.hasError('passwordMismatch')) {
+                <span class="field-error" id="err-confirm-pwd-mismatch">New password and confirmation password do not match.</span>
+              }
+            </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="modal-footer">
+            <button
+              id="btn-cancel-change-password"
+              type="button"
+              class="btn-secondary"
+              (click)="cancelChangePassword()"
+              [disabled]="isChangingPassword()"
+            >
+              Cancel
+            </button>
+
+            <button
+              id="btn-submit-change-password"
+              type="submit"
+              class="btn-primary"
+              [disabled]="changePasswordForm.invalid || isChangingPassword()"
+            >
+              @if (isChangingPassword()) {
+                <span class="spinner-small"></span>
+                <span>Updating Password...</span>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                <span>Update Password</span>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
 </div>

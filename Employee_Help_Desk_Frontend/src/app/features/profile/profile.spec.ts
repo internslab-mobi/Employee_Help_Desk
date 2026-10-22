@@ -40,7 +40,8 @@ describe('ProfileComponent', () => {
       userRole: vi.fn().mockReturnValue('EMPLOYEE'),
       role: signal<UserRole | null>('EMPLOYEE'),
       profilePhotoUrl: signal<string | null>(null),
-      logout: vi.fn()
+      logout: vi.fn(),
+      changePassword: vi.fn().mockReturnValue(of({ message: 'Password changed successfully' }))
     };
     routerSpy = {
       navigate: vi.fn()
@@ -154,5 +155,167 @@ describe('ProfileComponent', () => {
   it('should navigate to tickets when clicking tickets nav item', () => {
     component.navigateToTickets();
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/tickets']);
+  });
+
+  describe('Change Password Integration', () => {
+    it('should open and cancel change password form restoring state', () => {
+      expect(component.isChangePasswordOpen()).toBe(false);
+
+      component.openChangePassword();
+      expect(component.isChangePasswordOpen()).toBe(true);
+
+      component.changePasswordForm.patchValue({
+        currentPassword: 'InitialPassword1!',
+        newPassword: 'NewPassword1!',
+        confirmNewPassword: 'NewPassword1!'
+      });
+
+      component.cancelChangePassword();
+      expect(component.isChangePasswordOpen()).toBe(false);
+      expect(component.changePasswordForm.get('currentPassword')?.value).toBeFalsy();
+      expect(component.changePasswordForm.get('newPassword')?.value).toBeFalsy();
+    });
+
+    it('should toggle password visibility flags', () => {
+      expect(component.showCurrentPassword()).toBe(false);
+      expect(component.showNewPassword()).toBe(false);
+      expect(component.showConfirmPassword()).toBe(false);
+
+      component.toggleShowCurrentPassword();
+      expect(component.showCurrentPassword()).toBe(true);
+
+      component.toggleShowNewPassword();
+      expect(component.showNewPassword()).toBe(true);
+
+      component.toggleShowConfirmPassword();
+      expect(component.showConfirmPassword()).toBe(true);
+    });
+
+    it('should validate required fields and password complexity', () => {
+      component.openChangePassword();
+      expect(component.changePasswordForm.invalid).toBe(true);
+
+      // Current password required
+      expect(component.currentPasswordControl?.hasError('required')).toBe(true);
+
+      // Weak new password (violates regex pattern)
+      component.changePasswordForm.patchValue({
+        currentPassword: 'CurrentPassword123!',
+        newPassword: 'weak',
+        confirmNewPassword: 'weak'
+      });
+      expect(component.newPasswordControl?.hasError('pattern')).toBe(true);
+      expect(component.hasMinimumLength()).toBe(false);
+
+      // Mismatched passwords
+      component.changePasswordForm.patchValue({
+        currentPassword: 'CurrentPassword123!',
+        newPassword: 'ValidPassword123!',
+        confirmNewPassword: 'MismatchPassword123!'
+      });
+      expect(component.changePasswordForm.hasError('passwordMismatch')).toBe(true);
+      expect(component.changePasswordForm.invalid).toBe(true);
+
+      // Valid and matching passwords
+      component.changePasswordForm.patchValue({
+        currentPassword: 'CurrentPassword123!',
+        newPassword: 'ValidPassword123!',
+        confirmNewPassword: 'ValidPassword123!'
+      });
+      expect(component.changePasswordForm.valid).toBe(true);
+      expect(component.hasMinimumLength()).toBe(true);
+      expect(component.hasUppercase()).toBe(true);
+      expect(component.hasLowercase()).toBe(true);
+      expect(component.hasNumber()).toBe(true);
+      expect(component.hasSpecialCharacter()).toBe(true);
+    });
+
+    it('should submit change password request to AuthService, close modal, and show success message', () => {
+      authServiceSpy.changePassword.mockReturnValue(of({ message: 'Password changed successfully' }));
+
+      component.openChangePassword();
+      component.changePasswordForm.patchValue({
+        currentPassword: 'CurrentPassword123!',
+        newPassword: 'NewSecurePassword123!',
+        confirmNewPassword: 'NewSecurePassword123!'
+      });
+
+      component.submitChangePassword();
+
+      expect(authServiceSpy.changePassword).toHaveBeenCalledWith({
+        currentPassword: 'CurrentPassword123!',
+        newPassword: 'NewSecurePassword123!',
+        confirmNewPassword: 'NewSecurePassword123!'
+      });
+      expect(component.isChangingPassword()).toBe(false);
+      expect(component.isChangePasswordOpen()).toBe(false);
+      expect(component.successMessage()).toBe('Password changed successfully');
+    });
+
+    it('should handle change password rejection with error message keeping modal open', () => {
+      authServiceSpy.changePassword.mockReturnValue(
+        throwError(() => ({ error: { message: 'Current password is incorrect' } }))
+      );
+
+      component.openChangePassword();
+      component.changePasswordForm.patchValue({
+        currentPassword: 'WrongPassword123!',
+        newPassword: 'NewSecurePassword123!',
+        confirmNewPassword: 'NewSecurePassword123!'
+      });
+
+      component.submitChangePassword();
+
+      expect(component.isChangingPassword()).toBe(false);
+      expect(component.isChangePasswordOpen()).toBe(true);
+      expect(component.passwordErrorMessage()).toBe('Current password is incorrect');
+    });
+
+    it('should close modal when clicking backdrop if not submitting', () => {
+      component.openChangePassword();
+      expect(component.isChangePasswordOpen()).toBe(true);
+
+      const fakeBackdropEvent = {
+        target: 'backdrop',
+        currentTarget: 'backdrop'
+      } as unknown as MouseEvent;
+
+      component.onBackdropClick(fakeBackdropEvent);
+      expect(component.isChangePasswordOpen()).toBe(false);
+    });
+
+    it('should not close modal when clicking backdrop while submitting', () => {
+      component.openChangePassword();
+      component.isChangingPassword.set(true);
+
+      const fakeBackdropEvent = {
+        target: 'backdrop',
+        currentTarget: 'backdrop'
+      } as unknown as MouseEvent;
+
+      component.onBackdropClick(fakeBackdropEvent);
+      expect(component.isChangePasswordOpen()).toBe(true);
+    });
+
+    it('should close modal on Escape key if not submitting', () => {
+      component.openChangePassword();
+      expect(component.isChangePasswordOpen()).toBe(true);
+
+      component.onEscapeKey();
+      expect(component.isChangePasswordOpen()).toBe(false);
+    });
+
+    it('should render exactly one Change Password button on the Profile page', () => {
+      fixture.detectChanges();
+      const heroChangePwdBtn = fixture.nativeElement.querySelector('#btn-hero-change-password');
+      expect(heroChangePwdBtn).toBeTruthy();
+      expect(heroChangePwdBtn.textContent).toContain('Change Password');
+
+      // Ensure no obsolete Card 3 buttons exist in DOM
+      const cardChangePwdBtn = fixture.nativeElement.querySelector('#btn-card-change-password');
+      const triggerChangePwdBtn = fixture.nativeElement.querySelector('#btn-trigger-change-password');
+      expect(cardChangePwdBtn).toBeNull();
+      expect(triggerChangePwdBtn).toBeNull();
+    });
   });
 });

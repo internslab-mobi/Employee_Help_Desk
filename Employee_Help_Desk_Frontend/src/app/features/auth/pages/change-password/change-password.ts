@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -8,6 +8,7 @@ import {
   Validators
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-change-password',
@@ -17,9 +18,17 @@ import { RouterLink } from '@angular/router';
   styleUrl: './change-password.css'
 })
 export class ChangePassword {
+  private readonly authService = inject(AuthService, { optional: true });
+
   changePasswordForm: FormGroup;
 
   passwordStrength: 'low' | 'medium' | 'strong' | '' = '';
+  readonly isSubmitting = signal<boolean>(false);
+  readonly successMessage = signal<string | null>(null);
+  readonly errorMessage = signal<string | null>(null);
+  readonly showCurrentPassword = signal<boolean>(false);
+  readonly showNewPassword = signal<boolean>(false);
+  readonly showConfirmPassword = signal<boolean>(false);
 
   private readonly passwordPattern =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
@@ -135,13 +144,51 @@ export class ChangePassword {
     return this.changePasswordForm.get('confirmPassword');
   }
 
+  toggleShowCurrentPassword(): void {
+    this.showCurrentPassword.update((v) => !v);
+  }
+
+  toggleShowNewPassword(): void {
+    this.showNewPassword.update((v) => !v);
+  }
+
+  toggleShowConfirmPassword(): void {
+    this.showConfirmPassword.update((v) => !v);
+  }
+
   onSubmit(): void {
-    if (this.changePasswordForm.invalid) {
+    if (this.changePasswordForm.invalid || this.isSubmitting()) {
       this.changePasswordForm.markAllAsTouched();
       return;
     }
 
-    // TODO: Connect to backend Change Password API when authentication service method is implemented.
-    // Notice: Never log or expose password values in the console for security.
+    if (!this.authService) {
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+
+    const payload = {
+      currentPassword: this.currentPassword?.value,
+      newPassword: this.newPassword?.value,
+      confirmNewPassword: this.confirmPassword?.value
+    };
+
+    this.authService.changePassword(payload).subscribe({
+      next: (res) => {
+        this.isSubmitting.set(false);
+        this.successMessage.set(res?.message || 'Password changed successfully');
+        this.changePasswordForm.reset();
+        this.passwordStrength = '';
+      },
+      error: (err) => {
+        this.isSubmitting.set(false);
+        this.errorMessage.set(
+          err?.error?.message || 'Failed to change password. Please check your credentials and try again.'
+        );
+      }
+    });
   }
 }
