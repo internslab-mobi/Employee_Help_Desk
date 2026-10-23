@@ -10,11 +10,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.message.CreateTicketMessageRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.TicketMessageService;
 
 import java.io.IOException;
@@ -32,9 +34,10 @@ public class TicketMessageController {
     public ResponseEntity<TicketMessageResponseDTO> createMessageMultipart(
             @PathVariable Long ticketId,
             @RequestParam("content") String content,
-            @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments
+            @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) throws IOException {
-        TicketMessageResponseDTO response = ticketMessageService.createMessage(ticketId, content, attachments);
+        TicketMessageResponseDTO response = ticketMessageService.createMessage(ticketId, content, attachments, userPrincipal);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -42,9 +45,10 @@ public class TicketMessageController {
     @PostMapping(value = "/{ticketId}/messages", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TicketMessageResponseDTO> createMessageJson(
             @PathVariable Long ticketId,
-            @Valid @RequestBody CreateTicketMessageRequestDTO request
+            @Valid @RequestBody CreateTicketMessageRequestDTO request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) throws IOException {
-        TicketMessageResponseDTO response = ticketMessageService.createMessage(ticketId, request.content(), null);
+        TicketMessageResponseDTO response = ticketMessageService.createMessage(ticketId, request.content(), null, userPrincipal);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -52,9 +56,10 @@ public class TicketMessageController {
     @GetMapping("/{ticketId}/messages")
     public ResponseEntity<Page<TicketMessageResponseDTO>> getMessages(
             @PathVariable Long ticketId,
-            @PageableDefault(size = 20) Pageable pageable
+            @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
-        Page<TicketMessageResponseDTO> response = ticketMessageService.getMessages(ticketId, pageable);
+        Page<TicketMessageResponseDTO> response = ticketMessageService.getMessages(ticketId, pageable, userPrincipal);
         return ResponseEntity.ok(response);
     }
 
@@ -62,9 +67,10 @@ public class TicketMessageController {
     @GetMapping("/{ticketId}/attachments/{attachmentId}/download")
     public ResponseEntity<byte[]> downloadAttachment(
             @PathVariable Long ticketId,
-            @PathVariable Long attachmentId
+            @PathVariable Long attachmentId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
-        TicketAttachment attachment = ticketMessageService.getAttachmentForDownload(ticketId, attachmentId);
+        TicketAttachment attachment = ticketMessageService.getAttachmentForDownload(ticketId, attachmentId, userPrincipal);
 
         MediaType mediaType;
         try {

@@ -8,7 +8,7 @@ spring:
       spec: maximumSize=500
   servlet:
     multipart:
-      max-file-size: 10MB
+      max-file-size: 8MB
       max-request-size: 10MB
 
   datasource:

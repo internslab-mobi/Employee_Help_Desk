@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import xyz.mobi.employeehelpdesk.dto.report.ReportSummaryRequestDTO;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.ReportIntegrationService;
 
 @Slf4j
@@ -30,12 +32,13 @@ public class ReportController {
     })
     public ResponseEntity<?> getSummaryReport(
             @Valid @ModelAttribute ReportSummaryRequestDTO request,
-            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
         log.info("Received summary report request: type={}, format={}, from={}, to={}",
                 request.getReportType(), request.getFormat(), request.getFromDate(), request.getToDate());
 
-        return reportIntegrationService.getSummaryReport(request, authHeader);
+        return reportIntegrationService.getSummaryReport(request, authHeader, userPrincipal);
     }
 }
 

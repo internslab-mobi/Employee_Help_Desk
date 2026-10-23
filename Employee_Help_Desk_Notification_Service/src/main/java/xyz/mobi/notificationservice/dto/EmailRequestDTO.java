@@ -22,6 +22,12 @@ public record EmailRequestDTO(
 
         @NotBlank(message = "Message body is required")
         @JsonAlias({"body", "message", "content", "text"})
-        String body
+        String body,
+
+        @JsonAlias({"attachmentFilename", "filename"})
+        String attachmentFilename,
+
+        @JsonAlias({"attachmentBase64", "attachmentData", "attachment"})
+        String attachmentBase64
 ) {
 }

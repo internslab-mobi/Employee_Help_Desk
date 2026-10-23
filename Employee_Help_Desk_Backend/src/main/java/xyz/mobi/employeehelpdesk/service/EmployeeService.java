@@ -5,38 +5,42 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.employee.CreateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.EmployeeResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.employee.ProfilePhotoDTO;
 import xyz.mobi.employeehelpdesk.dto.employee.UpdateEmployeeRequestDTO;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 
 import java.io.IOException;
 
 public interface EmployeeService {
 
-    EmployeeResponseDTO createEmployee(CreateEmployeeRequestDTO request);
+    EmployeeResponseDTO createEmployee(CreateEmployeeRequestDTO request, UserPrincipal userPrincipal);
 
-    Page<EmployeeResponseDTO> getAllEmployees(Pageable pageable);
+    Page<EmployeeResponseDTO> getAllEmployees(Pageable pageable, UserPrincipal userPrincipal);
 
     Page<EmployeeResponseDTO> searchEmployees(
             String search,
             Long departmentId,
             EmploymentStatus status,
             UserRole role,
-            Pageable pageable);
+            Pageable pageable,
+            UserPrincipal userPrincipal);
 
-    EmployeeResponseDTO getEmployeeById(Long id);
+    EmployeeResponseDTO getEmployeeById(Long id, UserPrincipal userPrincipal);
 
-    EmployeeResponseDTO getCurrentEmployeeProfile();
+    EmployeeResponseDTO getCurrentEmployeeProfile(UserPrincipal userPrincipal);
 
     void deactivateEmployee(Long id);
 
     EmployeeResponseDTO updateEmployee(
             Long employeeId,
             UpdateEmployeeRequestDTO request,
-            MultipartFile profileImage
+            MultipartFile profileImage,
+            UserPrincipal userPrincipal
     ) throws IOException;
 
-    xyz.mobi.employeehelpdesk.dto.employee.ProfilePhotoDTO getCurrentEmployeePhoto();
+    ProfilePhotoDTO getCurrentEmployeePhoto(UserPrincipal userPrincipal);
 
-    xyz.mobi.employeehelpdesk.dto.employee.ProfilePhotoDTO getEmployeePhoto(Long id);
+    ProfilePhotoDTO getEmployeePhoto(Long id);
 }

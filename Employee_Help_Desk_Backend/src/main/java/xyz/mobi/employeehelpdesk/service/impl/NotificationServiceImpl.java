@@ -12,15 +12,18 @@ import xyz.mobi.employeehelpdesk.dto.notification.UnreadNotificationCountRespons
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.Notification;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import xyz.mobi.employeehelpdesk.entity.enums.NotificationType;
 import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
+import xyz.mobi.employeehelpdesk.exception.UnauthorizedException;
+import xyz.mobi.employeehelpdesk.client.NotificationClient;
 import xyz.mobi.employeehelpdesk.mapper.NotificationMapper;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
 import xyz.mobi.employeehelpdesk.repository.NotificationRepository;
 import xyz.mobi.employeehelpdesk.repository.TicketRepository;
-import xyz.mobi.employeehelpdesk.service.AuthService;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.NotificationService;
-import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
 
 @Slf4j
 @Service
@@ -29,8 +32,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationMapper notificationMapper;
-    private final EmailService emailService;
-    private final AuthService authService;
+    private final NotificationClient notificationClient;
     private final EmployeeRepository employeeRepository;
     private final TicketRepository ticketRepository;
 
@@ -86,7 +88,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         if (recipientEmail != null && !recipientEmail.isBlank()) {
 
-            emailService.sendNotificationEmail(
+            notificationClient.sendNotificationEmail(
                     recipientEmail,
                     title,
                     message
@@ -102,32 +104,50 @@ public class NotificationServiceImpl implements NotificationService {
     }
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponseDTO> getNotifications(Pageable pageable) {
-        long currentEmployeeId = authService.getCurrentEmployeeId();
+    public Page<NotificationResponseDTO> getNotifications(Pageable pageable, UserPrincipal userPrincipal) {
+        long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         Page<Notification> notifications = notificationRepository.findByRecipientIdOrderByCreatedAtDesc(currentEmployeeId, pageable);
         return notifications.map(notificationMapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponseDTO> getUnreadNotifications(Pageable pageable) {
-        long currentEmployeeId = authService.getCurrentEmployeeId();
+    public Page<NotificationResponseDTO> getNotifications(Pageable pageable) {
+        return getNotifications(pageable, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<NotificationResponseDTO> getUnreadNotifications(Pageable pageable, UserPrincipal userPrincipal) {
+        long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         Page<Notification> notifications = notificationRepository.findByRecipientIdAndReadFalseOrderByCreatedAtDesc(currentEmployeeId, pageable);
         return notifications.map(notificationMapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public UnreadNotificationCountResponseDTO getUnreadCount() {
-        long currentEmployeeId = authService.getCurrentEmployeeId();
+    public Page<NotificationResponseDTO> getUnreadNotifications(Pageable pageable) {
+        return getUnreadNotifications(pageable, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UnreadNotificationCountResponseDTO getUnreadCount(UserPrincipal userPrincipal) {
+        long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         Long count = notificationRepository.countByRecipientIdAndReadFalse(currentEmployeeId);
         return new UnreadNotificationCountResponseDTO(count != null ? count : 0L);
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public UnreadNotificationCountResponseDTO getUnreadCount() {
+        return getUnreadCount(null);
+    }
+
+    @Override
     @Transactional
-    public NotificationResponseDTO markAsRead(Long notificationId) {
-        long currentEmployeeId = authService.getCurrentEmployeeId();
+    public NotificationResponseDTO markAsRead(Long notificationId, UserPrincipal userPrincipal) {
+        long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
 
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found: " + notificationId));
@@ -141,5 +161,22 @@ public class NotificationServiceImpl implements NotificationService {
         log.info("Notification marked as read: notificationId={}, recipientId={}", notificationId, currentEmployeeId);
 
         return notificationMapper.toUpdateResponse(notification);
+    }
+
+    @Override
+    @Transactional
+    public NotificationResponseDTO markAsRead(Long notificationId) {
+        return markAsRead(notificationId, null);
+    }
+
+    private long getCurrentEmployeeId(UserPrincipal userPrincipal) {
+        if (userPrincipal != null && userPrincipal.getEmployeeId() != null) {
+            return userPrincipal.getEmployeeId();
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal p) {
+            return p.getEmployeeId();
+        }
+        throw new UnauthorizedException("User is not authenticated");
     }
 }

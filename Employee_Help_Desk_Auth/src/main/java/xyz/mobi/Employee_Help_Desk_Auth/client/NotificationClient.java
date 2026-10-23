@@ -9,7 +9,6 @@ import org.springframework.web.client.RestClient;
 
 @Slf4j
 @Service
-@Component
 public class NotificationClient {
     private final RestClient restClient;
 

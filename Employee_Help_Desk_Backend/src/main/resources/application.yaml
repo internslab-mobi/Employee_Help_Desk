@@ -8,8 +8,8 @@ spring:
       spec: maximumSize=500
   servlet:
     multipart:
-      max-file-size: 25MB
-      max-request-size: 30MB
+      max-file-size: 8MB
+      max-request-size: 10MB
 
   datasource:
     url: ${DB_URL:jdbc:mysql://192.168.11.101:3306/Interns_db}
@@ -36,17 +36,6 @@ spring:
         format_sql: true
         jdbc:
           time_zone: UTC
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME:bob301935@gmail.com}
-    password: ${MAIL_PASSWORD:xixltdzykjkbmhhi}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
 
 server:
   port: 8082
@@ -59,14 +48,12 @@ management:
   endpoint:
     health:
       show-details: always
-  health:
-    mail:
-      enabled: false
 
+notification:
+  service:
+    base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://localhost:8085}
 
 helpdesk:
-  mail:
-    from: ${MAIL_FROM:bob301935@gmail.com}
   sla:
     work-start: "08:30"
     work-end: "17:30"

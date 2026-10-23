@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
@@ -23,6 +24,7 @@ import xyz.mobi.employeehelpdesk.dto.ticket.UpdateTicketRequestDTO;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketView;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.TicketService;
 import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 import java.io.IOException;
@@ -41,12 +43,14 @@ public class TicketController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<TicketResponseDTO> createTicket(
             @Valid @RequestPart("request") CreateTicketRequestDTO request,
-            @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments
+            @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) throws IOException {
 
         TicketResponseDTO response = ticketService.createTicket(
                 request,
-                attachments
+                attachments,
+                userPrincipal
         );
 
         return ResponseEntity
@@ -58,13 +62,15 @@ public class TicketController {
     @PatchMapping("/{ticketId}")
     public ResponseEntity<TicketResponseDTO> updateTicket(
             @PathVariable Long ticketId,
-            @Valid @RequestBody UpdateTicketRequestDTO request
+            @Valid @RequestBody UpdateTicketRequestDTO request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
 
         return ResponseEntity.ok(
                 ticketService.updateTicket(
                         ticketId,
-                        request
+                        request,
+                        userPrincipal
                 )
         );
     }
@@ -72,11 +78,12 @@ public class TicketController {
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/{ticketId}")
     public ResponseEntity<TicketResponseDTO> getTicket(
-            @PathVariable Long ticketId
+            @PathVariable Long ticketId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
 
         return ResponseEntity.ok(
-                ticketService.getTicket(ticketId)
+                ticketService.getTicket(ticketId, userPrincipal)
         );
     }
 
@@ -101,7 +108,8 @@ public class TicketController {
                     size = 10,
                     sort = "createdAt",
                     direction = Sort.Direction.DESC
-            ) Pageable pageable
+            ) Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
 
         return ResponseEntity.ok(
@@ -109,7 +117,8 @@ public class TicketController {
                         view,
                         employeeId,
                         departmentId,
-                        pageable
+                        pageable,
+                        userPrincipal
                 )
         );
     }
@@ -132,7 +141,8 @@ public class TicketController {
                     size = 10,
                     sort = "createdAt",
                     direction = Sort.Direction.DESC
-            ) Pageable pageable
+            ) Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
 
         return ResponseEntity.ok(
@@ -148,7 +158,8 @@ public class TicketController {
                         search,
                         unassigned,
                         slaStatus,
-                        pageable
+                        pageable,
+                        userPrincipal
                 )
         );
     }
@@ -158,14 +169,16 @@ public class TicketController {
     public ResponseEntity<Map<String, Integer>> getTicketSummary(
             @RequestParam TicketView view,
             @RequestParam(required = false) Long employeeId,
-            @RequestParam(required = false) Long departmentId
+            @RequestParam(required = false) Long departmentId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
 
         return ResponseEntity.ok(
                 ticketService.getTicketSummary(
                         view,
                         employeeId,
-                        departmentId
+                        departmentId,
+                        userPrincipal
                 )
         );
     }
@@ -174,13 +187,15 @@ public class TicketController {
     @PostMapping("/{ticketId}/feedback")
     public ResponseEntity<TicketFeedbackResponseDTO> createFeedback(
             @PathVariable Long ticketId,
-            @Valid @RequestBody TicketFeedbackRequestDTO request
+            @Valid @RequestBody TicketFeedbackRequestDTO request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
 
         TicketFeedbackResponseDTO response =
                 ticketService.createFeedback(
                         ticketId,
-                        request
+                        request,
+                        userPrincipal
                 );
 
         return ResponseEntity
@@ -191,11 +206,12 @@ public class TicketController {
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/{ticketId}/feedback")
     public ResponseEntity<TicketFeedbackResponseDTO> getFeedback(
-            @PathVariable Long ticketId
+            @PathVariable Long ticketId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
 
         TicketFeedbackResponseDTO response =
-                ticketService.getFeedback(ticketId);
+                ticketService.getFeedback(ticketId, userPrincipal);
 
         return ResponseEntity.ok(response);
     }
@@ -219,8 +235,9 @@ public class TicketController {
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/{ticketId}/attachments")
     public ResponseEntity<List<xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO>> getTicketAttachments(
-            @PathVariable Long ticketId
+            @PathVariable Long ticketId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
-        return ResponseEntity.ok(ticketService.getTicketAttachments(ticketId));
+        return ResponseEntity.ok(ticketService.getTicketAttachments(ticketId, userPrincipal));
     }
 }

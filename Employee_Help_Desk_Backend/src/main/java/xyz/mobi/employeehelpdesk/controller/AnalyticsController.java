@@ -6,12 +6,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.mobi.employeehelpdesk.dto.analytics.DashboardAnalyticsResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.analytics.ExportTicketDetailDTO;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.AnalyticsService;
 
 import java.time.LocalDate;
@@ -31,9 +33,10 @@ public class AnalyticsController {
     public ResponseEntity<DashboardAnalyticsResponseDTO> getDashboardAnalytics(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
-            @RequestParam(required = false) Long departmentId
+            @RequestParam(required = false) Long departmentId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
-        DashboardAnalyticsResponseDTO response = analyticsService.getDashboardAnalytics(fromDate, toDate, departmentId);
+        DashboardAnalyticsResponseDTO response = analyticsService.getDashboardAnalytics(fromDate, toDate, departmentId, userPrincipal);
         return ResponseEntity.ok(response);
     }
 
@@ -43,9 +46,10 @@ public class AnalyticsController {
     public ResponseEntity<List<ExportTicketDetailDTO>> getExportTicketDetails(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
-            @RequestParam(required = false) Long departmentId
+            @RequestParam(required = false) Long departmentId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
-        List<ExportTicketDetailDTO> response = analyticsService.getExportTicketDetails(fromDate, toDate, departmentId);
+        List<ExportTicketDetailDTO> response = analyticsService.getExportTicketDetails(fromDate, toDate, departmentId, userPrincipal);
         return ResponseEntity.ok(response);
     }
 }

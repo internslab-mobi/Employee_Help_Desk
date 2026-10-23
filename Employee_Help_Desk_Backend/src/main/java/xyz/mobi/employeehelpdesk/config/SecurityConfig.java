@@ -49,22 +49,10 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/user/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/user/refresh-token").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/user/forgot-password/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
-                        ).permitAll()
-                        .requestMatchers(
-                                "/user/login",
-                                "/user/refresh-token",
-                                "/user/forgot-password/**",
-                                "/helpdesk/auth/user/**",
-                                "/auth/user/**",
-                                "/api/user/**",
-                                "/api/auth/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

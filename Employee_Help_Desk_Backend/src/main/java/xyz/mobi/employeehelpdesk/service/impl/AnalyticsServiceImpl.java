@@ -24,9 +24,10 @@ import xyz.mobi.employeehelpdesk.repository.DepartmentAgentRepository;
 import xyz.mobi.employeehelpdesk.repository.DepartmentRepository;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaInstanceRepository;
-import xyz.mobi.employeehelpdesk.repository.TicketRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.AnalyticsService;
-import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.util.InstantDateRange;
 
 import java.time.Duration;
@@ -42,7 +43,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AnalyticsServiceImpl implements AnalyticsService {
 
-    private final AuthService authService;
     private final EmployeeRepository employeeRepository;
     private final TicketRepository ticketRepository;
     private final DepartmentAgentRepository departmentAgentRepository;
@@ -57,8 +57,19 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             Long departmentId
     ) {}
 
-    private AuthorizedScope resolveScope(Long requestedDepartmentId) {
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
+    private Long getCurrentEmployeeId(UserPrincipal userPrincipal) {
+        if (userPrincipal != null && userPrincipal.getEmployeeId() != null) {
+            return userPrincipal.getEmployeeId();
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal up && up.getEmployeeId() != null) {
+            return up.getEmployeeId();
+        }
+        throw new UnauthorizedException("User is not authenticated");
+    }
+
+    private AuthorizedScope resolveScope(Long requestedDepartmentId, UserPrincipal userPrincipal) {
+        Long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         Employee employee = employeeRepository.findById(currentEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + currentEmployeeId));
 
@@ -96,7 +107,13 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     @Override
     @Transactional(readOnly = true)
     public DashboardAnalyticsResponseDTO getDashboardAnalytics(LocalDate fromDate, LocalDate toDate, Long departmentId) {
-        AuthorizedScope scope = resolveScope(departmentId);
+        return getDashboardAnalytics(fromDate, toDate, departmentId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DashboardAnalyticsResponseDTO getDashboardAnalytics(LocalDate fromDate, LocalDate toDate, Long departmentId, UserPrincipal userPrincipal) {
+        AuthorizedScope scope = resolveScope(departmentId, userPrincipal);
         Employee employee = scope.employee();
         UserRole role = scope.role();
 
@@ -357,7 +374,13 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     @Override
     @Transactional(readOnly = true)
     public List<ExportTicketDetailDTO> getExportTicketDetails(LocalDate fromDate, LocalDate toDate, Long departmentId) {
-        AuthorizedScope scope = resolveScope(departmentId);
+        return getExportTicketDetails(fromDate, toDate, departmentId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExportTicketDetailDTO> getExportTicketDetails(LocalDate fromDate, LocalDate toDate, Long departmentId, UserPrincipal userPrincipal) {
+        AuthorizedScope scope = resolveScope(departmentId, userPrincipal);
         Employee employee = scope.employee();
 
         InstantDateRange dateRange = InstantDateRange.of(fromDate, toDate, employee.getTimezone());

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.message.TicketMessageResponseDTO;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 
 import java.io.IOException;
 import java.util.List;
@@ -14,12 +15,31 @@ public interface TicketMessageService {
     TicketMessageResponseDTO createMessage(
             Long ticketId,
             String content,
+            List<MultipartFile> attachments,
+            UserPrincipal userPrincipal
+    ) throws IOException;
+
+    TicketMessageResponseDTO createMessage(
+            Long ticketId,
+            String content,
             List<MultipartFile> attachments
     ) throws IOException;
 
     Page<TicketMessageResponseDTO> getMessages(
             Long ticketId,
+            Pageable pageable,
+            UserPrincipal userPrincipal
+    );
+
+    Page<TicketMessageResponseDTO> getMessages(
+            Long ticketId,
             Pageable pageable
+    );
+
+    TicketAttachment getAttachmentForDownload(
+            Long ticketId,
+            Long attachmentId,
+            UserPrincipal userPrincipal
     );
 
     TicketAttachment getAttachmentForDownload(

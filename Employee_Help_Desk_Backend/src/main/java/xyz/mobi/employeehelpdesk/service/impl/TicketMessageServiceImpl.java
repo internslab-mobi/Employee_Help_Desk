@@ -16,16 +16,19 @@ import xyz.mobi.employeehelpdesk.entity.Ticket;
 import xyz.mobi.employeehelpdesk.entity.TicketAttachment;
 import xyz.mobi.employeehelpdesk.entity.TicketMessage;
 import xyz.mobi.employeehelpdesk.entity.enums.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import xyz.mobi.employeehelpdesk.exception.BadRequestException;
 import xyz.mobi.employeehelpdesk.exception.InvalidStateException;
 import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
+import xyz.mobi.employeehelpdesk.exception.UnauthorizedException;
 import xyz.mobi.employeehelpdesk.mapper.TicketAttachmentMapper;
 import xyz.mobi.employeehelpdesk.mapper.TicketMessageMapper;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
 import xyz.mobi.employeehelpdesk.repository.TicketAttachmentRepository;
 import xyz.mobi.employeehelpdesk.repository.TicketMessageRepository;
 import xyz.mobi.employeehelpdesk.repository.TicketRepository;
-import xyz.mobi.employeehelpdesk.service.AuthService;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.NotificationService;
 import xyz.mobi.employeehelpdesk.service.TicketMessageService;
 import xyz.mobi.employeehelpdesk.service.helperservice.TicketHistoryService;
@@ -50,16 +53,38 @@ public class TicketMessageServiceImpl implements TicketMessageService {
     private final NotificationService notificationService;
     private final TicketMessageMapper ticketMessageMapper;
     private final TicketAttachmentMapper ticketAttachmentMapper;
-    private final AuthService  authService;
+
+    private long getCurrentEmployeeId(UserPrincipal userPrincipal) {
+        if (userPrincipal != null && userPrincipal.getEmployeeId() != null) {
+            return userPrincipal.getEmployeeId();
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal up && up.getEmployeeId() != null) {
+            return up.getEmployeeId();
+        }
+        throw new UnauthorizedException("User is not authenticated");
+    }
+
+    private UserRole getCurrentUserRole(UserPrincipal userPrincipal) {
+        if (userPrincipal != null && userPrincipal.getRole() != null) {
+            return userPrincipal.getRole();
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal up && up.getRole() != null) {
+            return up.getRole();
+        }
+        throw new UnauthorizedException("User is not authenticated");
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TicketMessageResponseDTO createMessage(
             Long ticketId,
             String content,
-            List<MultipartFile> attachments
+            List<MultipartFile> attachments,
+            UserPrincipal userPrincipal
     ) throws IOException {
-        long currentEmployeeId = authService.getCurrentEmployeeId();
+        long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
 
         if (content == null || content.isBlank()) {
             throw new BadRequestException("Message content is required");
@@ -166,14 +191,25 @@ public class TicketMessageServiceImpl implements TicketMessageService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TicketMessageResponseDTO createMessage(
+            Long ticketId,
+            String content,
+            List<MultipartFile> attachments
+    ) throws IOException {
+        return createMessage(ticketId, content, attachments, null);
+    }
+
+    @Override
     @Transactional(readOnly = true)
-    public Page<TicketMessageResponseDTO> getMessages(Long ticketId, Pageable pageable) {
-        long currentEmployeeId = authService.getCurrentEmployeeId();
+    public Page<TicketMessageResponseDTO> getMessages(Long ticketId, Pageable pageable, UserPrincipal userPrincipal) {
+        long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
+        UserRole role = getCurrentUserRole(userPrincipal);
 
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
 
-        validateTicketAccess(ticket, currentEmployeeId);
+        validateTicketAccess(ticket, currentEmployeeId, role);
 
         Page<TicketMessage> messagesPage = ticketMessageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId, pageable);
 
@@ -202,13 +238,20 @@ public class TicketMessageServiceImpl implements TicketMessageService {
 
     @Override
     @Transactional(readOnly = true)
-    public TicketAttachment getAttachmentForDownload(Long ticketId, Long attachmentId) {
-        long currentEmployeeId = authService.getCurrentEmployeeId();
+    public Page<TicketMessageResponseDTO> getMessages(Long ticketId, Pageable pageable) {
+        return getMessages(ticketId, pageable, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TicketAttachment getAttachmentForDownload(Long ticketId, Long attachmentId, UserPrincipal userPrincipal) {
+        long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
+        UserRole role = getCurrentUserRole(userPrincipal);
 
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found: " + ticketId));
 
-        validateTicketAccess(ticket, currentEmployeeId);
+        validateTicketAccess(ticket, currentEmployeeId, role);
 
         TicketAttachment attachment = ticketAttachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attachment not found: " + attachmentId));
@@ -220,8 +263,13 @@ public class TicketMessageServiceImpl implements TicketMessageService {
         return attachment;
     }
 
-    private void validateTicketAccess(Ticket ticket, long currentEmployeeId) {
-        UserRole role = authService.getCurrentUserRole();
+    @Override
+    @Transactional(readOnly = true)
+    public TicketAttachment getAttachmentForDownload(Long ticketId, Long attachmentId) {
+        return getAttachmentForDownload(ticketId, attachmentId, null);
+    }
+
+    private void validateTicketAccess(Ticket ticket, long currentEmployeeId, UserRole role) {
         if (role == UserRole.ADMIN) {
             return;
         }

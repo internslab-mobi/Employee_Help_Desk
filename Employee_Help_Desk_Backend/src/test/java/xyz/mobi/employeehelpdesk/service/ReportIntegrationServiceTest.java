@@ -17,8 +17,9 @@ import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
+import xyz.mobi.employeehelpdesk.client.NotificationClient;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
-import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.impl.ReportIntegrationServiceImpl;
 
 import java.time.Instant;
@@ -35,29 +36,31 @@ import static org.mockito.Mockito.*;
 class ReportIntegrationServiceTest {
 
     @Mock
-    private AuthService authService;
-    @Mock
     private EmployeeRepository employeeRepository;
     @Mock
     private AnalyticsService analyticsService;
     @Mock
     private ReportServiceClient reportServiceClient;
     @Mock
-    private EmailService emailService;
+    private NotificationClient notificationClient;
 
     private ReportIntegrationServiceImpl reportIntegrationService;
 
     private Employee mockEmployee;
+    private UserPrincipal adminPrincipal;
+    private UserPrincipal agentPrincipal;
 
     @BeforeEach
     void setUp() {
         reportIntegrationService = new ReportIntegrationServiceImpl(
-                authService,
                 employeeRepository,
                 analyticsService,
                 reportServiceClient,
-                emailService
+                notificationClient
         );
+
+        adminPrincipal = new UserPrincipal(1L, "admin@company.com", "", UserRole.ADMIN, "Asia/Kolkata", true, Collections.emptyList());
+        agentPrincipal = new UserPrincipal(2L, "agent@company.com", "", UserRole.AGENT, "Asia/Kolkata", true, Collections.emptyList());
 
         mockEmployee = new Employee();
         mockEmployee.setId(1L);
@@ -75,7 +78,6 @@ class ReportIntegrationServiceTest {
         request.setReportType(ReportType.TICKET_SUMMARY);
         request.setFormat(ReportFormat.JSON);
 
-        when(authService.getCurrentEmployeeId()).thenReturn(1L);
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(mockEmployee));
 
         DashboardAnalyticsResponseDTO mockAnalytics = DashboardAnalyticsResponseDTO.builder()
@@ -92,7 +94,7 @@ class ReportIntegrationServiceTest {
         when(reportServiceClient.generateJsonSummary(any(ReportGenerationPayloadDTO.class), anyString()))
                 .thenReturn(mockResponse);
 
-        ReportSummaryResponseDTO result = reportIntegrationService.getSummaryReportJson(request, "Bearer test-token");
+        ReportSummaryResponseDTO result = reportIntegrationService.getSummaryReportJson(request, "Bearer test-token", adminPrincipal);
 
         assertNotNull(result);
         assertEquals(ReportType.TICKET_SUMMARY, result.getReportType());
@@ -107,7 +109,6 @@ class ReportIntegrationServiceTest {
         request.setReportType(ReportType.TICKET_SUMMARY);
         request.setFormat(ReportFormat.EXCEL);
 
-        when(authService.getCurrentEmployeeId()).thenReturn(1L);
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(mockEmployee));
 
         DashboardAnalyticsResponseDTO mockAnalytics = DashboardAnalyticsResponseDTO.builder()
@@ -125,14 +126,14 @@ class ReportIntegrationServiceTest {
         when(reportServiceClient.generateExcelReport(any(ReportGenerationPayloadDTO.class), anyString()))
                 .thenReturn(mockResponse);
 
-        ResponseEntity<byte[]> result = reportIntegrationService.getSummaryReportExcel(request, "Bearer test-token");
+        ResponseEntity<byte[]> result = reportIntegrationService.getSummaryReportExcel(request, "Bearer test-token", adminPrincipal);
 
         assertNotNull(result);
         assertEquals(200, result.getStatusCode().value());
         assertArrayEquals(fakeExcelBytes, result.getBody());
 
         // Verify email delivery was triggered with the Excel attachment to the authenticated employee's registered email
-        verify(emailService).sendReportEmailWithAttachment(
+        verify(notificationClient).sendReportEmailWithAttachment(
                 eq("admin@company.com"),
                 eq("Admin User"),
                 contains("Help Desk Report"),
@@ -157,7 +158,6 @@ class ReportIntegrationServiceTest {
         request.setReportType(ReportType.AGENT_SUMMARY);
         request.setFormat(ReportFormat.EXCEL);
 
-        when(authService.getCurrentEmployeeId()).thenReturn(2L);
         when(employeeRepository.findById(2L)).thenReturn(Optional.of(agentEmployee));
 
         DashboardAnalyticsResponseDTO mockAnalytics = DashboardAnalyticsResponseDTO.builder()
@@ -183,7 +183,7 @@ class ReportIntegrationServiceTest {
         when(reportServiceClient.generateExcelReport(any(ReportGenerationPayloadDTO.class), anyString()))
                 .thenReturn(mockResponse);
 
-        ResponseEntity<byte[]> result = reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token");
+        ResponseEntity<byte[]> result = reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token", agentPrincipal);
 
         assertNotNull(result);
         assertEquals(200, result.getStatusCode().value());
@@ -211,12 +211,11 @@ class ReportIntegrationServiceTest {
         request.setReportType(ReportType.AGENT_SUMMARY);
         request.setFormat(ReportFormat.EXCEL);
 
-        when(authService.getCurrentEmployeeId()).thenReturn(2L);
         when(employeeRepository.findById(2L)).thenReturn(Optional.of(agentEmployee));
         when(analyticsService.getExportTicketDetails(any(), any(), any())).thenReturn(Collections.emptyList());
 
         assertThrows(xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException.class, () ->
-                reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token")
+                reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token", agentPrincipal)
         );
     }
 
@@ -231,11 +230,10 @@ class ReportIntegrationServiceTest {
         request.setReportType(ReportType.ADMIN_SUMMARY);
         request.setFormat(ReportFormat.EXCEL);
 
-        when(authService.getCurrentEmployeeId()).thenReturn(2L);
         when(employeeRepository.findById(2L)).thenReturn(Optional.of(agentEmployee));
 
         assertThrows(xyz.mobi.employeehelpdesk.exception.UnauthorizedException.class, () ->
-                reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token")
+                reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token", agentPrincipal)
         );
     }
 
@@ -256,7 +254,6 @@ class ReportIntegrationServiceTest {
         request.setPriority(Priority.HIGH);
         request.setSearch("laptop");
 
-        when(authService.getCurrentEmployeeId()).thenReturn(2L);
         when(employeeRepository.findById(2L)).thenReturn(Optional.of(agentEmployee));
 
         DashboardAnalyticsResponseDTO mockAnalytics = DashboardAnalyticsResponseDTO.builder()
@@ -294,7 +291,7 @@ class ReportIntegrationServiceTest {
         when(reportServiceClient.generateExcelReport(any(ReportGenerationPayloadDTO.class), anyString()))
                 .thenReturn(mockResponse);
 
-        ResponseEntity<byte[]> result = reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token");
+        ResponseEntity<byte[]> result = reportIntegrationService.getSummaryReportExcel(request, "Bearer agent-token", agentPrincipal);
 
         assertNotNull(result);
         assertEquals(200, result.getStatusCode().value());

@@ -24,6 +24,7 @@ import xyz.mobi.employeehelpdesk.mapper.TicketAttachmentMapper;
 import xyz.mobi.employeehelpdesk.mapper.TicketFeedbackMapper;
 import xyz.mobi.employeehelpdesk.mapper.TicketMapper;
 import xyz.mobi.employeehelpdesk.repository.*;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.helperservice.TicketHistoryService;
 import xyz.mobi.employeehelpdesk.service.impl.TicketServiceImpl;
 import xyz.mobi.employeehelpdesk.validator.TicketAttachmentValidator;
@@ -75,8 +76,6 @@ class TicketServiceImplSearchAllTest {
     @Mock
     private NotificationService notificationService;
     @Mock
-    private AuthService authService;
-    @Mock
     private TicketFeedbackRepository ticketFeedbackRepository;
     @Mock
     private TicketFeedbackMapper ticketFeedbackMapper;
@@ -109,7 +108,6 @@ class TicketServiceImplSearchAllTest {
                 ticketHistoryService,
                 ticketHistoryRepository,
                 notificationService,
-                authService,
                 ticketFeedbackRepository,
                 ticketFeedbackMapper,
                 subCategorySkillRepository,
@@ -126,9 +124,9 @@ class TicketServiceImplSearchAllTest {
         employee.setId(employeeId);
         employee.setRole(UserRole.EMPLOYEE);
 
-        when(authService.getCurrentEmployeeId()).thenReturn(employeeId);
+        UserPrincipal employeePrincipal = new UserPrincipal(employeeId, "emp@test.com", "", UserRole.EMPLOYEE, "UTC", true, Collections.emptyList());
+
         when(employeeRepository.findById(employeeId)).thenReturn(Optional.of(employee));
-        when(authService.getCurrentUserTimezone()).thenReturn("UTC");
 
         AccessDeniedException exception = assertThrows(
                 AccessDeniedException.class,
@@ -144,7 +142,8 @@ class TicketServiceImplSearchAllTest {
                         "test search",
                         false,
                         SlaStatus.ACTIVE,
-                        PageRequest.of(0, 10)
+                        PageRequest.of(0, 10),
+                        employeePrincipal
                 )
         );
 
@@ -160,9 +159,9 @@ class TicketServiceImplSearchAllTest {
         adminEmployee.setId(adminId);
         adminEmployee.setRole(UserRole.ADMIN);
 
-        when(authService.getCurrentEmployeeId()).thenReturn(adminId);
+        UserPrincipal adminPrincipal = new UserPrincipal(adminId, "admin@test.com", "", UserRole.ADMIN, "UTC", true, Collections.emptyList());
+
         when(employeeRepository.findById(adminId)).thenReturn(Optional.of(adminEmployee));
-        when(authService.getCurrentUserTimezone()).thenReturn("UTC");
 
         Pageable pageable = PageRequest.of(0, 10);
         Ticket ticket = new Ticket();
@@ -196,7 +195,8 @@ class TicketServiceImplSearchAllTest {
                 "  issue  ",
                 false,
                 SlaStatus.ACTIVE,
-                pageable
+                pageable,
+                adminPrincipal
         );
 
         assertNotNull(result);

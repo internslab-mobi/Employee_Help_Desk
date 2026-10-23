@@ -19,14 +19,17 @@ import xyz.mobi.employeehelpdesk.entity.*;
 import xyz.mobi.employeehelpdesk.entity.enums.AttachmentType;
 import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import xyz.mobi.employeehelpdesk.exception.BadRequestException;
 import xyz.mobi.employeehelpdesk.exception.DuplicateResourceException;
 import xyz.mobi.employeehelpdesk.exception.InvalidStateException;
 import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
+import xyz.mobi.employeehelpdesk.exception.UnauthorizedException;
 import xyz.mobi.employeehelpdesk.repository.*;
-import xyz.mobi.employeehelpdesk.service.AuthService;
+import xyz.mobi.employeehelpdesk.client.NotificationClient;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 import xyz.mobi.employeehelpdesk.service.EmployeeService;
-import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
 import xyz.mobi.employeehelpdesk.util.TimezoneUtil;
 import xyz.mobi.employeehelpdesk.validator.TicketAttachmentValidator;
 
@@ -52,18 +55,28 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final DepartmentAgentRepository departmentAgentRepository;
     private final DepartmentManagerRepository departmentManagerRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AuthService authService;
     private final ObjectMapper objectMapper;
-    private final EmailService emailService;
+    private final NotificationClient notificationClient;
     private final TicketAttachmentRepository ticketAttachmentRepository;
     private final TicketAttachmentValidator ticketAttachmentValidator;
 
+    private Long getCurrentEmployeeId(UserPrincipal userPrincipal) {
+        if (userPrincipal != null && userPrincipal.getEmployeeId() != null) {
+            return userPrincipal.getEmployeeId();
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal up && up.getEmployeeId() != null) {
+            return up.getEmployeeId();
+        }
+        throw new UnauthorizedException("User is not authenticated");
+    }
+
     @Transactional
     @Override
-    public EmployeeResponseDTO createEmployee(CreateEmployeeRequestDTO request) {
+    public EmployeeResponseDTO createEmployee(CreateEmployeeRequestDTO request, UserPrincipal userPrincipal) {
 
         // 1. Get currently logged-in employee
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        Long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
 
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
@@ -322,7 +335,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 rawPassword
         );
 
-        emailService.sendNotificationEmail(
+        notificationClient.sendNotificationEmail(
                 savedEmployee.getEmail(),
                 subject,
                 message
@@ -360,9 +373,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Transactional(readOnly = true)
     @Override
-    public Page<EmployeeResponseDTO> getAllEmployees(Pageable pageable) {
+    public Page<EmployeeResponseDTO> getAllEmployees(Pageable pageable, UserPrincipal userPrincipal) {
 
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        Long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
 
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
@@ -395,9 +408,10 @@ public class EmployeeServiceImpl implements EmployeeService {
             Long departmentId,
             EmploymentStatus status,
             UserRole role,
-            Pageable pageable) {
+            Pageable pageable,
+            UserPrincipal userPrincipal) {
 
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        Long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
 
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
@@ -435,9 +449,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Transactional(readOnly = true)
     @Override
-    public EmployeeResponseDTO getEmployeeById(Long id) {
+    public EmployeeResponseDTO getEmployeeById(Long id, UserPrincipal userPrincipal) {
 
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        Long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
 
         Employee currentEmployee = employeeRepository
                 .findById(currentEmployeeId)
@@ -476,8 +490,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional(readOnly = true)
-    public EmployeeResponseDTO getCurrentEmployeeProfile() {
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
+    public EmployeeResponseDTO getCurrentEmployeeProfile(UserPrincipal userPrincipal) {
+        Long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         Employee employee = employeeRepository.findById(currentEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Employee not found with id: " + currentEmployeeId));
@@ -555,9 +569,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeResponseDTO updateEmployee(
             Long employeeId,
             UpdateEmployeeRequestDTO request,
-            MultipartFile profileImage
+            MultipartFile profileImage,
+            UserPrincipal userPrincipal
     ) throws IOException {
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
+        Long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         final Long targetEmployeeId = employeeId != null ? employeeId : currentEmployeeId;
         if (targetEmployeeId == null) {
             throw new BadRequestException("Employee ID is required");
@@ -762,8 +777,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Transactional(readOnly = true)
     @Override
-    public ProfilePhotoDTO getCurrentEmployeePhoto() {
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
+    public ProfilePhotoDTO getCurrentEmployeePhoto(UserPrincipal userPrincipal) {
+        Long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         return getEmployeePhoto(currentEmployeeId);
     }
 

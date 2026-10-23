@@ -27,6 +27,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
+    private static final String MESSAGE = "message";
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(
@@ -50,9 +51,15 @@ public class AuthController {
             @CookieValue(name = "refreshToken", required = false) String cookieRefreshToken,
             @RequestBody(required = false) RefreshTokenRequestDTO request
     ) {
-        String tokenToUse = (cookieRefreshToken != null && !cookieRefreshToken.isBlank())
-                ? cookieRefreshToken
-                : (request != null ? request.refreshToken() : null);
+        String tokenToUse;
+
+        if (cookieRefreshToken != null && !cookieRefreshToken.isBlank()) {
+            tokenToUse = cookieRefreshToken;
+        } else if (request != null) {
+            tokenToUse = request.refreshToken();
+        } else {
+            tokenToUse = null;
+        }
 
         if (tokenToUse == null || tokenToUse.isBlank()) {
             throw new UnauthorizedException("Refresh token is required");
@@ -75,7 +82,7 @@ public class AuthController {
         ResponseCookie clearCookie = createRefreshTokenCookie("", 0);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
-                .body(Map.of("message", "Logged out successfully"));
+                .body(Map.of(MESSAGE, "Logged out successfully"));
     }
 
     private ResponseCookie createRefreshTokenCookie(String tokenValue, long maxAgeSeconds) {
@@ -94,7 +101,7 @@ public class AuthController {
             @Valid @RequestBody ChangePasswordRequestDTO request
     ) {
         authService.changePassword(request);
-        return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+        return ResponseEntity.ok(Map.of(MESSAGE, "Password changed successfully"));
     }
 
     @PostMapping("/forgot-password/request-otp")
@@ -102,7 +109,7 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordOtpRequestDTO request
     ) {
         authService.requestForgotPasswordOtp(request);
-        return ResponseEntity.ok(Map.of("message", "OTP sent successfully"));
+        return ResponseEntity.ok(Map.of(MESSAGE, "OTP sent successfully"));
     }
 
     @PostMapping("/forgot-password/verify-otp")
@@ -118,6 +125,6 @@ public class AuthController {
             @Valid @RequestBody ResetPasswordRequestDTO request
     ) {
         authService.resetPassword(request);
-        return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
+        return ResponseEntity.ok(Map.of(MESSAGE, "Password reset successfully"));
     }
 }

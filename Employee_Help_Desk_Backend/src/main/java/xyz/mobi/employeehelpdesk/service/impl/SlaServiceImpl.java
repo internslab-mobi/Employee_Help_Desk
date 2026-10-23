@@ -20,7 +20,6 @@ import xyz.mobi.employeehelpdesk.repository.DepartmentManagerRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaInstanceRepository;
 import xyz.mobi.employeehelpdesk.repository.SlaPolicyRepository;
 import xyz.mobi.employeehelpdesk.scheduler.SlaDynamicScheduler;
-import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.service.NotificationService;
 import xyz.mobi.employeehelpdesk.service.SlaService;
 import xyz.mobi.employeehelpdesk.service.WorkingCalendarService;
@@ -36,7 +35,6 @@ public class SlaServiceImpl implements SlaService {
     private final SlaPolicyRepository slaPolicyRepository;
     private final SlaInstanceRepository slaInstanceRepository;
     private final WorkingCalendarService workingCalendarService;
-    private final AuthService authService;
     private final DepartmentManagerRepository departmentManagerRepository;
     private final NotificationService notificationService;
     private final SlaDynamicScheduler slaDynamicScheduler;

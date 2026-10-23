@@ -12,13 +12,14 @@ import xyz.mobi.employeehelpdesk.dto.report.*;
 import xyz.mobi.employeehelpdesk.entity.Employee;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import xyz.mobi.employeehelpdesk.exception.UnauthorizedException;
 import xyz.mobi.employeehelpdesk.repository.EmployeeRepository;
+import xyz.mobi.employeehelpdesk.security.UserPrincipal;
+import xyz.mobi.employeehelpdesk.client.NotificationClient;
 import xyz.mobi.employeehelpdesk.service.AnalyticsService;
-import xyz.mobi.employeehelpdesk.service.AuthService;
 import xyz.mobi.employeehelpdesk.service.ReportIntegrationService;
-
-import xyz.mobi.employeehelpdesk.service.helperservice.EmailService;
 
 import java.time.LocalDate;
 import java.util.Collections;
@@ -29,35 +30,46 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReportIntegrationServiceImpl implements ReportIntegrationService {
 
-    private final AuthService authService;
     private final EmployeeRepository employeeRepository;
     private final AnalyticsService analyticsService;
     private final ReportServiceClient reportServiceClient;
-    private final EmailService emailService;
+    private final NotificationClient notificationClient;
 
     @Override
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getSummaryReport(ReportSummaryRequestDTO request, String rawAuthHeader) {
+    public ResponseEntity<?> getSummaryReport(ReportSummaryRequestDTO request, String rawAuthHeader, UserPrincipal userPrincipal) {
         ReportFormat format = request.getFormat() != null ? request.getFormat() : ReportFormat.JSON;
         if (format == ReportFormat.EXCEL) {
-            return getSummaryReportExcel(request, rawAuthHeader);
+            return getSummaryReportExcel(request, rawAuthHeader, userPrincipal);
         } else {
-            ReportSummaryResponseDTO jsonResponse = getSummaryReportJson(request, rawAuthHeader);
+            ReportSummaryResponseDTO jsonResponse = getSummaryReportJson(request, rawAuthHeader, userPrincipal);
             return ResponseEntity.ok(jsonResponse);
         }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ReportSummaryResponseDTO getSummaryReportJson(ReportSummaryRequestDTO request, String rawAuthHeader) {
-        ReportGenerationPayloadDTO payload = prepareAuthorizedPayload(request, ReportFormat.JSON);
+    public ResponseEntity<?> getSummaryReport(ReportSummaryRequestDTO request, String rawAuthHeader) {
+        return getSummaryReport(request, rawAuthHeader, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReportSummaryResponseDTO getSummaryReportJson(ReportSummaryRequestDTO request, String rawAuthHeader, UserPrincipal userPrincipal) {
+        ReportGenerationPayloadDTO payload = prepareAuthorizedPayload(request, ReportFormat.JSON, userPrincipal);
         return reportServiceClient.generateJsonSummary(payload, rawAuthHeader);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ResponseEntity<byte[]> getSummaryReportExcel(ReportSummaryRequestDTO request, String rawAuthHeader) {
-        ReportGenerationPayloadDTO payload = prepareAuthorizedPayload(request, ReportFormat.EXCEL);
+    public ReportSummaryResponseDTO getSummaryReportJson(ReportSummaryRequestDTO request, String rawAuthHeader) {
+        return getSummaryReportJson(request, rawAuthHeader, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> getSummaryReportExcel(ReportSummaryRequestDTO request, String rawAuthHeader, UserPrincipal userPrincipal) {
+        ReportGenerationPayloadDTO payload = prepareAuthorizedPayload(request, ReportFormat.EXCEL, userPrincipal);
         ResponseEntity<byte[]> response = reportServiceClient.generateExcelReport(payload, rawAuthHeader);
 
         byte[] excelBytes = response.getBody();
@@ -77,7 +89,7 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
                     + "Employee Help Desk System";
 
             log.info("Dispatching exported Excel report email to registered user: {}", payload.requesterEmail());
-            emailService.sendReportEmailWithAttachment(
+            notificationClient.sendReportEmailWithAttachment(
                     payload.requesterEmail(),
                     payload.requesterName(),
                     subject,
@@ -88,6 +100,12 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
         }
 
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> getSummaryReportExcel(ReportSummaryRequestDTO request, String rawAuthHeader) {
+        return getSummaryReportExcel(request, rawAuthHeader, null);
     }
 
     private String resolveFilename(ResponseEntity<byte[]> response, ReportGenerationPayloadDTO payload) {
@@ -111,12 +129,23 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
         return type != null ? type.name().replace('_', ' ') : "Summary";
     }
 
+    private Long getCurrentEmployeeId(UserPrincipal userPrincipal) {
+        if (userPrincipal != null && userPrincipal.getEmployeeId() != null) {
+            return userPrincipal.getEmployeeId();
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal up) {
+            return up.getEmployeeId();
+        }
+        throw new UnauthorizedException("User is not authenticated");
+    }
+
     /**
      * Authenticates user, verifies RBAC, scopes data, queries live database via AnalyticsService,
      * applies permitted filters, and packs into the payload for the independent report microservice.
      */
-    private ReportGenerationPayloadDTO prepareAuthorizedPayload(ReportSummaryRequestDTO request, ReportFormat format) {
-        Long currentEmployeeId = authService.getCurrentEmployeeId();
+    private ReportGenerationPayloadDTO prepareAuthorizedPayload(ReportSummaryRequestDTO request, ReportFormat format, UserPrincipal userPrincipal) {
+        Long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         Employee employee = employeeRepository.findById(currentEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Authenticated employee not found: " + currentEmployeeId));
 

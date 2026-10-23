@@ -47,6 +47,7 @@ public class UserControllerTest {
                 new org.springframework.http.converter.json.MappingJackson2HttpMessageConverter(mapper);
 
         mockMvc = MockMvcBuilders.standaloneSetup(userController)
+                .setCustomArgumentResolvers(new org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver())
                 .setMessageConverters(converter)
                 .build();
     }
@@ -69,7 +70,7 @@ public class UserControllerTest {
                 .timezone("Asia/Kolkata")
                 .build();
 
-        when(employeeService.getCurrentEmployeeProfile()).thenReturn(profile);
+        when(employeeService.getCurrentEmployeeProfile(any())).thenReturn(profile);
 
         mockMvc.perform(get("/helpdesk/user/me"))
                 .andExpect(status().isOk())
@@ -116,7 +117,7 @@ public class UserControllerTest {
                 .role(UserRole.EMPLOYEE)
                 .build();
 
-        when(employeeService.updateEmployee(isNull(), any(UpdateEmployeeRequestDTO.class), isNull()))
+        when(employeeService.updateEmployee(isNull(), any(UpdateEmployeeRequestDTO.class), isNull(), any()))
                 .thenReturn(updated);
 
         mockMvc.perform(multipart(HttpMethod.PATCH, "/helpdesk/user/me")
@@ -138,7 +139,7 @@ public class UserControllerTest {
                 .role(UserRole.AGENT)
                 .build();
 
-        when(employeeService.getEmployeeById(2L)).thenReturn(profile);
+        when(employeeService.getEmployeeById(org.mockito.ArgumentMatchers.eq(2L), any())).thenReturn(profile);
 
         mockMvc.perform(get("/helpdesk/user/2"))
                 .andExpect(status().isOk())
