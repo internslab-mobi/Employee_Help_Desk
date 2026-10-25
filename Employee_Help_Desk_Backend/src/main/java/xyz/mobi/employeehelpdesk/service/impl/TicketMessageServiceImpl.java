@@ -146,7 +146,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
         }
 
         if (hasSavedAttachments) {
-            ticketHistoryService.record(
+            ticketHistoryService.save(
                     ticket,
                     HistoryEventType.ATTACHMENT_ADDED,
                     ticket.getStatus(),
@@ -154,7 +154,7 @@ public class TicketMessageServiceImpl implements TicketMessageService {
             );
         }
 
-        ticketHistoryService.record(
+        ticketHistoryService.save(
                 ticket,
                 HistoryEventType.MESSAGE_ADDED,
                 ticket.getStatus(),
@@ -188,16 +188,6 @@ public class TicketMessageServiceImpl implements TicketMessageService {
                 message.getId(), ticketId, currentEmployeeId, attachmentResponses.size());
 
         return ticketMessageMapper.toCreateResponse(message, attachmentResponses);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public TicketMessageResponseDTO createMessage(
-            Long ticketId,
-            String content,
-            List<MultipartFile> attachments
-    ) throws IOException {
-        return createMessage(ticketId, content, attachments, null);
     }
 
     @Override
@@ -238,12 +228,6 @@ public class TicketMessageServiceImpl implements TicketMessageService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TicketMessageResponseDTO> getMessages(Long ticketId, Pageable pageable) {
-        return getMessages(ticketId, pageable, null);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public TicketAttachment getAttachmentForDownload(Long ticketId, Long attachmentId, UserPrincipal userPrincipal) {
         long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         UserRole role = getCurrentUserRole(userPrincipal);
@@ -261,12 +245,6 @@ public class TicketMessageServiceImpl implements TicketMessageService {
         }
 
         return attachment;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public TicketAttachment getAttachmentForDownload(Long ticketId, Long attachmentId) {
-        return getAttachmentForDownload(ticketId, attachmentId, null);
     }
 
     private void validateTicketAccess(Ticket ticket, long currentEmployeeId, UserRole role) {

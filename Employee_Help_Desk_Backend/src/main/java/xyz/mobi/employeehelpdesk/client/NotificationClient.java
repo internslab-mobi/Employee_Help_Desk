@@ -19,7 +19,13 @@ public class NotificationClient {
             RestClient.Builder builder,
             @Value("${notification.service.base-url:http://localhost:8085}") String baseUrl
     ) {
-        this.restClient = builder.baseUrl(baseUrl.replaceAll("/+$", "")).build();
+        String normalizedBaseUrl = baseUrl;
+        while (normalizedBaseUrl.endsWith("/")) {
+            normalizedBaseUrl = normalizedBaseUrl.substring(
+                    0, normalizedBaseUrl.length() - 1
+            );
+        }
+        this.restClient = builder.baseUrl(normalizedBaseUrl).build();
         log.info("Initialized NotificationClient with base URL: {}", baseUrl);
     }
 

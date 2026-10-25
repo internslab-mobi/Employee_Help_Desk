@@ -1,8 +1,11 @@
 package xyz.mobi.employeehelpdesk.service;
 
 import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.slapolicy.CreateSlaPolicyRequestDTO;
 import xyz.mobi.employeehelpdesk.entity.SlaInstance;
 import xyz.mobi.employeehelpdesk.entity.Ticket;
+
+import java.util.List;
 
 public interface SlaService {
     SlaInstance startSla(Ticket ticket);
@@ -16,6 +19,6 @@ public interface SlaService {
     void processSlaEvent(Long slaInstanceId);
 
     SlaPolicyResponseDTO getSlaPolicyById(Long id);
-    java.util.List<SlaPolicyResponseDTO> getSlaPolicies(Long departmentId);
-    SlaPolicyResponseDTO createSlaPolicy(xyz.mobi.employeehelpdesk.dto.slapolicy.CreateSlaPolicyRequestDTO request);
+    List<SlaPolicyResponseDTO> getSlaPolicies(Long departmentId);
+    SlaPolicyResponseDTO createSlaPolicy(CreateSlaPolicyRequestDTO request);
 }

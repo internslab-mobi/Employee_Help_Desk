@@ -16,7 +16,9 @@ import xyz.mobi.reportservice.service.BackendClientService;
 import xyz.mobi.reportservice.service.ExcelReportGeneratorService;
 import xyz.mobi.reportservice.service.SummaryReportService;
 
+import java.io.IOException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
@@ -30,11 +32,13 @@ public class ReportController {
     private final BackendClientService backendClientService;
     private final ExcelReportGeneratorService excelReportGeneratorService;
     private final SummaryReportService summaryReportService;
+    private static final String FORMAT = ".xlsx";
 
     /**
      * Generic report generation endpoint invoked by Core Backend.
      * Supports both on-screen JSON summary and Excel workbook (.xlsx) generation.
      */
+
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/generate")
     public ResponseEntity<?> generateReport(
@@ -46,46 +50,32 @@ public class ReportController {
         }
 
         try {
-            ReportFormat format = payload.format() != null ? payload.format() : ReportFormat.JSON;
+            ReportFormat format = payload.format() != null
+                    ? payload.format()
+                    : ReportFormat.JSON;
 
             if (format == ReportFormat.EXCEL) {
-                byte[] excelBytes = excelReportGeneratorService.generateSummaryWorkbook(
-                        payload.analytics(),
-                        payload.tickets() != null ? payload.tickets() : Collections.emptyList(),
-                        payload.requesterTimezone(),
-                        payload.reportType()
-                );
-
-                String todayStr = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
-                String filename;
-                if (payload.reportType() == ReportType.AGENT_SUMMARY) {
-                    filename = "agent-assigned-tickets-summary-" + todayStr + ".xlsx";
-                } else {
-                    String rolePrefix = (payload.requestedByRole() != null ? payload.requestedByRole() : "Report");
-                    String typePrefix = (payload.reportType() != null ? payload.reportType().name() : "Summary");
-                    filename = rolePrefix + "_" + typePrefix + "_" + todayStr + ".xlsx";
-                }
-
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
-                headers.setContentDispositionFormData("attachment", filename);
-                headers.set("filename", filename);
-                headers.setContentLength(excelBytes.length);
-
-                return ResponseEntity.ok()
-                        .headers(headers)
-                        .body(excelBytes);
-            } else {
-                ReportSummaryResponseDTO response = summaryReportService.generateJsonSummary(payload);
-                return ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(response);
+                return generateExcelReport(payload);
             }
+
+            ReportSummaryResponseDTO response =
+                    summaryReportService.generateJsonSummary(payload);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response);
+
         } catch (Exception ex) {
-            log.error("Failed to generate report in microservice: {}", ex.getMessage(), ex);
+            log.error("Failed to generate report in microservice: {}",
+                    ex.getMessage(), ex);
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .header("X-Error-Message", ex.getMessage())
-                    .body(Collections.singletonMap("error", "Microservice report generation failed: " + ex.getMessage()));
+                    .body(Collections.singletonMap(
+                            "error",
+                            "Microservice report generation failed: "
+                                    + ex.getMessage()
+                    ));
         }
     }
 
@@ -117,9 +107,9 @@ public class ReportController {
                     analytics, tickets, principal.getTimezone()
             );
 
-            String todayStr = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
+            String todayStr = LocalDate.now(ZoneId.of(principal.getTimezone())).format(DateTimeFormatter.ISO_DATE);
             String rolePrefix = (principal.getRole() != null ? principal.getRole() : "Employee");
-            String filename = rolePrefix + "_Ticket_Summary_" + todayStr + ".xlsx";
+            String filename = rolePrefix + "_Ticket_Summary_" + todayStr + FORMAT;
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
@@ -138,4 +128,61 @@ public class ReportController {
                     .build();
         }
     }
+
+
+    private ResponseEntity<byte[]> generateExcelReport(ReportGenerationPayloadDTO payload) throws IOException {
+
+        byte[] excelBytes =
+                excelReportGeneratorService.generateSummaryWorkbook(
+                        payload.analytics(),
+                        payload.tickets() != null
+                                ? payload.tickets()
+                                : Collections.emptyList(),
+                        payload.requesterTimezone(),
+                        payload.reportType()
+                );
+
+        String filename = generateExcelFilename(payload);
+        HttpHeaders headers = createExcelHeaders(filename, excelBytes.length);
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(excelBytes);
+    }
+
+
+    private String generateExcelFilename(ReportGenerationPayloadDTO payload) {
+        String todayStr = LocalDate.now(ZoneId.of(payload.requesterTimezone()))
+                .format(DateTimeFormatter.ISO_DATE);
+
+        if (payload.reportType() == ReportType.AGENT_SUMMARY) {
+            return "agent-assigned-tickets-summary-" + todayStr + FORMAT;
+        }
+
+        String rolePrefix = payload.requestedByRole() != null
+                ? payload.requestedByRole()
+                : "Report";
+
+        String typePrefix = payload.reportType() != null
+                ? payload.reportType().name()
+                : "Summary";
+
+        return rolePrefix + "_" + typePrefix + "_" + todayStr + FORMAT;
+    }
+
+
+    private HttpHeaders createExcelHeaders(String filename, int contentLength) {
+        HttpHeaders headers = new HttpHeaders();
+
+        headers.setContentType(MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ));
+
+        headers.setContentDispositionFormData("attachment", filename);
+        headers.set("filename", filename);
+        headers.setContentLength(contentLength);
+
+        return headers;
+    }
+
 }

@@ -33,7 +33,14 @@ public class ReportServiceClient {
         factory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
 
         this.restTemplate = new RestTemplate(factory);
-        this.baseUrl = baseUrl.replaceAll("/+$", "");
+        String normalizedBaseUrl = baseUrl;
+
+        while (normalizedBaseUrl.endsWith("/")) {
+            normalizedBaseUrl = normalizedBaseUrl.substring(
+                    0, normalizedBaseUrl.length() - 1
+            );
+        }
+        this.baseUrl = normalizedBaseUrl;
         log.info("Initialized ReportServiceClient with downstream URL: {}", this.baseUrl);
     }
 

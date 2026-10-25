@@ -91,17 +91,25 @@ public class SlaDynamicScheduler {
                 } else {
                     log.info("Processing past-due SLA event on startup: id={}, type={}, dueAt={}",
                             sla.getId(), sla.getNextEventType(), sla.getNextEventAt());
-                    try {
-                        slaServiceProvider.getObject().processSlaEvent(sla.getId());
-                    } catch (Exception ex) {
-                        log.error("Failed to recover past-due SLA event for id={}: {}",
-                                sla.getId(), ex.getMessage(), ex);
-                    }
+                    processPastDueSlaEvent(sla.getId());
                 }
             }
             log.info("SLA schedule recovery completed successfully");
         } catch (Exception ex) {
             log.error("Failed to perform SLA schedule recovery on startup", ex);
+        }
+    }
+
+    private void processPastDueSlaEvent(Long slaInstanceId) {
+        try {
+            slaServiceProvider.getObject().processSlaEvent(slaInstanceId);
+        } catch (Exception ex) {
+            log.error(
+                    "Failed to recover past-due SLA event for id={}: {}",
+                    slaInstanceId,
+                    ex.getMessage(),
+                    ex
+            );
         }
     }
 }

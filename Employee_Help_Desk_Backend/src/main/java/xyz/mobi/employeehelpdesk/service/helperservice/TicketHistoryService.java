@@ -16,7 +16,7 @@ public class TicketHistoryService {
 
     private final TicketHistoryRepository ticketHistoryRepository;
 
-    public void record(
+    public void save(
             Ticket ticket,
             HistoryEventType eventType,
             TicketStatus oldValue,

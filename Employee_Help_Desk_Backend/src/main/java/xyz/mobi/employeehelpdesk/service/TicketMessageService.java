@@ -19,31 +19,15 @@ public interface TicketMessageService {
             UserPrincipal userPrincipal
     ) throws IOException;
 
-    TicketMessageResponseDTO createMessage(
-            Long ticketId,
-            String content,
-            List<MultipartFile> attachments
-    ) throws IOException;
-
     Page<TicketMessageResponseDTO> getMessages(
             Long ticketId,
             Pageable pageable,
             UserPrincipal userPrincipal
     );
 
-    Page<TicketMessageResponseDTO> getMessages(
-            Long ticketId,
-            Pageable pageable
-    );
-
     TicketAttachment getAttachmentForDownload(
             Long ticketId,
             Long attachmentId,
             UserPrincipal userPrincipal
-    );
-
-    TicketAttachment getAttachmentForDownload(
-            Long ticketId,
-            Long attachmentId
     );
 }

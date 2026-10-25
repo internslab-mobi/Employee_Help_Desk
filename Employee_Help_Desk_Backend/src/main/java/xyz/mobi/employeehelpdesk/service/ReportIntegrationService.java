@@ -8,15 +8,9 @@ import xyz.mobi.employeehelpdesk.security.UserPrincipal;
 
 public interface ReportIntegrationService {
 
-    ReportSummaryResponseDTO getSummaryReportJson(ReportSummaryRequestDTO request, String rawAuthHeader);
-
     ReportSummaryResponseDTO getSummaryReportJson(ReportSummaryRequestDTO request, String rawAuthHeader, UserPrincipal userPrincipal);
-
-    ResponseEntity<byte[]> getSummaryReportExcel(ReportSummaryRequestDTO request, String rawAuthHeader);
 
     ResponseEntity<byte[]> getSummaryReportExcel(ReportSummaryRequestDTO request, String rawAuthHeader, UserPrincipal userPrincipal);
 
     ResponseEntity<?> getSummaryReport(ReportSummaryRequestDTO request, String rawAuthHeader, UserPrincipal userPrincipal);
-
-    ResponseEntity<?> getSummaryReport(ReportSummaryRequestDTO request, String rawAuthHeader);
 }

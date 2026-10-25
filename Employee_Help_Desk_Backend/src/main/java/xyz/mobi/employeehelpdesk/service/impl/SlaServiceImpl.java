@@ -479,7 +479,7 @@ public class SlaServiceImpl implements SlaService {
             slaInstanceRepository.save(sla);
 
             if (sla.getTicket() != null) {
-                ticketHistoryService.record(
+                ticketHistoryService.save(
                         sla.getTicket(),
                         xyz.mobi.employeehelpdesk.entity.enums.HistoryEventType.SLA_BREACHED,
                         sla.getTicket().getStatus(),

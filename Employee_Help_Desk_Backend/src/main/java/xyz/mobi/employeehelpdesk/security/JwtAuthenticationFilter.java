@@ -4,7 +4,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,6 +24,7 @@ import org.springframework.context.annotation.Lazy;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.time.ZoneId;
 
 @Slf4j
 @Component
@@ -66,17 +66,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String timezone = tokenProvider.getTimezoneFromToken(jwt);
 
                 // Validate timezone if present; fallback to UTC for backward compatibility with old tokens
-                if (timezone != null && !timezone.isBlank()) {
-                    try {
-                        java.time.ZoneId.of(timezone.trim());
-                        timezone = timezone.trim();
-                    } catch (Exception ex) {
-                        log.error("Invalid timezone claim in JWT: {}", timezone);
-                        writeUnauthorizedResponse(response, "Invalid token");
-                        return;
-                    }
-                } else {
-                    timezone = "UTC";
+                timezone = validateTimezone(timezone, response);
+
+                if (timezone == null) {
+                    return;
                 }
 
                 List<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
@@ -137,5 +130,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         );
 
         objectMapper.writeValue(response.getOutputStream(), body);
+    }
+
+    private String validateTimezone(
+            String timezone,
+            HttpServletResponse response
+    ) throws IOException {
+
+        if (timezone == null || timezone.isBlank()) {
+            return "UTC";
+        }
+
+        String normalizedTimezone = timezone.trim();
+
+        try {
+            ZoneId.of(normalizedTimezone);
+            return normalizedTimezone;
+        } catch (Exception ex) {
+            log.error("Invalid timezone claim in JWT: {}", normalizedTimezone);
+            writeUnauthorizedResponse(response, "Invalid token");
+            return null;
+        }
     }
 }

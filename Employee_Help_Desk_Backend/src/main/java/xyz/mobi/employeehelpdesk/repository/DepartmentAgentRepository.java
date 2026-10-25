@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import xyz.mobi.employeehelpdesk.entity.DepartmentAgent;
+import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
+import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -58,8 +60,8 @@ public interface DepartmentAgentRepository
         LEFT JOIN FETCH e.department
         LEFT JOIN FETCH e.manager
         WHERE e.department.id = :departmentId
-          AND e.employmentStatus = xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus.ACTIVE
-          AND e.role = xyz.mobi.employeehelpdesk.entity.enums.UserRole.AGENT
+          AND e.employmentStatus = EmploymentStatus.ACTIVE
+          AND e.role = UserRole.AGENT
     """)
     List<DepartmentAgent> findEligibleAgents(
             @Param("departmentId") Long departmentId

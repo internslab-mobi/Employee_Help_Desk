@@ -36,6 +36,7 @@ import xyz.mobi.employeehelpdesk.validator.TicketAttachmentValidator;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -270,7 +271,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setDateOfJoining(
                 request.dateOfJoining() != null
                         ? request.dateOfJoining()
-                        : LocalDate.now()
+                        : LocalDate.now(ZoneId.of(request.timezone()))
         );
 
         if (!TimezoneUtil.isValidTimezone(request.timezone())) {
@@ -520,7 +521,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         employee.setEmploymentStatus(EmploymentStatus.INACTIVE);
-        employee.setDateOfExit(LocalDate.now());
+        employee.setDateOfExit(LocalDate.now(ZoneId.of(employee.getTimezone())));
         log.info("Employee deactivated successfully: employeeId={}", id);
     }
 
@@ -742,14 +743,13 @@ public class EmployeeServiceImpl implements EmployeeService {
                 departmentAgentRepository.save(agent);
                 log.info("Automatically registered employeeId={} into hd_department_agents", employee.getId());
             }
-        } else if (employee.getRole() == UserRole.MANAGER) {
-            if (departmentManagerRepository.findByEmployeeId(employee.getId()).isEmpty()) {
+        } else if (employee.getRole() == UserRole.MANAGER && departmentManagerRepository.findByEmployeeId(employee.getId()).isEmpty()) {
                 DepartmentManager deptManager = new DepartmentManager();
                 deptManager.setEmployee(employee);
                 deptManager.setIsPrimary(false);
                 departmentManagerRepository.save(deptManager);
                 log.info("Automatically registered employeeId={} into hd_department_managers", employee.getId());
-            }
+
         }
     }
 

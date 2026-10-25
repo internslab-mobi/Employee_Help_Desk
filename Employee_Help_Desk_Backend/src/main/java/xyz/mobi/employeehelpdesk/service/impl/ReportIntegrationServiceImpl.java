@@ -49,21 +49,9 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
 
     @Override
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getSummaryReport(ReportSummaryRequestDTO request, String rawAuthHeader) {
-        return getSummaryReport(request, rawAuthHeader, null);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public ReportSummaryResponseDTO getSummaryReportJson(ReportSummaryRequestDTO request, String rawAuthHeader, UserPrincipal userPrincipal) {
         ReportGenerationPayloadDTO payload = prepareAuthorizedPayload(request, ReportFormat.JSON, userPrincipal);
         return reportServiceClient.generateJsonSummary(payload, rawAuthHeader);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public ReportSummaryResponseDTO getSummaryReportJson(ReportSummaryRequestDTO request, String rawAuthHeader) {
-        return getSummaryReportJson(request, rawAuthHeader, null);
     }
 
     @Override
@@ -102,16 +90,9 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
         return response;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public ResponseEntity<byte[]> getSummaryReportExcel(ReportSummaryRequestDTO request, String rawAuthHeader) {
-        return getSummaryReportExcel(request, rawAuthHeader, null);
-    }
-
     private String resolveFilename(ResponseEntity<byte[]> response, ReportGenerationPayloadDTO payload) {
         try {
-            if (response.getHeaders().getContentDisposition() != null
-                    && response.getHeaders().getContentDisposition().getFilename() != null) {
+            if (response.getHeaders().getContentDisposition().getFilename() != null) {
                 return response.getHeaders().getContentDisposition().getFilename();
             }
         } catch (Exception ignored) {
@@ -160,11 +141,11 @@ public class ReportIntegrationServiceImpl implements ReportIntegrationService {
 
         // 3. Query real persisted application database metrics via AnalyticsService
         DashboardAnalyticsResponseDTO analytics = analyticsService.getDashboardAnalytics(
-                request.getFromDate(), request.getToDate(), effectiveDepartmentId
+                request.getFromDate(), request.getToDate(), effectiveDepartmentId, userPrincipal
         );
 
         List<ExportTicketDetailDTO> tickets = analyticsService.getExportTicketDetails(
-                request.getFromDate(), request.getToDate(), effectiveDepartmentId
+                request.getFromDate(), request.getToDate(), effectiveDepartmentId, userPrincipal
         );
 
         // 4. Apply permitted filters (status, priority, search) if specified in request

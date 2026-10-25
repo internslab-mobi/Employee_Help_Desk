@@ -20,17 +20,9 @@ public interface NotificationService {
 
     Page<NotificationResponseDTO> getNotifications(Pageable pageable, UserPrincipal userPrincipal);
 
-    Page<NotificationResponseDTO> getNotifications(Pageable pageable);
-
     Page<NotificationResponseDTO> getUnreadNotifications(Pageable pageable, UserPrincipal userPrincipal);
-
-    Page<NotificationResponseDTO> getUnreadNotifications(Pageable pageable);
 
     UnreadNotificationCountResponseDTO getUnreadCount(UserPrincipal userPrincipal);
 
-    UnreadNotificationCountResponseDTO getUnreadCount();
-
     NotificationResponseDTO markAsRead(Long notificationId, UserPrincipal userPrincipal);
-
-    NotificationResponseDTO markAsRead(Long notificationId);
 }

@@ -11,6 +11,7 @@ import xyz.mobi.employeehelpdesk.entity.enums.EmploymentStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface EmployeeRepository
         extends JpaRepository<Employee, Long> {
@@ -81,5 +82,5 @@ public interface EmployeeRepository
         FROM Employee e
         GROUP BY e.employmentStatus
     """)
-    java.util.List<Object[]> countEmployeesByStatus();
+    List<Object[]> countEmployeesByStatus();
 }

@@ -112,12 +112,6 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponseDTO> getNotifications(Pageable pageable) {
-        return getNotifications(pageable, null);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Page<NotificationResponseDTO> getUnreadNotifications(Pageable pageable, UserPrincipal userPrincipal) {
         long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         Page<Notification> notifications = notificationRepository.findByRecipientIdAndReadFalseOrderByCreatedAtDesc(currentEmployeeId, pageable);
@@ -126,22 +120,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponseDTO> getUnreadNotifications(Pageable pageable) {
-        return getUnreadNotifications(pageable, null);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public UnreadNotificationCountResponseDTO getUnreadCount(UserPrincipal userPrincipal) {
         long currentEmployeeId = getCurrentEmployeeId(userPrincipal);
         Long count = notificationRepository.countByRecipientIdAndReadFalse(currentEmployeeId);
         return new UnreadNotificationCountResponseDTO(count != null ? count : 0L);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public UnreadNotificationCountResponseDTO getUnreadCount() {
-        return getUnreadCount(null);
     }
 
     @Override
@@ -161,12 +143,6 @@ public class NotificationServiceImpl implements NotificationService {
         log.info("Notification marked as read: notificationId={}, recipientId={}", notificationId, currentEmployeeId);
 
         return notificationMapper.toUpdateResponse(notification);
-    }
-
-    @Override
-    @Transactional
-    public NotificationResponseDTO markAsRead(Long notificationId) {
-        return markAsRead(notificationId, null);
     }
 
     private long getCurrentEmployeeId(UserPrincipal userPrincipal) {

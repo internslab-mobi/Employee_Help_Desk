@@ -6,7 +6,6 @@ import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.*;
-import xyz.mobi.employeehelpdesk.entity.Department;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketView;
 import xyz.mobi.employeehelpdesk.entity.enums.Priority;
@@ -26,28 +25,14 @@ public interface TicketService {
             UserPrincipal userPrincipal)
             throws IOException;
 
-    TicketResponseDTO createTicket(
-            CreateTicketRequestDTO request,
-            List<MultipartFile> attachments)
-            throws IOException;
-
     TicketResponseDTO getTicket(Long ticketId, UserPrincipal userPrincipal);
 
-    TicketResponseDTO getTicket(Long ticketId);
-
     Page<TicketResponseDTO> getAllTickets(
             TicketView view,
             Long employeeId,
             Long departmentId,
             Pageable pageable,
             UserPrincipal userPrincipal
-    );
-
-    Page<TicketResponseDTO> getAllTickets(
-            TicketView view,
-            Long employeeId,
-            Long departmentId,
-            Pageable pageable
     );
 
     Page<TicketResponseDTO> searchTickets(
@@ -64,21 +49,6 @@ public interface TicketService {
             SlaStatus slaStatus,
             Pageable pageable,
             UserPrincipal userPrincipal
-    );
-
-    Page<TicketResponseDTO> searchTickets(
-            TicketView view,
-            Long employeeId,
-            Long departmentId,
-            Long agentId,
-            TicketStatus status,
-            Priority priority,
-            LocalDate fromDate,
-            LocalDate toDate,
-            String search,
-            Boolean unassigned,
-            SlaStatus slaStatus,
-            Pageable pageable
     );
 
     List<AssignableAgentResponseDTO> getAssignableAgents(Long ticketId);
@@ -94,11 +64,6 @@ public interface TicketService {
             Long ticketId,
             UpdateTicketRequestDTO request,
             UserPrincipal userPrincipal
-    );
-
-    TicketResponseDTO updateTicket(
-            Long ticketId,
-            UpdateTicketRequestDTO request
     );
 
     TicketResponseDTO assignTicketByManager(Long ticketId, Long agentId);
@@ -119,17 +84,11 @@ public interface TicketService {
 
     TicketFeedbackResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request, UserPrincipal userPrincipal);
 
-    TicketFeedbackResponseDTO createFeedback(Long ticketId, TicketFeedbackRequestDTO request);
-
     TicketFeedbackResponseDTO getFeedback(Long ticketId, UserPrincipal userPrincipal);
-
-    TicketFeedbackResponseDTO getFeedback(Long ticketId);
 
     List<TicketHistoryResponseDTO> getTicketHistory(Long ticketId);
 
     TicketSlaResponseDTO getTicketSla(Long ticketId);
 
     List<xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO> getTicketAttachments(Long ticketId, UserPrincipal userPrincipal);
-
-    List<xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO> getTicketAttachments(Long ticketId);
 }

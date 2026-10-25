@@ -129,7 +129,7 @@ public interface TicketRepository
     WHERE t.requester.id = :requesterId
       AND (:status IS NULL OR t.status = :status)
       AND (:priority IS NULL OR t.priority = :priority)
-      AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
+      AND (CAST(:from AS Instant) IS NULL OR t.createdAt >= :from)
       AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
       AND (
           :search IS NULL OR :search = ''

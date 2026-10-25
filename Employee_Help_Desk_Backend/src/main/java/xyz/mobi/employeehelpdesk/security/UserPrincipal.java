@@ -71,10 +71,6 @@ public class UserPrincipal implements UserDetails {
         );
     }
 
-    public java.time.ZoneId getZoneId() {
-        return java.time.ZoneId.of(this.timezone);
-    }
-
     @Override
     public String getUsername() {
         return email;

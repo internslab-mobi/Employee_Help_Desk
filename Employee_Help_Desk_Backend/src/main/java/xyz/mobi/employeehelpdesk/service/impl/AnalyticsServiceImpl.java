@@ -18,7 +18,6 @@ import xyz.mobi.employeehelpdesk.entity.enums.Priority;
 import xyz.mobi.employeehelpdesk.entity.enums.SlaStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.TicketStatus;
 import xyz.mobi.employeehelpdesk.entity.enums.UserRole;
-import xyz.mobi.employeehelpdesk.exception.ResourceNotFoundException;
 import xyz.mobi.employeehelpdesk.exception.UnauthorizedException;
 import xyz.mobi.employeehelpdesk.repository.DepartmentAgentRepository;
 import xyz.mobi.employeehelpdesk.repository.DepartmentRepository;
@@ -80,9 +79,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         Long effectiveDepartmentId = null;
 
         switch (role) {
-            case EMPLOYEE -> {
+            case EMPLOYEE ->
                 requesterId = employee.getId();
-            }
             case AGENT -> {
                 Optional<DepartmentAgent> agentOpt = departmentAgentRepository.findByEmployeeId(employee.getId());
                 if (agentOpt.isPresent()) {
@@ -96,18 +94,11 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                     effectiveDepartmentId = employee.getDepartment().getId();
                 }
             }
-            case ADMIN -> {
+            case ADMIN ->
                 effectiveDepartmentId = requestedDepartmentId;
-            }
         }
 
         return new AuthorizedScope(employee, role, requesterId, agentId, effectiveDepartmentId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public DashboardAnalyticsResponseDTO getDashboardAnalytics(LocalDate fromDate, LocalDate toDate, Long departmentId) {
-        return getDashboardAnalytics(fromDate, toDate, departmentId, null);
     }
 
     @Override
@@ -201,7 +192,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             Instant cr = (Instant) row[0];
             Instant res = (Instant) row[1];
             if (cr != null && res != null && !res.isBefore(cr)) {
-                totalResolutionSeconds += Duration.between(cr, res).getSeconds();
+                totalResolutionSeconds +=  Duration.between(cr, res).getSeconds();
                 resolvedCount++;
             }
         }
@@ -369,12 +360,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 .fromDate(fromDate != null ? fromDate.toString() : null)
                 .toDate(toDate != null ? toDate.toString() : null)
                 .build();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ExportTicketDetailDTO> getExportTicketDetails(LocalDate fromDate, LocalDate toDate, Long departmentId) {
-        return getExportTicketDetails(fromDate, toDate, departmentId, null);
     }
 
     @Override
