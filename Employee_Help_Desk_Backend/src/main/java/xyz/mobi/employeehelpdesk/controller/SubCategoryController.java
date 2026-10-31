@@ -2,10 +2,13 @@ package xyz.mobi.employeehelpdesk.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import xyz.mobi.employeehelpdesk.dto.subcategory.CreateSubCategoryRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.subcategory.SubCategoryResponseDTO;
 import xyz.mobi.employeehelpdesk.service.SubCategoryService;
 
@@ -41,9 +44,9 @@ public class SubCategoryController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<SubCategoryResponseDTO> createSubCategory(
-            @jakarta.validation.Valid @RequestBody xyz.mobi.employeehelpdesk.dto.subcategory.CreateSubCategoryRequestDTO request
+            @Valid @RequestBody CreateSubCategoryRequestDTO request
     ) {
         SubCategoryResponseDTO subCategory = subCategoryService.createSubCategory(request);
-        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(subCategory);
+        return ResponseEntity.status(HttpStatus.CREATED).body(subCategory);
     }
 }

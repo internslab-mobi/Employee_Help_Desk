@@ -7,8 +7,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PostMapping;
+import jakarta.validation.Valid;
 import xyz.mobi.employeehelpdesk.dto.slapolicy.SlaPolicyResponseDTO;
 import xyz.mobi.employeehelpdesk.service.SlaService;
+import xyz.mobi.employeehelpdesk.dto.slapolicy.CreateSlaPolicyRequestDTO;
+import org.springframework.http.HttpStatus;
+import java.util.List;
 
 @RestController
 @RequestMapping("/helpdesk/sla-policies")
@@ -26,18 +33,18 @@ public class SlaPolicyController {
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping
-    public ResponseEntity<java.util.List<SlaPolicyResponseDTO>> getSlaPolicies(
-            @org.springframework.web.bind.annotation.RequestParam(required = false) Long departmentId
+    public ResponseEntity<List<SlaPolicyResponseDTO>> getSlaPolicies(
+            @RequestParam(required = false) Long departmentId
     ) {
         return ResponseEntity.ok(slaService.getSlaPolicies(departmentId));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @org.springframework.web.bind.annotation.PostMapping
+    @PostMapping
     public ResponseEntity<SlaPolicyResponseDTO> createSlaPolicy(
-            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody xyz.mobi.employeehelpdesk.dto.slapolicy.CreateSlaPolicyRequestDTO request
+            @Valid @RequestBody CreateSlaPolicyRequestDTO request
     ) {
-        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(slaService.createSlaPolicy(request));
     }
 

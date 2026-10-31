@@ -463,6 +463,8 @@ public class TicketServiceImpl implements TicketService {
             case ALL -> {
                 if (currentEmployee.getRole() == UserRole.ADMIN) {
                     yield ticketRepository.findAllTicketsWithFilters(
+                            departmentId,
+                            agentId,
                             status,
                             priority,
                             dateRange.from(),
@@ -935,12 +937,18 @@ public class TicketServiceImpl implements TicketService {
                 IN_PROGRESS
         );
 
+        SlaInstance latestSla = slaInstanceRepository.findLatestByTicketId(ticket.getId());
         SlaInstance slaInstance;
-        if (oldStatus == TicketStatus.REOPENED) {
+
+        // If an SLA cycle is ALREADY active (e.g., breach recovery started on manager reassignment), reuse it
+        if (latestSla != null && latestSla.getStatus() == SlaStatus.ACTIVE) {
+            slaInstance = latestSla;
+        } else if (oldStatus == TicketStatus.REOPENED) {
             slaInstance = slaService.startReopenSla(ticket);
         } else {
             slaInstance = slaService.startSla(ticket);
         }
+
 
         String ticketNumber = ticket.getTicketNumber() != null ? ticket.getTicketNumber() : ("#" + ticket.getId());
         String agentName = ticket.getAssignedAgent().getEmployee() != null

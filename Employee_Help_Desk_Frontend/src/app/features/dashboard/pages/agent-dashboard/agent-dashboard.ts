@@ -474,7 +474,7 @@ export class AgentDashboard implements OnInit {
 
   navigateToTicketsWithFilter(filter: { status?: string }): void {
     this.state.clearSelectedTicket();
-    this.activeNav.set('my-tickets');
+    this.activeNav.set('assigned-tickets');
     if (filter.status) {
       this.ticketStatusFilter.set(filter.status);
     }

@@ -24,7 +24,7 @@ public class SkillController {
     private final SkillService skillService;
 
     @Operation(summary = "Get all skills")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AGENT', 'EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @GetMapping
     public ResponseEntity<List<SkillResponseDTO>> getAllSkills() {
         return ResponseEntity.ok(skillService.getAllSkills());
@@ -38,7 +38,7 @@ public class SkillController {
     }
 
     @Operation(summary = "Get skills for an agent")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AGENT')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @GetMapping("/agent/{agentId}")
     public ResponseEntity<List<SkillResponseDTO>> getAgentSkills(@PathVariable Long agentId) {
         return ResponseEntity.ok(skillService.getAgentSkills(agentId));
@@ -55,7 +55,7 @@ public class SkillController {
     }
 
     @Operation(summary = "Get required skills for a subcategory")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AGENT', 'EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @GetMapping("/subcategory/{subCategoryId}")
     public ResponseEntity<List<SkillResponseDTO>> getSubCategorySkills(@PathVariable Long subCategoryId) {
         return ResponseEntity.ok(skillService.getSubCategorySkills(subCategoryId));

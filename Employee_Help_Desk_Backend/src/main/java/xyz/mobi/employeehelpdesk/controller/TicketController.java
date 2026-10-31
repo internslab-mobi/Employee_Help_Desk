@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.feedback.TicketFeedbackResponseDTO;
+import xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.AssignableAgentResponseDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.CreateTicketRequestDTO;
 import xyz.mobi.employeehelpdesk.dto.ticket.TicketHistoryResponseDTO;
@@ -234,7 +235,7 @@ public class TicketController {
 
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'AGENT', 'MANAGER', 'ADMIN')")
     @GetMapping("/{ticketId}/attachments")
-    public ResponseEntity<List<xyz.mobi.employeehelpdesk.dto.message.TicketAttachmentResponseDTO>> getTicketAttachments(
+    public ResponseEntity<List<TicketAttachmentResponseDTO>> getTicketAttachments(
             @PathVariable Long ticketId,
             @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {

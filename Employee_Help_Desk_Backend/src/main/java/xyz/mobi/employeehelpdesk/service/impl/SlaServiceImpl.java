@@ -117,13 +117,21 @@ public class SlaServiceImpl implements SlaService {
             nextEventAt = deadline;
         }
 
-        // 8. Create or update SLA instance
+                // 8. Create or reuse SLA instance
         SlaInstance slaInstance = slaInstanceRepository.findLatestByTicketId(ticket.getId());
+
+        // If an SLA instance is already ACTIVE, do not duplicate or overwrite it
+        if (slaInstance != null && slaInstance.getStatus() == SlaStatus.ACTIVE) {
+            log.info("SLA already active for ticketId={}, slaInstanceId={}", ticket.getId(), slaInstance.getId());
+            return slaInstance;
+        }
+
         if (slaInstance == null) {
+            // First time SLA creation for a new ticket
             slaInstance = SlaInstance.builder()
                     .ticket(ticket)
                     .slaPolicy(policy)
-                    .cycleNumber(cycleNumber)
+                    .cycleNumber(1)
                     .allocatedMinutes(allocatedMinutes)
                     .slaStartAt(startAt)
                     .originalDeadlineAt(deadline)
@@ -136,27 +144,30 @@ public class SlaServiceImpl implements SlaService {
                     .breachedAt(null)
                     .build();
         } else {
-            slaInstance.setSlaPolicy(policy);
-            slaInstance.setCycleNumber(cycleNumber);
-            slaInstance.setAllocatedMinutes(allocatedMinutes);
-            slaInstance.setSlaStartAt(startAt);
-            slaInstance.setOriginalDeadlineAt(deadline);
-            slaInstance.setCurrentDeadlineAt(deadline);
-            slaInstance.setWarningAt(warningAt);
-            slaInstance.setStatus(SlaStatus.ACTIVE);
-            slaInstance.setNextEventType(nextEventType);
-            slaInstance.setNextEventAt(nextEventAt);
-            slaInstance.setPausedAt(null);
-            slaInstance.setBreachedAt(null);
+            // If previous SLA cycle exists (e.g. was breached/completed), start the next cycle number
+            int nextCycleNumber = slaInstance.getCycleNumber() + 1;
+            slaInstance = SlaInstance.builder()
+                    .ticket(ticket)
+                    .slaPolicy(policy)
+                    .cycleNumber(nextCycleNumber)
+                    .allocatedMinutes(allocatedMinutes)
+                    .slaStartAt(startAt)
+                    .originalDeadlineAt(deadline)
+                    .currentDeadlineAt(deadline)
+                    .warningAt(warningAt)
+                    .status(SlaStatus.ACTIVE)
+                    .nextEventType(nextEventType)
+                    .nextEventAt(nextEventAt)
+                    .pausedAt(null)
+                    .breachedAt(null)
+                    .build();
         }
 
         SlaInstance savedSla = slaInstanceRepository.save(slaInstance);
         slaDynamicScheduler.scheduleSlaEvent(savedSla.getId(), savedSla.getNextEventAt());
 
-        log.info("SLA started: ticketId={}, slaInstanceId={}, allocatedMinutes={}, deadline={}, nextEventType={}, nextEventAt={}",
-                ticket.getId(), savedSla.getId(), allocatedMinutes, deadline, nextEventType, nextEventAt);
-
         return savedSla;
+
     }
 
     /**

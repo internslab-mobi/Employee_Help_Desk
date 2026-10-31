@@ -26,7 +26,7 @@ export class AuthService {
   isRefreshing = false;
   readonly refreshTokenSubject = new BehaviorSubject<string | null>(null);
 
-  readonly token = signal<string | null>(this.getStoredToken());
+  readonly token = signal<string | null>(null);
   readonly role = signal<UserRole | null>(this.getStoredRole());
   readonly currentUser = signal<EmployeeProfile | null>(this.getStoredProfile());
   readonly profilePhotoUrl = signal<string | null>(this.getStoredProfilePhoto());
@@ -221,8 +221,7 @@ export class AuthService {
       .post<TokenRefreshResponse>(API_ENDPOINTS.auth.refreshToken, body, { withCredentials: true })
       .pipe(
         tap((res) => {
-          localStorage.setItem(TOKEN_KEY, res.accessToken);
-          this.token.set(res.accessToken);
+          this.token.set(res.accessToken); // instead of writing to localStorage, we can store the access token in memory (signal) for better security
 
           // Increment refresh count (up to 3 times)
           const newCount = currentCount + 1;
@@ -378,10 +377,8 @@ export class AuthService {
   }
 
   private saveAuthSession(res: LoginResponse): void {
-    localStorage.setItem(TOKEN_KEY, res.accessToken);
-    if (res.refreshToken) {
-      localStorage.setItem(REFRESH_TOKEN_KEY, res.refreshToken);
-    }
+    this.token.set(res.accessToken); // to store token in memory
+    
     localStorage.setItem(EMPLOYEE_ID_KEY, String(res.employeeId));
     localStorage.setItem(ROLE_KEY, res.role);
 

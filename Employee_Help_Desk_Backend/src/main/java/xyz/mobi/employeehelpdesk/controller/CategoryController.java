@@ -5,8 +5,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 import xyz.mobi.employeehelpdesk.dto.category.CategoryResponseDTO;
 import xyz.mobi.employeehelpdesk.service.CategoryService;
+import xyz.mobi.employeehelpdesk.dto.category.CreateCategoryRequestDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -35,12 +39,12 @@ public class CategoryController {
     }
 
     @Operation(summary = "Create a new category")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<CategoryResponseDTO> createCategory(
-            @jakarta.validation.Valid @RequestBody xyz.mobi.employeehelpdesk.dto.category.CreateCategoryRequestDTO request
+            @Valid @RequestBody CreateCategoryRequestDTO request
     ) {
         CategoryResponseDTO category = categoryService.createCategory(request);
-        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(category);
+        return ResponseEntity.status(HttpStatus.CREATED).body(category);
     }
 }

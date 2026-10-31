@@ -3,6 +3,8 @@
  * All frontend requests route exclusively through the Auth Service Gateway at /api.
  * Downstream service URLs and ports are never exposed in frontend client code.
  */
+
+
 export const API_BASE_URL = '/api';
 
 export const API_ENDPOINTS = {

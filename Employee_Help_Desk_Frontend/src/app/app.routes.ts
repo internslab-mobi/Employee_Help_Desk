@@ -3,7 +3,7 @@ import { ResetPassword } from './features/auth/pages/reset-password/reset-passwo
 import { ForgotPasswordComponent } from './features/auth/pages/forgot-password/forgot-password.component';
 import { VerifyOtp } from './features/auth/pages/verify-otp/verify-otp';
 import { Login } from './features/auth/pages/login/login';
-import { AgentDashboard } from './features/dashboard/agent-dashboard/agent-dashboard';
+import { AgentDashboard } from './features/dashboard/pages/agent-dashboard/agent-dashboard';
 import { ChangePassword } from './features/auth/pages/change-password/change-password';
 import { DashboardComponent } from './features/dashboard/dashboard';
 import { ProfileComponent } from './features/profile/profile';

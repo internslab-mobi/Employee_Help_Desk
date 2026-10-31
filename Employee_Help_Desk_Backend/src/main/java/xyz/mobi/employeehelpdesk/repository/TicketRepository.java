@@ -388,7 +388,9 @@ public interface TicketRepository
     LEFT JOIN t.requester req
     LEFT JOIN t.assignedAgent ag
     LEFT JOIN ag.employee age
-    WHERE (:status IS NULL OR t.status = :status)
+    WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (:agentEmployeeId IS NULL OR age.id = :agentEmployeeId)
+      AND (:status IS NULL OR t.status = :status)
       AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
       AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
@@ -433,7 +435,9 @@ public interface TicketRepository
     LEFT JOIN t.requester req
     LEFT JOIN t.assignedAgent ag
     LEFT JOIN ag.employee age
-    WHERE (:status IS NULL OR t.status = :status)
+    WHERE (:departmentId IS NULL OR t.department.id = :departmentId)
+      AND (:agentEmployeeId IS NULL OR age.id = :agentEmployeeId)
+      AND (:status IS NULL OR t.status = :status)
       AND (:priority IS NULL OR t.priority = :priority)
       AND (CAST(:from AS java.time.Instant) IS NULL OR t.createdAt >= :from)
       AND (CAST(:to AS java.time.Instant) IS NULL OR t.createdAt < :to)
@@ -473,6 +477,8 @@ public interface TicketRepository
       )
     """)
     Page<Ticket> findAllTicketsWithFilters(
+            @Param("departmentId") Long departmentId,
+            @Param("agentEmployeeId") Long agentEmployeeId,
             @Param("status") TicketStatus status,
             @Param("priority") Priority priority,
             @Param("from") Instant from,

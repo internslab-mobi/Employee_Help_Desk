@@ -1,12 +1,7 @@
 package xyz.mobi.employeehelpdesk.security;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
-import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -22,46 +17,8 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${security.jwt.secret:default-super-secret-jwt-signing-key-for-development-must-be-at-least-256-bits!}")
+    @Value("${security.jwt.secret}")
     private String jwtSecret;
-
-    @Getter
-    @Value("${security.jwt.expiration-ms:900000}")
-    private long expirationMs;
-
-    @Getter
-    @Value("${security.jwt.refresh-expiration-ms:2700000}")
-    private long refreshExpirationMs;
-
-    public String generateToken(Long employeeId, UserRole role, String timezone) {
-        try {
-            Date now = new Date();
-            Date expiryDate = new Date(now.getTime() + expirationMs);
-
-            String resolvedTimezone = (timezone != null && !timezone.isBlank()) ? timezone.trim() : "UTC";
-
-            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                    .subject(employeeId.toString())
-                    .claim("role", role != null ? role.name() : UserRole.EMPLOYEE.name())
-                    .claim("timezone", resolvedTimezone)
-                    .issueTime(now)
-                    .expirationTime(expiryDate)
-                    .build();
-
-            SignedJWT signedJWT = new SignedJWT(
-                    new JWSHeader(JWSAlgorithm.HS256),
-                    claimsSet
-            );
-
-            JWSSigner signer = new MACSigner(getSigningKey());
-            signedJWT.sign(signer);
-
-            return signedJWT.serialize();
-        } catch (Exception ex) {
-            log.error("Error creating JWT token: {}", ex.getMessage(), ex);
-            throw new RuntimeException("Could not generate JWT token", ex);
-        }
-    }
 
     public boolean validateToken(String token) {
         try {

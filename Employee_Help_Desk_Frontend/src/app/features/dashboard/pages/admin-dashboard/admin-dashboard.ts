@@ -360,7 +360,7 @@ export class AdminDashboardComponent implements OnInit {
 
     this.ticketService
       .searchTickets({
-        view: 'DEPARTMENT',
+        view: 'ALL',
         departmentId: this.selectedDepartmentId() ?? undefined,
         agentId: this.selectedAgentId() ?? undefined,
         status: this.ticketStatusFilter(),

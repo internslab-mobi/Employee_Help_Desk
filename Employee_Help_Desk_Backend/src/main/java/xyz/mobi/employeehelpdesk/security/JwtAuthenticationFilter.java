@@ -76,11 +76,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 UserPrincipal principal = new UserPrincipal(
                         employeeId,
-                        null,
-                        null,
                         role,
                         timezone,
-                        true,
                         authorities
                 );
 

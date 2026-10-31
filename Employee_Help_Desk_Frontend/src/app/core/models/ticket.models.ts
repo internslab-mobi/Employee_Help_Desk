@@ -22,7 +22,7 @@ export type SlaStatusType =
   | 'MET'
   | 'COMPLETED';
 
-export type TicketViewType = 'CREATED' | 'ASSIGNED' | 'DEPARTMENT';
+export type TicketViewType = 'CREATED' | 'ASSIGNED' | 'DEPARTMENT' | 'ALL';
 
 export interface TicketResponse {
   id: number;
